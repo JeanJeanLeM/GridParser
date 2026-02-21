@@ -179,8 +179,30 @@
     colRuns = mergeCloseLines(colRuns, minGap);
     rowRuns = mergeCloseLines(rowRuns, minGap);
 
-    var innerX = pickThreeLines(colRuns, w);
-    var innerY = pickThreeLines(rowRuns, h);
+    colRuns.sort(function (a, b) { return a.position - b.position; });
+    rowRuns.sort(function (a, b) { return a.position - b.position; });
+
+    var leftOuter = 0;
+    var rightOuter = w;
+    if (colRuns.length >= 1) {
+      leftOuter = Math.max(0, colRuns[0].position - colRuns[0].thickness / 2);
+      rightOuter = Math.min(w, colRuns[colRuns.length - 1].position + colRuns[colRuns.length - 1].thickness / 2);
+    }
+    var topOuter = 0;
+    var bottomOuter = h;
+    if (rowRuns.length >= 1) {
+      topOuter = Math.max(0, rowRuns[0].position - rowRuns[0].thickness / 2);
+      bottomOuter = Math.min(h, rowRuns[rowRuns.length - 1].position + rowRuns[rowRuns.length - 1].thickness / 2);
+    }
+
+    var contentW = rightOuter - leftOuter;
+    var contentH = bottomOuter - topOuter;
+    var innerColRuns = colRuns.length > 2 ? colRuns.slice(1, -1) : colRuns;
+    var innerRowRuns = rowRuns.length > 2 ? rowRuns.slice(1, -1) : rowRuns;
+    var relCol = innerColRuns.map(function (r) { return { position: r.position - leftOuter, thickness: r.thickness }; });
+    var relRow = innerRowRuns.map(function (r) { return { position: r.position - topOuter, thickness: r.thickness }; });
+    var innerX = pickThreeLines(relCol, contentW).map(function (p) { return leftOuter + p; });
+    var innerY = pickThreeLines(relRow, contentH).map(function (p) { return topOuter + p; });
     innerX.sort(function (a, b) { return a - b; });
     innerY.sort(function (a, b) { return a - b; });
 
@@ -194,17 +216,17 @@
       }
       return b;
     }
-    var xBounds = enforceMinGap([0].concat(innerX).concat([w]), w, minGap);
-    var yBounds = enforceMinGap([0].concat(innerY).concat([h]), h, minGap);
+    var xBounds = enforceMinGap([leftOuter].concat(innerX).concat([rightOuter]), w, minGap);
+    var yBounds = enforceMinGap([topOuter].concat(innerY).concat([bottomOuter]), h, minGap);
 
-    var allThickness = [];
-    colRuns.forEach(function (r) { allThickness.push(r.thickness); });
-    rowRuns.forEach(function (r) { allThickness.push(r.thickness); });
-    var suggestedTrim = allThickness.length
-      ? Math.max(0, Math.ceil(allThickness.reduce(function (a, b) { return a + b; }, 0) / allThickness.length))
+    var innerThickness = [];
+    innerColRuns.forEach(function (r) { innerThickness.push(r.thickness); });
+    innerRowRuns.forEach(function (r) { innerThickness.push(r.thickness); });
+    var suggestedTrim = innerThickness.length
+      ? Math.max.apply(null, innerThickness)
       : 0;
 
-    return { xBounds: xBounds, yBounds: yBounds, suggestedTrim: Math.min(20, suggestedTrim) };
+    return { xBounds: xBounds, yBounds: yBounds, suggestedTrim: Math.min(20, Math.ceil(suggestedTrim)) };
   }
 
   return { detectGridLines: detectGridLines };

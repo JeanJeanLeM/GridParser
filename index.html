@@ -11,7 +11,7 @@
     * { box-sizing: border-box; }
     body {
       font-family: system-ui, -apple-system, sans-serif;
-      max-width: 560px;
+      max-width: 50%;
       margin: 0 auto;
       padding: 2rem 1.5rem;
       min-height: 100vh;
@@ -32,7 +32,7 @@
       color: #555;
       line-height: 1.5;
       margin: 0;
-      max-width: 420px;
+      max-width: 42rem;
       margin-left: auto;
       margin-right: auto;
     }
@@ -267,7 +267,7 @@
 
   <section class="grid-editor" id="grid-editor" aria-label="Adjust cutting lines">
     <h2>Adjust cutting lines</h2>
-    <p class="intro" style="margin-bottom: 0.75rem;">Use <strong>Auto-detect grid</strong> to find black lines, or drag the <strong>blue</strong> and <strong>red</strong> lines manually. Trim is set from detected line thickness.</p>
+    <p class="intro" style="margin-bottom: 0.75rem;">Grid and outer border are <strong>auto-detected when you upload</strong>. You can drag the <strong>blue</strong> (outer) and <strong>red</strong> (inner) lines to adjust, or click Auto-detect grid to run detection again.</p>
     <div class="grid-editor-toolbar">
       <label>Zoom: <span id="zoom-value">1</span>×</label>
       <input type="range" id="zoom" min="0.5" max="2.5" step="0.1" value="1" aria-label="Zoom">
@@ -384,6 +384,39 @@
         ctx.arc(LOUPE_SIZE / 2, LOUPE_SIZE / 2, LOUPE_SIZE / 2, 0, 2 * Math.PI);
         ctx.clip();
         ctx.drawImage(currentImage, sx, sy, sw, sh, 0, 0, LOUPE_SIZE, LOUPE_SIZE);
+        function toLoupeX(px) { return ((px - sx) / sw) * LOUPE_SIZE; }
+        function toLoupeY(py) { return ((py - sy) / sh) * LOUPE_SIZE; }
+        var lw = Math.max(1.5, 2);
+        ctx.strokeStyle = 'rgba(50, 100, 220, 0.95)';
+        ctx.lineWidth = lw;
+        ctx.beginPath();
+        ctx.moveTo(toLoupeX(xBounds[0]), 0);
+        ctx.lineTo(toLoupeX(xBounds[0]), LOUPE_SIZE);
+        ctx.moveTo(toLoupeX(xBounds[4]), 0);
+        ctx.lineTo(toLoupeX(xBounds[4]), LOUPE_SIZE);
+        ctx.moveTo(0, toLoupeY(yBounds[0]));
+        ctx.lineTo(LOUPE_SIZE, toLoupeY(yBounds[0]));
+        ctx.moveTo(0, toLoupeY(yBounds[4]));
+        ctx.lineTo(LOUPE_SIZE, toLoupeY(yBounds[4]));
+        ctx.stroke();
+        ctx.strokeStyle = 'rgba(220, 50, 50, 0.9)';
+        ctx.lineWidth = lw;
+        ctx.beginPath();
+        for (var i = 1; i <= 3; i++) {
+          var lx = toLoupeX(xBounds[i]);
+          if (lx >= -1 && lx <= LOUPE_SIZE + 1) {
+            ctx.moveTo(lx, 0);
+            ctx.lineTo(lx, LOUPE_SIZE);
+          }
+        }
+        for (var j = 1; j <= 3; j++) {
+          var ly = toLoupeY(yBounds[j]);
+          if (ly >= -1 && ly <= LOUPE_SIZE + 1) {
+            ctx.moveTo(0, ly);
+            ctx.lineTo(LOUPE_SIZE, ly);
+          }
+        }
+        ctx.stroke();
         ctx.restore();
         loupeContainer.classList.add('visible');
       }
@@ -470,6 +503,7 @@
           gridWrapper.style.height = baseHeight + 'px';
           applyZoom();
           drawOverlay();
+          runAutoDetect();
         }
         gridImg.onload = sizeOverlay;
         gridEditor.classList.add('visible');
@@ -486,6 +520,26 @@
           gridWrapper.style.width = (baseWidth * zoom) + 'px';
           gridWrapper.style.height = (baseHeight * zoom) + 'px';
         }
+      }
+
+      function runAutoDetect() {
+        if (!currentImage || typeof gridDetect === 'undefined' || !gridDetect.detectGridLines) return false;
+        var result = gridDetect.detectGridLines(currentImage, {
+          blackThreshold: 100,
+          darknessThreshold: 0.12,
+          minLinePx: 1,
+          minGap: 6
+        });
+        if (!result || !result.xBounds || result.xBounds.length !== 5 || !result.yBounds || result.yBounds.length !== 5) return false;
+        xBounds = result.xBounds.slice();
+        yBounds = result.yBounds.slice();
+        var trimVal = String(result.suggestedTrim || 0);
+        var trimMain = document.getElementById('trim-pixels');
+        var trimInline = document.getElementById('trim-pixels-inline');
+        if (trimMain) trimMain.value = trimVal;
+        if (trimInline) trimInline.value = trimVal;
+        drawOverlay();
+        return true;
       }
 
       function handleFile(file) {
@@ -608,33 +662,12 @@
       });
 
       document.getElementById('auto-detect-btn').addEventListener('click', function () {
+        clearError();
         if (!currentImage) {
           showError('Load an image first.');
           return;
         }
-        if (typeof gridDetect === 'undefined' || !gridDetect.detectGridLines) {
-          showError('Grid detection not loaded.');
-          return;
-        }
-        clearError();
-        var result = gridDetect.detectGridLines(currentImage, {
-          blackThreshold: 100,
-          darknessThreshold: 0.12,
-          minLinePx: 1,
-          minGap: 6
-        });
-        if (!result || !result.xBounds || result.xBounds.length !== 5 || !result.yBounds || result.yBounds.length !== 5) {
-          showError('Could not detect grid. Try adjusting lines manually.');
-          return;
-        }
-        xBounds = result.xBounds.slice();
-        yBounds = result.yBounds.slice();
-        var trimVal = String(result.suggestedTrim || 0);
-        var trimMain = document.getElementById('trim-pixels');
-        var trimInline = document.getElementById('trim-pixels-inline');
-        if (trimMain) trimMain.value = trimVal;
-        if (trimInline) trimInline.value = trimVal;
-        drawOverlay();
+        if (!runAutoDetect()) showError('Could not detect grid. Try adjusting lines manually.');
       });
       document.getElementById('reset-lines').addEventListener('click', function () {
         if (currentImage) {
