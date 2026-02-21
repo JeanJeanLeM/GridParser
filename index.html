@@ -196,13 +196,18 @@
     .legend-dot--red { background: rgba(220, 50, 50, 0.9); }
     .grid-editor-toolbar {
       display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+      margin-bottom: 1rem;
+    }
+    .grid-editor-toolbar__row {
+      display: flex;
       flex-wrap: wrap;
       align-items: center;
       gap: 1rem;
-      margin-bottom: 1rem;
     }
-    .grid-editor-toolbar label { font-size: 0.9rem; }
-    .grid-editor-toolbar input[type="range"] { vertical-align: middle; }
+    .grid-editor-toolbar__row--controls label { font-size: 0.9rem; }
+    .grid-editor-toolbar__row--controls input[type="range"] { vertical-align: middle; }
 
     /* Grid format picker: visual 4×4 selector */
     .grid-format-picker {
@@ -235,10 +240,8 @@
       gap: 2px;
       width: 56px;
       height: 56px;
-      background: var(--border-light);
       border-radius: 6px;
-      padding: 3px;
-      box-shadow: inset 0 1px 2px rgba(0,0,0,0.06);
+      padding: 0;
     }
     .grid-format-picker__cell {
       border-radius: 3px;
@@ -259,6 +262,10 @@
     .grid-format-picker__cell.in-selection:hover {
       background: #e09a38;
       filter: brightness(1.08);
+    }
+    .grid-format-picker__cell.out-of-preview {
+      opacity: 0.35;
+      background: var(--card-bg);
     }
     .grid-format-picker__cell:focus {
       outline: none;
@@ -344,8 +351,18 @@
       cursor: crosshair;
       pointer-events: auto;
     }
-    .grid-editor-buttons { margin-top: 1rem; display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem; }
-    .grid-editor-buttons .btn { margin-right: 0; }
+    .grid-editor-buttons { margin-top: 1rem; }
+    .grid-editor-labelisation { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem; }
+    .grid-editor-actions {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 0.5rem;
+      margin-top: 0.75rem;
+      padding-top: 0.75rem;
+      border-top: 1px solid var(--border-light);
+    }
+    .grid-editor-actions .btn { margin-right: 0; }
     .trim-inline { display: inline-flex; align-items: center; gap: 0.35rem; font-size: 0.9rem; }
     .trim-inline input { padding: 0.25rem 0.35rem; border: 1px solid var(--border-input); border-radius: var(--radius-input); font-size: var(--text-sm); }
     .trim-inline input:focus { outline: none; border-color: var(--text-secondary); box-shadow: 0 0 0 2px rgba(229, 161, 82, 0.2); }
@@ -418,38 +435,42 @@
       <span><span class="legend-dot legend-dot--red" aria-hidden="true"></span> Inner cutting lines (where each tile is split)</span>
     </div>
     <div class="grid-editor-toolbar">
-      <div class="grid-format-picker" role="group" aria-labelledby="grid-format-picker-label">
-        <span class="grid-format-picker__label" id="grid-format-picker-label">Grid</span>
-        <div class="grid-format-picker__grid" id="grid-format-visual" aria-hidden="true">
-          <!-- 4×4 cells: row 0..3, col 0..3. Cell (r,c) = format (r+1)×(c+1). Filled by JS. -->
+      <div class="grid-editor-toolbar__row grid-editor-toolbar__row--grid">
+        <div class="grid-format-picker" role="group" aria-labelledby="grid-format-picker-label">
+          <span class="grid-format-picker__label" id="grid-format-picker-label">Grid</span>
+          <div class="grid-format-picker__grid" id="grid-format-visual" aria-hidden="true">
+            <!-- 4×4 cells: row 0..3, col 0..3. Cell (r,c) = format (r+1)×(c+1). Filled by JS. -->
+          </div>
+          <span class="grid-format-picker__value" id="grid-format-value" aria-live="polite">4×4</span>
+          <select id="grid-format" aria-label="Grid format (rows × columns)" class="visually-hidden">
+            <option value="1_1">1×1</option>
+            <option value="1_2">1×2</option>
+            <option value="2_1">2×1</option>
+            <option value="2_2">2×2</option>
+            <option value="1_3">1×3</option>
+            <option value="3_1">3×1</option>
+            <option value="2_3">2×3</option>
+            <option value="3_2">3×2</option>
+            <option value="1_4">1×4</option>
+            <option value="4_1">4×1</option>
+            <option value="2_4">2×4</option>
+            <option value="4_2">4×2</option>
+            <option value="3_3">3×3</option>
+            <option value="3_4">3×4</option>
+            <option value="4_3">4×3</option>
+            <option value="4_4" selected>4×4</option>
+          </select>
         </div>
-        <span class="grid-format-picker__value" id="grid-format-value" aria-live="polite">4×4</span>
-        <select id="grid-format" aria-label="Grid format (rows × columns)" class="visually-hidden">
-          <option value="1_1">1×1</option>
-          <option value="1_2">1×2</option>
-          <option value="2_1">2×1</option>
-          <option value="2_2">2×2</option>
-          <option value="1_3">1×3</option>
-          <option value="3_1">3×1</option>
-          <option value="2_3">2×3</option>
-          <option value="3_2">3×2</option>
-          <option value="1_4">1×4</option>
-          <option value="4_1">4×1</option>
-          <option value="2_4">2×4</option>
-          <option value="4_2">4×2</option>
-          <option value="3_3">3×3</option>
-          <option value="3_4">3×4</option>
-          <option value="4_3">4×3</option>
-          <option value="4_4" selected>4×4</option>
-        </select>
       </div>
-      <label>Zoom: <span id="zoom-value">1</span>×</label>
-      <input type="range" id="zoom" min="0.5" max="2.5" step="0.1" value="1" aria-label="Zoom">
-      <label>Line thickness: <span id="line-thickness-value">2</span>px</label>
-      <input type="range" id="line-thickness" min="1" max="5" step="1" value="2" aria-label="Cutting line thickness">
-      <button type="button" class="loupe-btn" id="loupe-btn" title="Toggle 4× loupe (follows cursor)" aria-pressed="false">
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
-      </button>
+      <div class="grid-editor-toolbar__row grid-editor-toolbar__row--controls">
+        <label>Zoom: <span id="zoom-value">1</span>×</label>
+        <input type="range" id="zoom" min="0.5" max="2.5" step="0.1" value="1" aria-label="Zoom">
+        <label>Line thickness: <span id="line-thickness-value">4</span>px</label>
+        <input type="range" id="line-thickness" min="0" max="20" step="1" value="4" aria-label="Cutting line thickness">
+        <button type="button" class="loupe-btn" id="loupe-btn" title="Toggle 4× loupe (follows cursor)" aria-pressed="false">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+        </button>
+      </div>
     </div>
     <div class="grid-preview-scroll" id="grid-preview-scroll">
       <div class="grid-preview-wrapper" id="grid-preview-wrapper">
@@ -458,22 +479,25 @@
       </div>
     </div>
     <div class="grid-editor-buttons">
-      <span class="trim-inline">
-        <label for="trim-pixels-inline">Trim:</label>
-        <input type="number" id="trim-pixels-inline" min="0" max="20" value="4" step="1" style="width: 3.5em;" title="Pixels to remove from each side of every tile">
-      </span>
-      <label class="auto-name-label">
-        <input type="checkbox" id="auto-name-from-labels" checked aria-describedby="auto-name-hint">
-        Auto-name from labels
-      </label>
-      <span class="trim-hint" id="auto-name-hint" style="margin-left: 0.25rem;">Detect text in each tile and use it as the filename.</span>
-      <span class="trim-inline">
-        <label for="label-region-pct">Label region (bottom %):</label>
-        <input type="number" id="label-region-pct" min="10" max="50" value="30" step="5" style="width: 3.5em;" title="Use only the bottom % of each tile for label detection (reduces noise from illustrations)">
-      </span>
-      <button type="button" class="btn btn-secondary" id="auto-detect-btn">Auto-detect grid</button>
-      <button type="button" class="btn btn-secondary" id="reset-lines">Reset lines</button>
-      <button type="button" class="btn btn-primary" id="cut-btn">Cut and create images</button>
+      <div class="grid-editor-labelisation">
+        <span class="trim-inline">
+          <label for="trim-pixels-inline">Trim:</label>
+          <input type="number" id="trim-pixels-inline" min="0" max="20" value="4" step="1" style="width: 3.5em;" title="Pixels to remove from each side of every tile">
+        </span>
+        <span class="trim-inline">
+          <label for="label-region-pct">Label region %:</label>
+          <input type="number" id="label-region-pct" min="10" max="50" value="30" step="5" style="width: 3.5em;" title="Bottom % of tile used for label detection">
+        </span>
+        <label class="auto-name-label">
+          Auto-name
+          <input type="checkbox" id="auto-name-from-labels" checked>
+        </label>
+      </div>
+      <div class="grid-editor-actions">
+        <button type="button" class="btn btn-secondary" id="auto-detect-btn">Auto-detect grid</button>
+        <button type="button" class="btn btn-secondary" id="reset-lines">Reset lines</button>
+        <button type="button" class="btn btn-primary" id="cut-btn">Cut and create images</button>
+      </div>
     </div>
   </section>
 
@@ -539,7 +563,7 @@
       }
       function getLineThickness() {
         var el = document.getElementById('line-thickness');
-        return el ? Math.max(1, parseInt(el.value, 10) || 2) : 2;
+        return el ? Math.max(0, parseInt(el.value, 10) || 0) : 0;
       }
       function getGridFormat() {
         var sel = document.getElementById('grid-format');
@@ -936,7 +960,12 @@
         applyZoom();
       });
       document.getElementById('line-thickness').addEventListener('input', function () {
-        document.getElementById('line-thickness-value').textContent = this.value;
+        var v = this.value;
+        document.getElementById('line-thickness-value').textContent = v;
+        var trimMain = document.getElementById('trim-pixels');
+        var trimInline = document.getElementById('trim-pixels-inline');
+        if (trimMain) trimMain.value = v;
+        if (trimInline) trimInline.value = v;
         drawOverlay();
       });
 
@@ -946,7 +975,9 @@
         var btn = document.getElementById('cut-btn');
         if (btn) btn.textContent = 'Cut and create ' + n + ' image' + (n !== 1 ? 's' : '');
       }
+      var gridFormatHover = null;
       function syncGridFormatVisual() {
+        gridFormatHover = null;
         var sel = document.getElementById('grid-format');
         var valueEl = document.getElementById('grid-format-value');
         var gridEl = document.getElementById('grid-format-visual');
@@ -960,6 +991,19 @@
           var r = parseInt(cells[i].getAttribute('data-row'), 10);
           var c = parseInt(cells[i].getAttribute('data-col'), 10);
           cells[i].classList.toggle('in-selection', r < rows && c < cols);
+          cells[i].classList.remove('out-of-preview');
+        }
+      }
+      function updateGridFormatHoverPreview(hoverR, hoverC) {
+        var gridEl = document.getElementById('grid-format-visual');
+        if (!gridEl) return;
+        var cells = gridEl.querySelectorAll('.grid-format-picker__cell');
+        for (var i = 0; i < cells.length; i++) {
+          var r = parseInt(cells[i].getAttribute('data-row'), 10);
+          var c = parseInt(cells[i].getAttribute('data-col'), 10);
+          var inPreview = r <= hoverR && c <= hoverC;
+          cells[i].classList.toggle('in-selection', inPreview);
+          cells[i].classList.toggle('out-of-preview', !inPreview);
         }
       }
       function initGridFormatPicker() {
@@ -980,10 +1024,18 @@
                 sel.value = (row + 1) + '_' + (col + 1);
                 sel.dispatchEvent(new Event('change', { bubbles: true }));
               });
+              cell.addEventListener('mouseenter', function () {
+                gridFormatHover = { r: row, c: col };
+                updateGridFormatHoverPreview(row, col);
+              });
             })(r, c);
             gridEl.appendChild(cell);
           }
         }
+        gridEl.addEventListener('mouseleave', function () {
+          gridFormatHover = null;
+          syncGridFormatVisual();
+        });
         syncGridFormatVisual();
       }
       initGridFormatPicker();
@@ -1013,9 +1065,25 @@
       document.getElementById('cut-btn').addEventListener('click', runCut);
       var trimMain = document.getElementById('trim-pixels');
       var trimInline = document.getElementById('trim-pixels-inline');
+      var lineThicknessEl = document.getElementById('line-thickness');
+      var lineThicknessValueEl = document.getElementById('line-thickness-value');
+      function syncTrimAndLineThickness(fromTrim) {
+        var v = fromTrim;
+        if (lineThicknessEl) {
+          lineThicknessEl.value = v;
+          if (lineThicknessValueEl) lineThicknessValueEl.textContent = v;
+        }
+        drawOverlay();
+      }
       if (trimMain && trimInline) {
-        trimMain.addEventListener('input', function () { trimInline.value = trimMain.value; });
-        trimInline.addEventListener('input', function () { trimMain.value = trimInline.value; });
+        trimMain.addEventListener('input', function () {
+          trimInline.value = trimMain.value;
+          syncTrimAndLineThickness(trimMain.value);
+        });
+        trimInline.addEventListener('input', function () {
+          trimMain.value = trimInline.value;
+          syncTrimAndLineThickness(trimInline.value);
+        });
       }
 
       dropZone.addEventListener('click', function (e) {
