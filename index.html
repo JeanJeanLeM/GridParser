@@ -167,7 +167,10 @@
       display: inline-block;
       transform-origin: top left;
     }
-    .grid-preview-wrapper img { display: block; vertical-align: top; }
+    .grid-preview-wrapper img {
+      display: block;
+      vertical-align: top;
+    }
     .grid-overlay {
       position: absolute;
       left: 0;
@@ -220,7 +223,7 @@
     </div>
     <div class="grid-preview-scroll" id="grid-preview-scroll">
       <div class="grid-preview-wrapper" id="grid-preview-wrapper">
-        <img id="grid-image" alt="Your grid image" style="max-width: 100%; height: auto;">
+        <img id="grid-image" alt="Your grid image">
         <canvas id="grid-overlay" class="grid-overlay" aria-hidden="true"></canvas>
       </div>
     </div>
@@ -349,11 +352,20 @@
         initBounds(w, h);
         gridImg.src = img.src;
         function sizeOverlay() {
-          baseWidth = gridImg.offsetWidth;
-          baseHeight = gridImg.offsetHeight;
-          if (!baseWidth || !baseHeight) return;
           var w = currentImage.naturalWidth;
           var h = currentImage.naturalHeight;
+          var maxDisplay = 560;
+          if (w >= h) {
+            baseWidth = Math.min(w, maxDisplay);
+            baseHeight = Math.round((h / w) * baseWidth);
+          } else {
+            baseHeight = Math.min(h, maxDisplay);
+            baseWidth = Math.round((w / h) * baseHeight);
+          }
+          if (!baseWidth || !baseHeight) return;
+          gridImg.style.width = baseWidth + 'px';
+          gridImg.style.height = baseHeight + 'px';
+          gridImg.style.maxWidth = 'none';
           gridOverlay.width = w;
           gridOverlay.height = h;
           gridOverlay.style.width = baseWidth + 'px';
@@ -373,9 +385,10 @@
         var zoom = getZoom();
         document.getElementById('zoom-value').textContent = zoom.toFixed(1);
         if (baseWidth && baseHeight) {
+          gridWrapper.style.transformOrigin = '0 0';
+          gridWrapper.style.transform = 'scale(' + zoom + ')';
           gridWrapper.style.width = (baseWidth * zoom) + 'px';
           gridWrapper.style.height = (baseHeight * zoom) + 'px';
-          gridWrapper.style.transform = 'scale(' + zoom + ')';
         }
       }
 
