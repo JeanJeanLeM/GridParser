@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Signing in… — Grid2Icons</title>
+  <link rel="stylesheet" href="css/shared.css">
+  <style>
+    body { font-family: var(--font-sans); margin: 0; min-height: 100vh; background: var(--page-bg); display: flex; align-items: center; justify-content: center; }
+    .callback-msg { color: var(--text-muted); font-size: var(--text-base); }
+  </style>
+</head>
+<body>
+  <p class="callback-msg" id="callback-msg">Signing you in…</p>
+  <script src="js/auth0-config.js"></script>
+  <script type="module" src="js/auth.js"></script>
+  <script>
+    (function () {
+      var msg = document.getElementById('callback-msg');
+      function run() {
+        if (!window.auth0Api || typeof window.auth0Api.handleRedirectCallback !== 'function') return;
+        window.auth0Api.handleRedirectCallback()
+          .then(function () { window.location.replace('/index.html'); })
+          .catch(function (e) {
+            console.error('Auth callback error', e);
+            msg.textContent = 'Sign-in failed. Redirecting…';
+            setTimeout(function () { window.location.replace('/index.html'); }, 2000);
+          });
+      }
+      if (window.auth0Api) run();
+      else window.addEventListener('auth0ApiReady', run);
+    })();
+  </script>
+</body>
+</html>

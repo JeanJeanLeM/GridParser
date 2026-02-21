@@ -1,0 +1,102 @@
+/**
+ * Renders auth header block: Sign in | Sign up, or Signed in as <email> | Log out.
+ * Expects DOM elements with ids: auth-loading, auth-guest, auth-user, auth-user-email, auth-btn-login, auth-btn-signup, auth-btn-logout.
+ */
+(function () {
+  function getEl(id) {
+    return document.getElementById(id);
+  }
+
+  function showLoading() {
+    var loading = getEl('auth-loading');
+    var guest = getEl('auth-guest');
+    var user = getEl('auth-user');
+    if (loading) loading.style.display = '';
+    if (guest) guest.style.display = 'none';
+    if (user) user.style.display = 'none';
+  }
+
+  function showGuest() {
+    var loading = getEl('auth-loading');
+    var guest = getEl('auth-guest');
+    var user = getEl('auth-user');
+    if (loading) loading.style.display = 'none';
+    if (guest) guest.style.display = '';
+    if (user) user.style.display = 'none';
+  }
+
+  function showUser(email) {
+    var loading = getEl('auth-loading');
+    var guest = getEl('auth-guest');
+    var user = getEl('auth-user');
+    var emailEl = getEl('auth-user-email');
+    if (loading) loading.style.display = 'none';
+    if (guest) guest.style.display = 'none';
+    if (user) user.style.display = '';
+    if (emailEl) emailEl.textContent = email || 'Signed in';
+  }
+
+  function bindButtons() {
+    var loginBtn = getEl('auth-btn-login');
+    var signupBtn = getEl('auth-btn-signup');
+    var logoutBtn = getEl('auth-btn-logout');
+    function onLogin() {
+      if (!window.auth0Api) return;
+      window.auth0Api.login().catch(function () {
+        console.warn('Auth0 not configured. Set window.__auth0Config in js/auth0-config.js');
+      });
+    }
+    function onSignup() {
+      if (!window.auth0Api) return;
+      window.auth0Api.signup().catch(function () {
+        console.warn('Auth0 not configured. Set window.__auth0Config in js/auth0-config.js');
+      });
+    }
+    if (loginBtn) loginBtn.addEventListener('click', onLogin);
+    if (signupBtn) signupBtn.addEventListener('click', onSignup);
+    if (logoutBtn) logoutBtn.addEventListener('click', function () { window.auth0Api && window.auth0Api.logout(); });
+  }
+
+  function updateHeader() {
+    if (!window.auth0Api) {
+      showGuest();
+      return;
+    }
+    window.auth0Api.ready
+      .then(function (client) {
+        if (!client) {
+          showGuest();
+          return;
+        }
+        return window.auth0Api.isAuthenticated();
+      })
+      .then(function (authenticated) {
+        if (authenticated) {
+          return window.auth0Api.getUser().then(function (u) {
+            var email = (u && (u.email || u.name)) || 'Signed in';
+            showUser(email);
+          });
+        }
+        showGuest();
+      })
+      .catch(function () {
+        showGuest();
+      });
+  }
+
+  function init() {
+    showLoading();
+    bindButtons();
+    if (window.auth0Api && window.auth0Api.ready) {
+      window.auth0Api.ready.then(updateHeader).catch(showGuest);
+    } else {
+      showGuest();
+    }
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', init);
+  } else {
+    init();
+  }
+})();

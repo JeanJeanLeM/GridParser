@@ -89,21 +89,23 @@
   }
 
   /**
-   * Split an image into 16 tiles using custom boundaries (user-placed cutting lines).
+   * Split an image into tiles using custom boundaries (user-placed cutting lines).
    * @param {HTMLImageElement|object} image - Image element
-   * @param {number[]} xBounds - 5 numbers: [left, div1, div2, div3, right] in image pixels
-   * @param {number[]} yBounds - 5 numbers: [top, div1, div2, div3, bottom] in image pixels
+   * @param {number[]} xBounds - [left, div1, ..., right] in image pixels (length = cols + 1)
+   * @param {number[]} yBounds - [top, div1, ..., bottom] in image pixels (length = rows + 1)
    * @param {{ trimPixels?: number }} [options] - optional trim from each cell edge
    * @param {object} [adapter] - For Node: createCanvas, toBlob
-   * @returns {Promise<Array<Blob|Buffer>>} - 16 blobs/buffers in row-major order
+   * @returns {Promise<Array<Blob|Buffer>>} - (rows * cols) blobs/buffers in row-major order
    */
   function splitGridCustom(image, xBounds, yBounds, options, adapter) {
     var opts = options || {};
     var trim = Math.max(0, parseInt(opts.trimPixels, 10) || 0);
     var w = getWidth(image);
     var h = getHeight(image);
-    if (!xBounds || xBounds.length !== 5 || !yBounds || yBounds.length !== 5) {
-      return Promise.reject(new Error('xBounds and yBounds must be arrays of 5 numbers'));
+    var cols = xBounds ? xBounds.length - 1 : 0;
+    var rows = yBounds ? yBounds.length - 1 : 0;
+    if (!xBounds || !yBounds || cols < 1 || rows < 1) {
+      return Promise.reject(new Error('xBounds and yBounds must have at least 2 elements each'));
     }
 
     var createCanvas;
@@ -137,8 +139,8 @@
     }
 
     var promises = [];
-    for (var row = 0; row < 4; row++) {
-      for (var col = 0; col < 4; col++) {
+    for (var row = 0; row < rows; row++) {
+      for (var col = 0; col < cols; col++) {
         (function (r, c) {
           var sx = Math.round(xBounds[c]) + trim;
           var sy = Math.round(yBounds[r]) + trim;

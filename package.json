@@ -7,6 +7,9 @@
     "test:grid": "node scripts/test-grid-split.js"
   },
   "dependencies": {
-    "jimp": "^0.22.12"
+    "jimp": "^0.22.12",
+    "@auth0/auth0-spa-js": "^2.0.3",
+    "jwks-rsa": "^3.1.0",
+    "jsonwebtoken": "^9.0.2"
   }
 }

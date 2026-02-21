@@ -51,10 +51,63 @@
   }
 
   /**
+   * Longest contiguous run of dark pixels along one row (axis 'y') or one column (axis 'x').
+   * Used to reject text: text has short segments; grid lines span most of the row/column.
+   */
+  function maxContiguousDark(data, w, h, axis, index, blackThreshold) {
+    var maxRun = 0;
+    var run = 0;
+    if (axis === 'y') {
+      var y = index;
+      for (var x = 0; x < w; x++) {
+        var i = (y * w + x) * 4;
+        var L = luminance(data[i], data[i + 1], data[i + 2]);
+        if (L <= blackThreshold) {
+          run++;
+          if (run > maxRun) maxRun = run;
+        } else {
+          run = 0;
+        }
+      }
+    } else {
+      var x = index;
+      for (var y = 0; y < h; y++) {
+        var i = (y * w + x) * 4;
+        var L = luminance(data[i], data[i + 1], data[i + 2]);
+        if (L <= blackThreshold) {
+          run++;
+          if (run > maxRun) maxRun = run;
+        } else {
+          run = 0;
+        }
+      }
+    }
+    return maxRun;
+  }
+
+  /**
+   * Darkness profile that is zero where the longest contiguous dark run is too short.
+   * This rejects text rows/columns (short segments) while keeping real grid lines (long span).
+   */
+  function lineAwareProfile(data, w, h, axis, blackThreshold, minSpanFraction) {
+    var raw = darknessProfile(data, w, h, axis, blackThreshold);
+    var size = axis === 'x' ? h : w;
+    var out = [];
+    for (var i = 0; i < raw.length; i++) {
+      var span = maxContiguousDark(data, w, h, axis, i, blackThreshold);
+      var minSpan = Math.floor(size * minSpanFraction);
+      out.push(span >= minSpan ? raw[i] : 0);
+    }
+    return out;
+  }
+
+  /**
    * Find runs of consecutive indices where profile value >= threshold. Returns [{ position, thickness }, ...].
    * position = center of run (in index), thickness = length of run.
+   * Only keeps runs with minRunLength <= thickness <= maxRunLength so thin grid lines are kept and thick bands (e.g. text) are ignored.
    */
-  function findRuns(profile, threshold, minRunLength) {
+  function findRuns(profile, threshold, minRunLength, maxRunLength) {
+    if (maxRunLength == null) maxRunLength = Infinity;
     var runs = [];
     var i = 0;
     while (i < profile.length) {
@@ -62,7 +115,7 @@
         var start = i;
         while (i < profile.length && profile[i] >= threshold) i++;
         var thickness = i - start;
-        if (thickness >= minRunLength) {
+        if (thickness >= minRunLength && thickness <= maxRunLength) {
           runs.push({ position: start + thickness / 2, thickness: thickness });
         }
       } else {
@@ -98,64 +151,78 @@
   }
 
   /**
-   * Pick exactly 3 lines that best divide the range [0, size] into 4 equal parts.
-   * If we have more than 3, choose the 3 whose positions are closest to 1/4, 2/4, 3/4.
+   * Pick exactly N lines that best divide the range [0, size] into N+1 equal parts.
+   * Targets: size/(N+1), 2*size/(N+1), ..., N*size/(N+1).
+   * If we have more than N, choose the N whose positions minimize distance to targets.
    * If we have fewer, fill in with geometric positions.
    */
-  function pickThreeLines(detectedLines, size) {
-    var target1 = size / 4;
-    var target2 = size / 2;
-    var target3 = (3 * size) / 4;
+  function pickNLines(detectedLines, size, count) {
+    if (count <= 0) return [];
+    var targets = [];
+    for (var t = 1; t <= count; t++) {
+      targets.push((t * size) / (count + 1));
+    }
     if (detectedLines.length === 0) {
-      return [target1, target2, target3];
+      return targets.slice();
     }
-    if (detectedLines.length <= 3) {
-      var positions = detectedLines.map(function (l) { return l.position; }).sort(function (a, b) { return a - b; });
-      while (positions.length < 3) {
-        var gaps = [];
-        for (var i = 0; i <= positions.length; i++) {
-          var left = i === 0 ? 0 : positions[i - 1];
-          var right = i === positions.length ? size : positions[i];
-          gaps.push({ i: i, mid: (left + right) / 2, len: right - left });
-        }
-        gaps.sort(function (a, b) { return b.len - a.len; });
-        positions.splice(gaps[0].i, 0, gaps[0].mid);
-        positions.sort(function (a, b) { return a - b; });
+    var positions = detectedLines.map(function (l) { return l.position; }).sort(function (a, b) { return a - b; });
+    while (positions.length < count) {
+      var gaps = [];
+      for (var i = 0; i <= positions.length; i++) {
+        var left = i === 0 ? 0 : positions[i - 1];
+        var right = i === positions.length ? size : positions[i];
+        gaps.push({ i: i, mid: (left + right) / 2, len: right - left });
       }
-      return positions.slice(0, 3);
+      gaps.sort(function (a, b) { return b.len - a.len; });
+      positions.splice(gaps[0].i, 0, gaps[0].mid);
+      positions.sort(function (a, b) { return a - b; });
     }
-    var sorted = detectedLines.slice().sort(function (a, b) { return a.position - b.position; });
+    if (positions.length <= count) return positions.slice(0, count);
+    var sorted = positions;
     var best = [];
     var bestScore = Infinity;
-    for (var a = 0; a < sorted.length - 2; a++) {
-      for (var b = a + 1; b < sorted.length - 1; b++) {
-        for (var c = b + 1; c < sorted.length; c++) {
-          var p1 = sorted[a].position;
-          var p2 = sorted[b].position;
-          var p3 = sorted[c].position;
-          var score = Math.abs(p1 - target1) + Math.abs(p2 - target2) + Math.abs(p3 - target3);
-          if (score < bestScore) {
-            bestScore = score;
-            best = [p1, p2, p3];
-          }
+    function scoreChoice(choice) {
+      var s = 0;
+      for (var i = 0; i < count; i++) s += Math.abs(choice[i] - targets[i]);
+      return s;
+    }
+    function choose(from, need, start, chosen) {
+      if (need === 0) {
+        var sc = scoreChoice(chosen);
+        if (sc < bestScore) {
+          bestScore = sc;
+          best = chosen.slice();
         }
+        return;
+      }
+      for (var k = start; k <= from.length - need; k++) {
+        chosen.push(from[k]);
+        choose(from, need - 1, k + 1, chosen);
+        chosen.pop();
       }
     }
-    return best.length ? best : [target1, target2, target3];
+    choose(sorted, count, 0, []);
+    return best.length ? best : targets.slice();
   }
 
   /**
    * Detect grid lines from image pixel data.
+   * Uses continuity (long contiguous dark span) to reject text; only accepts lines with thickness <= maxLinePx.
    * @param {HTMLImageElement|object} image - image with naturalWidth/naturalHeight
-   * @param {Object} options - { blackThreshold?: number (0-255), darknessThreshold?: number (0-1), minLinePx?: number, minGap?: number }
-   * @returns {{ xBounds: number[], yBounds: number[], suggestedTrim: number }} - 5 x, 5 y, and trim in pixels
+   * @param {Object} options - { blackThreshold?, darknessThreshold?, minLinePx?, maxLinePx?, minGap?, minSpanFraction?, gridCols?, gridRows? }
+   * @returns {{ xBounds: number[], yBounds: number[], suggestedTrim: number }} - (gridCols+1) x, (gridRows+1) y, and trim in pixels
    */
   function detectGridLines(image, options) {
     var opts = options || {};
     var blackThreshold = Math.min(255, Math.max(0, parseInt(opts.blackThreshold, 10) || 80));
     var darknessThreshold = typeof opts.darknessThreshold === 'number' ? opts.darknessThreshold : 0.15;
     var minLinePx = Math.max(1, parseInt(opts.minLinePx, 10) || 1);
+    var maxLinePx = typeof opts.maxLinePx === 'number' ? opts.maxLinePx : (parseInt(opts.maxLinePx, 10) || 15);
+    maxLinePx = Math.max(minLinePx, maxLinePx);
     var minGap = Math.max(2, parseInt(opts.minGap, 10) || 8);
+    var minSpanFraction = typeof opts.minSpanFraction === 'number' ? opts.minSpanFraction : 0.35;
+    var gridCols = Math.max(1, Math.min(4, parseInt(opts.gridCols, 10) || 4));
+    var gridRows = Math.max(1, Math.min(4, parseInt(opts.gridRows, 10) || 4));
 
     var w = image.naturalWidth || image.width;
     var h = image.naturalHeight || image.height;
@@ -170,11 +237,12 @@
     ctx.drawImage(image, 0, 0);
     var data = ctx.getImageData(0, 0, w, h).data;
 
-    var colProfile = darknessProfile(data, w, h, 'x', blackThreshold);
-    var rowProfile = darknessProfile(data, w, h, 'y', blackThreshold);
+    /* Use line-aware profiles so rows/columns with only short dark segments (e.g. text) are ignored. */
+    var colProfile = lineAwareProfile(data, w, h, 'x', blackThreshold, minSpanFraction);
+    var rowProfile = lineAwareProfile(data, w, h, 'y', blackThreshold, minSpanFraction);
 
-    var colRuns = findRuns(colProfile, darknessThreshold, minLinePx);
-    var rowRuns = findRuns(rowProfile, darknessThreshold, minLinePx);
+    var colRuns = findRuns(colProfile, darknessThreshold, minLinePx, maxLinePx);
+    var rowRuns = findRuns(rowProfile, darknessThreshold, minLinePx, maxLinePx);
 
     colRuns = mergeCloseLines(colRuns, minGap);
     rowRuns = mergeCloseLines(rowRuns, minGap);
@@ -201,8 +269,10 @@
     var innerRowRuns = rowRuns.length > 2 ? rowRuns.slice(1, -1) : rowRuns;
     var relCol = innerColRuns.map(function (r) { return { position: r.position - leftOuter, thickness: r.thickness }; });
     var relRow = innerRowRuns.map(function (r) { return { position: r.position - topOuter, thickness: r.thickness }; });
-    var innerX = pickThreeLines(relCol, contentW).map(function (p) { return leftOuter + p; });
-    var innerY = pickThreeLines(relRow, contentH).map(function (p) { return topOuter + p; });
+    var numInnerCol = gridCols - 1;
+    var numInnerRow = gridRows - 1;
+    var innerX = pickNLines(relCol, contentW, numInnerCol).map(function (p) { return leftOuter + p; });
+    var innerY = pickNLines(relRow, contentH, numInnerRow).map(function (p) { return topOuter + p; });
     innerX.sort(function (a, b) { return a - b; });
     innerY.sort(function (a, b) { return a - b; });
 
