@@ -185,14 +185,14 @@
     var leftOuter = 0;
     var rightOuter = w;
     if (colRuns.length >= 1) {
-      leftOuter = Math.max(0, colRuns[0].position - colRuns[0].thickness / 2);
-      rightOuter = Math.min(w, colRuns[colRuns.length - 1].position + colRuns[colRuns.length - 1].thickness / 2);
+      leftOuter = Math.max(0, colRuns[0].position);
+      rightOuter = Math.min(w, colRuns[colRuns.length - 1].position);
     }
     var topOuter = 0;
     var bottomOuter = h;
     if (rowRuns.length >= 1) {
-      topOuter = Math.max(0, rowRuns[0].position - rowRuns[0].thickness / 2);
-      bottomOuter = Math.min(h, rowRuns[rowRuns.length - 1].position + rowRuns[rowRuns.length - 1].thickness / 2);
+      topOuter = Math.max(0, rowRuns[0].position);
+      bottomOuter = Math.min(h, rowRuns[rowRuns.length - 1].position);
     }
 
     var contentW = rightOuter - leftOuter;

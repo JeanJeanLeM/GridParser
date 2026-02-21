@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>4×4 Grid Image Splitter</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
   <script src="js/gridSplit.js"></script>
   <script src="js/gridDetect.js"></script>
   <style>
@@ -106,29 +107,45 @@
     .preview-grid {
       display: grid;
       grid-template-columns: repeat(4, 1fr);
-      gap: 8px;
+      gap: 12px;
       margin-bottom: 1rem;
       max-width: 100%;
+      align-items: start;
     }
     .preview-tile {
       display: flex;
       flex-direction: column;
-      gap: 4px;
+      gap: 6px;
+      min-width: 0;
+      align-items: stretch;
     }
-    .preview-tile img {
+    .preview-tile .tile-img-wrap {
+      position: relative;
       width: 100%;
-      height: auto;
-      display: block;
+      aspect-ratio: 1;
       background: #eee;
       border-radius: 4px;
+      overflow: hidden;
+    }
+    .preview-tile .tile-img-wrap img {
+      position: absolute;
+      left: 0;
+      top: 0;
+      width: 100%;
+      height: 100%;
+      display: block;
+      object-fit: contain;
+      object-position: center;
     }
     .preview-tile .tile-name {
       width: 100%;
       box-sizing: border-box;
-      padding: 0.35rem 0.4rem;
+      padding: 0.4rem 0.5rem;
       font-size: 0.8rem;
       border: 1px solid #ccc;
       border-radius: 4px;
+      text-align: center;
+      min-height: 2.25rem;
     }
     .preview-tile .tile-name:focus {
       border-color: #333;
@@ -214,15 +231,15 @@
       border: 1px solid #e0e0e0;
       border-radius: 8px;
       background: #f5f5f5;
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
     }
     .grid-preview-wrapper {
       position: relative;
-      display: inline-block;
-      transform-origin: top left;
-    }
-    .grid-preview-wrapper img {
       display: block;
-      vertical-align: top;
+      transform-origin: center top;
+      flex-shrink: 0;
     }
     .grid-overlay {
       position: absolute;
@@ -235,6 +252,8 @@
     .grid-editor-buttons .btn { margin-right: 0; }
     .trim-inline { display: inline-flex; align-items: center; gap: 0.35rem; font-size: 0.9rem; }
     .trim-inline input { padding: 0.25rem 0.35rem; }
+    .auto-name-label { display: inline-flex; align-items: center; gap: 0.35rem; font-size: 0.9rem; cursor: pointer; }
+    .detecting-labels { font-size: 0.9rem; color: #666; margin: 0.25rem 0 0.5rem 0; }
     .btn-secondary {
       background: #666;
       color: #fff;
@@ -259,7 +278,7 @@
     <input type="file" id="file-input" accept="image/png,image/jpeg,image/jpg,image/webp" aria-label="Choose 4×4 grid image">
     <p class="trim-row">
       <label for="trim-pixels">Border trim (px):</label>
-      <input type="number" id="trim-pixels" min="0" max="20" value="2" step="1" aria-label="Pixels to remove from each tile edge" style="width: 4em;">
+      <input type="number" id="trim-pixels" min="0" max="20" value="4" step="1" aria-label="Pixels to remove from each tile edge" style="width: 4em;">
       <span class="trim-hint">Remove grid lines from each tile (set before Cut; 4–6 px often needed for ChatGPT grids)</span>
     </p>
   </section>
@@ -286,8 +305,13 @@
     <div class="grid-editor-buttons">
       <span class="trim-inline">
         <label for="trim-pixels-inline">Trim:</label>
-        <input type="number" id="trim-pixels-inline" min="0" max="20" value="2" step="1" style="width: 3.5em;" title="Pixels to remove from each side of every tile (set by auto-detect or manually)">
+        <input type="number" id="trim-pixels-inline" min="0" max="20" value="4" step="1" style="width: 3.5em;" title="Pixels to remove from each side of every tile">
       </span>
+      <label class="auto-name-label">
+        <input type="checkbox" id="auto-name-from-labels" checked aria-describedby="auto-name-hint">
+        Auto-name from labels
+      </label>
+      <span class="trim-hint" id="auto-name-hint" style="margin-left: 0.25rem;">Detect text in each tile and use it as the filename.</span>
       <button type="button" class="btn btn-secondary" id="auto-detect-btn">Auto-detect grid</button>
       <button type="button" class="btn btn-secondary" id="reset-lines">Reset lines</button>
       <button type="button" class="btn" id="cut-btn">Cut and create 16 images</button>
@@ -301,6 +325,7 @@
   <section class="output" id="output" aria-label="Split result">
     <h2>Preview: 16 tiles</h2>
     <p class="output-hint">Rename each file below if you like, then download.</p>
+    <p class="detecting-labels" id="detecting-labels" aria-live="polite" style="display: none;">Detecting labels…</p>
     <div class="preview-grid" id="preview-grid"></div>
     <button type="button" class="btn" id="download-zip">Download all as ZIP</button>
     <p class="download-hint">If Windows blocks the file, right-click it → Properties → check Unblock → OK.</p>
@@ -333,6 +358,7 @@
       var loupeCanvas = document.getElementById('loupe-canvas');
       var LOUPE_SIZE = 120;
       var LOUPE_ZOOM = 4;
+      var MARGIN = 10;
 
       function getTrimPixels() {
         var el = document.getElementById('trim-pixels-inline') || document.getElementById('trim-pixels');
@@ -368,8 +394,8 @@
         }
         var w = currentImage.naturalWidth;
         var h = currentImage.naturalHeight;
-        var imgX = (clientX - rect.left) / (rect.width || 1) * w;
-        var imgY = (clientY - rect.top) / (rect.height || 1) * h;
+        var imgX = (clientX - rect.left - MARGIN) / (baseWidth || 1) * w;
+        var imgY = (clientY - rect.top - MARGIN) / (baseHeight || 1) * h;
         var halfRegion = (LOUPE_SIZE / LOUPE_ZOOM) / 2;
         var sx = Math.max(0, imgX - halfRegion);
         var sy = Math.max(0, imgY - halfRegion);
@@ -430,33 +456,33 @@
         if (cw <= 0 || ch <= 0) return;
         var ctx = gridOverlay.getContext('2d');
         ctx.clearRect(0, 0, cw, ch);
-        // Draw in image pixel coordinates (canvas buffer = image size), so zoom only scales the view
-        var displayW = gridOverlay.clientWidth || cw;
-        var thickness = Math.max(1, Math.round(getLineThickness() * (cw / displayW)));
+        var thickness = Math.max(1, getLineThickness());
+        function dispX(px) { return MARGIN + (px / w) * baseWidth; }
+        function dispY(py) { return MARGIN + (py / h) * baseHeight; }
         // Outer cut lines (blue)
         ctx.strokeStyle = 'rgba(50, 100, 220, 0.95)';
         ctx.lineWidth = Math.max(2, thickness);
         ctx.beginPath();
-        ctx.moveTo(xBounds[0], 0);
-        ctx.lineTo(xBounds[0], ch);
-        ctx.moveTo(xBounds[4], 0);
-        ctx.lineTo(xBounds[4], ch);
-        ctx.moveTo(0, yBounds[0]);
-        ctx.lineTo(cw, yBounds[0]);
-        ctx.moveTo(0, yBounds[4]);
-        ctx.lineTo(cw, yBounds[4]);
+        ctx.moveTo(dispX(xBounds[0]), 0);
+        ctx.lineTo(dispX(xBounds[0]), ch);
+        ctx.moveTo(dispX(xBounds[4]), 0);
+        ctx.lineTo(dispX(xBounds[4]), ch);
+        ctx.moveTo(0, dispY(yBounds[0]));
+        ctx.lineTo(cw, dispY(yBounds[0]));
+        ctx.moveTo(0, dispY(yBounds[4]));
+        ctx.lineTo(cw, dispY(yBounds[4]));
         ctx.stroke();
         // Inner grid lines (red)
         ctx.strokeStyle = 'rgba(220, 50, 50, 0.9)';
         ctx.lineWidth = thickness;
         ctx.beginPath();
         for (var i = 1; i <= 3; i++) {
-          ctx.moveTo(xBounds[i], 0);
-          ctx.lineTo(xBounds[i], ch);
+          ctx.moveTo(dispX(xBounds[i]), 0);
+          ctx.lineTo(dispX(xBounds[i]), ch);
         }
         for (var j = 1; j <= 3; j++) {
-          ctx.moveTo(0, yBounds[j]);
-          ctx.lineTo(cw, yBounds[j]);
+          ctx.moveTo(0, dispY(yBounds[j]));
+          ctx.lineTo(cw, dispY(yBounds[j]));
         }
         ctx.stroke();
       }
@@ -492,15 +518,22 @@
             baseWidth = Math.round((w / h) * baseHeight);
           }
           if (!baseWidth || !baseHeight) return;
+          var totalW = baseWidth + 2 * MARGIN;
+          var totalH = baseHeight + 2 * MARGIN;
+          gridImg.style.position = 'absolute';
+          gridImg.style.left = MARGIN + 'px';
+          gridImg.style.top = MARGIN + 'px';
           gridImg.style.width = baseWidth + 'px';
           gridImg.style.height = baseHeight + 'px';
           gridImg.style.maxWidth = 'none';
-          gridOverlay.width = w;
-          gridOverlay.height = h;
-          gridOverlay.style.width = baseWidth + 'px';
-          gridOverlay.style.height = baseHeight + 'px';
-          gridWrapper.style.width = baseWidth + 'px';
-          gridWrapper.style.height = baseHeight + 'px';
+          gridOverlay.style.left = '0';
+          gridOverlay.style.top = '0';
+          gridOverlay.width = totalW;
+          gridOverlay.height = totalH;
+          gridOverlay.style.width = totalW + 'px';
+          gridOverlay.style.height = totalH + 'px';
+          gridWrapper.style.width = totalW + 'px';
+          gridWrapper.style.height = totalH + 'px';
           applyZoom();
           drawOverlay();
           runAutoDetect();
@@ -515,10 +548,12 @@
         var zoom = getZoom();
         document.getElementById('zoom-value').textContent = zoom.toFixed(1);
         if (baseWidth && baseHeight) {
-          gridWrapper.style.transformOrigin = '0 0';
+          var totalW = baseWidth + 2 * MARGIN;
+          var totalH = baseHeight + 2 * MARGIN;
+          gridWrapper.style.transformOrigin = 'center top';
           gridWrapper.style.transform = 'scale(' + zoom + ')';
-          gridWrapper.style.width = (baseWidth * zoom) + 'px';
-          gridWrapper.style.height = (baseHeight * zoom) + 'px';
+          gridWrapper.style.width = (totalW * zoom) + 'px';
+          gridWrapper.style.height = (totalH * zoom) + 'px';
         }
       }
 
@@ -533,11 +568,6 @@
         if (!result || !result.xBounds || result.xBounds.length !== 5 || !result.yBounds || result.yBounds.length !== 5) return false;
         xBounds = result.xBounds.slice();
         yBounds = result.yBounds.slice();
-        var trimVal = String(result.suggestedTrim || 0);
-        var trimMain = document.getElementById('trim-pixels');
-        var trimInline = document.getElementById('trim-pixels-inline');
-        if (trimMain) trimMain.value = trimVal;
-        if (trimInline) trimInline.value = trimVal;
         drawOverlay();
         return true;
       }
@@ -567,7 +597,12 @@
           return;
         }
         clearError();
-        gridSplit.splitGridCustom(currentImage, xBounds, yBounds, { trimPixels: getTrimPixels() })
+        var w = currentImage.naturalWidth;
+        var h = currentImage.naturalHeight;
+        var clamp = function (v, lo, hi) { return Math.max(lo, Math.min(hi, v)); };
+        var xClamped = xBounds.map(function (v) { return clamp(v, 0, w); });
+        var yClamped = yBounds.map(function (v) { return clamp(v, 0, h); });
+        gridSplit.splitGridCustom(currentImage, xClamped, yClamped, { trimPixels: getTrimPixels() })
           .then(function (blobs) {
             if (blobs.length !== 16) {
               showError('Expected 16 tiles, got ' + blobs.length);
@@ -581,6 +616,8 @@
               var defaultName = 'tile_' + r + '_' + c + '.png';
               var wrap = document.createElement('div');
               wrap.className = 'preview-tile';
+              var imgWrap = document.createElement('div');
+              imgWrap.className = 'tile-img-wrap';
               var thumb = document.createElement('img');
               thumb.src = URL.createObjectURL(blob);
               thumb.alt = 'Tile ' + (index + 1);
@@ -591,12 +628,51 @@
               input.setAttribute('data-index', index);
               input.placeholder = 'filename.png';
               input.title = 'Rename before download';
-              wrap.appendChild(thumb);
+              imgWrap.appendChild(thumb);
+              wrap.appendChild(imgWrap);
               wrap.appendChild(input);
               previewGrid.appendChild(wrap);
             });
             outputEl.classList.add('visible');
             downloadBtn.disabled = false;
+
+            var autoNameCheckbox = document.getElementById('auto-name-from-labels');
+            var detectingEl = document.getElementById('detecting-labels');
+            if (autoNameCheckbox && autoNameCheckbox.checked && typeof Tesseract !== 'undefined' && Tesseract.recognize) {
+              detectingEl.style.display = 'block';
+              var thumbs = previewGrid.querySelectorAll('.tile-img-wrap img');
+              var inputs = previewGrid.querySelectorAll('.tile-name');
+              Promise.all([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15].map(function (index) {
+                var r = Math.floor(index / 4);
+                var c = index % 4;
+                var defaultBase = 'tile_' + r + '_' + c;
+                return Tesseract.recognize(thumbs[index].src, 'eng').then(function (result) {
+                  var text = result && result.data && result.data.text ? result.data.text : '';
+                  var base = ocrTextToBaseName(text);
+                  return base ? base : defaultBase;
+                }).catch(function () { return defaultBase; });
+              })).then(function (baseNames) {
+                var used = {};
+                var finalNames = [];
+                for (var i = 0; i < 16; i++) {
+                  var base = baseNames[i];
+                  var name = base + '.png';
+                  if (used[name]) {
+                    var n = 1;
+                    while (used[base + '_' + n + '.png']) n++;
+                    name = base + '_' + n + '.png';
+                  }
+                  used[name] = true;
+                  finalNames.push(name);
+                }
+                for (var j = 0; j < 16; j++) {
+                  if (inputs[j]) inputs[j].value = finalNames[j];
+                }
+                detectingEl.style.display = 'none';
+              }).catch(function () {
+                detectingEl.style.display = 'none';
+              });
+            }
           })
           .catch(function (err) {
             showError(err && err.message ? err.message : 'Failed to create tiles.');
@@ -605,8 +681,10 @@
 
       gridOverlay.addEventListener('mousedown', function (e) {
         var rect = gridOverlay.getBoundingClientRect();
-        var imgX = (e.clientX - rect.left) / (rect.width || 1) * currentImage.naturalWidth;
-        var imgY = (e.clientY - rect.top) / (rect.height || 1) * currentImage.naturalHeight;
+        var w = currentImage.naturalWidth;
+        var h = currentImage.naturalHeight;
+        var imgX = (e.clientX - rect.left - MARGIN) / (baseWidth || 1) * w;
+        var imgY = (e.clientY - rect.top - MARGIN) / (baseHeight || 1) * h;
         var hit = hitLine(imgX, imgY);
         if (hit) {
           e.preventDefault();
@@ -620,19 +698,21 @@
         var rect = gridOverlay.getBoundingClientRect();
         var w = currentImage.naturalWidth;
         var h = currentImage.naturalHeight;
-        var displayX = (e.clientX - rect.left) / (rect.width || 1) * w;
-        var displayY = (e.clientY - rect.top) / (rect.height || 1) * h;
+        var marginImgX = MARGIN * w / (baseWidth || 1);
+        var marginImgY = MARGIN * h / (baseHeight || 1);
+        var displayX = (e.clientX - rect.left - MARGIN) / (baseWidth || 1) * w;
+        var displayY = (e.clientY - rect.top - MARGIN) / (baseHeight || 1) * h;
         var pt = {
-          x: Math.max(0, Math.min(w, displayX)),
-          y: Math.max(0, Math.min(h, displayY))
+          x: Math.max(-marginImgX, Math.min(w + marginImgX, displayX)),
+          y: Math.max(-marginImgY, Math.min(h + marginImgY, displayY))
         };
         if (drag.axis === 'v') {
-          var minX = drag.index > 0 ? xBounds[drag.index - 1] + 2 : 0;
-          var maxX = drag.index < 4 ? xBounds[drag.index + 1] - 2 : w;
+          var minX = drag.index > 0 ? xBounds[drag.index - 1] + 2 : -marginImgX;
+          var maxX = drag.index < 4 ? xBounds[drag.index + 1] - 2 : w + marginImgX;
           xBounds[drag.index] = Math.max(minX, Math.min(maxX, pt.x));
         } else {
-          var minY = drag.index > 0 ? yBounds[drag.index - 1] + 2 : 0;
-          var maxY = drag.index < 4 ? yBounds[drag.index + 1] - 2 : h;
+          var minY = drag.index > 0 ? yBounds[drag.index - 1] + 2 : -marginImgY;
+          var maxY = drag.index < 4 ? yBounds[drag.index + 1] - 2 : h + marginImgY;
           yBounds[drag.index] = Math.max(minY, Math.min(maxY, pt.y));
         }
         drawOverlay();
@@ -718,6 +798,14 @@
         if (!s) return 'tile.png';
         if (!/\.png$/i.test(s)) s = s.replace(/\.[^.]+$/, '') + '.png';
         return s || 'tile.png';
+      }
+
+      function ocrTextToBaseName(text) {
+        var s = (text || '').trim().toLowerCase().replace(/[\s/\\:*?"<>|]/g, '_').replace(/_+/g, '_').replace(/^_|_$/g, '');
+        if (!s || s.length < 2) return null;
+        var maxLen = 50;
+        if (s.length > maxLen) s = s.slice(0, maxLen).replace(/_$/, '');
+        return s || null;
       }
 
       downloadBtn.addEventListener('click', function () {
