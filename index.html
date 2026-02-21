@@ -6,6 +6,7 @@
   <title>4×4 Grid Image Splitter</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
   <script src="js/gridSplit.js"></script>
+  <script src="js/gridDetect.js"></script>
   <style>
     * { box-sizing: border-box; }
     body {
@@ -100,20 +101,38 @@
       box-shadow: 0 1px 3px rgba(0,0,0,0.06);
     }
     .output.visible { display: block; }
-    .output h2 { font-size: 1rem; margin: 0 0 0.75rem 0; color: #333; }
+    .output h2 { font-size: 1rem; margin: 0 0 0.25rem 0; color: #333; }
+    .output-hint { font-size: 0.85rem; color: #666; margin: 0 0 0.5rem 0; }
     .preview-grid {
       display: grid;
       grid-template-columns: repeat(4, 1fr);
-      gap: 4px;
+      gap: 8px;
       margin-bottom: 1rem;
       max-width: 100%;
     }
-    .preview-grid img {
+    .preview-tile {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    .preview-tile img {
       width: 100%;
       height: auto;
       display: block;
       background: #eee;
       border-radius: 4px;
+    }
+    .preview-tile .tile-name {
+      width: 100%;
+      box-sizing: border-box;
+      padding: 0.35rem 0.4rem;
+      font-size: 0.8rem;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+    }
+    .preview-tile .tile-name:focus {
+      border-color: #333;
+      outline: none;
     }
     .btn {
       display: inline-block;
@@ -154,6 +173,40 @@
     }
     .grid-editor-toolbar label { font-size: 0.9rem; }
     .grid-editor-toolbar input[type="range"] { vertical-align: middle; }
+    .loupe-btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 36px;
+      height: 36px;
+      padding: 0;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+      background: #fff;
+      cursor: pointer;
+      color: #555;
+    }
+    .loupe-btn:hover { background: #f0f0f0; color: #333; }
+    .loupe-btn.active { background: #e0e8f0; border-color: #333; color: #1a1a1a; }
+    .loupe-btn svg { width: 20px; height: 20px; }
+    .loupe-container {
+      position: fixed;
+      width: 120px;
+      height: 120px;
+      border-radius: 50%;
+      overflow: hidden;
+      border: 2px solid #333;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.25);
+      pointer-events: none;
+      z-index: 1000;
+      display: none;
+    }
+    .loupe-container.visible { display: block; }
+    .loupe-container canvas {
+      display: block;
+      width: 100%;
+      height: 100%;
+    }
     .grid-preview-scroll {
       overflow: auto;
       max-height: 70vh;
@@ -214,12 +267,15 @@
 
   <section class="grid-editor" id="grid-editor" aria-label="Adjust cutting lines">
     <h2>Adjust cutting lines</h2>
-    <p class="intro" style="margin-bottom: 0.75rem;">Drag the <strong>blue</strong> lines to cut off the outer border; drag the <strong>red</strong> lines to match the inner grid. Zoom in for precise placement. Then click Cut.</p>
+    <p class="intro" style="margin-bottom: 0.75rem;">Use <strong>Auto-detect grid</strong> to find black lines, or drag the <strong>blue</strong> and <strong>red</strong> lines manually. Trim is set from detected line thickness.</p>
     <div class="grid-editor-toolbar">
       <label>Zoom: <span id="zoom-value">1</span>×</label>
       <input type="range" id="zoom" min="0.5" max="2.5" step="0.1" value="1" aria-label="Zoom">
       <label>Line thickness: <span id="line-thickness-value">2</span>px</label>
       <input type="range" id="line-thickness" min="1" max="5" step="1" value="2" aria-label="Cutting line thickness">
+      <button type="button" class="loupe-btn" id="loupe-btn" title="Toggle 4× loupe (follows cursor)" aria-pressed="false">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+      </button>
     </div>
     <div class="grid-preview-scroll" id="grid-preview-scroll">
       <div class="grid-preview-wrapper" id="grid-preview-wrapper">
@@ -230,15 +286,21 @@
     <div class="grid-editor-buttons">
       <span class="trim-inline">
         <label for="trim-pixels-inline">Trim:</label>
-        <input type="number" id="trim-pixels-inline" min="0" max="20" value="2" step="1" style="width: 3.5em;" title="Pixels to remove from each side of every tile (reduces grid lines)">
+        <input type="number" id="trim-pixels-inline" min="0" max="20" value="2" step="1" style="width: 3.5em;" title="Pixels to remove from each side of every tile (set by auto-detect or manually)">
       </span>
+      <button type="button" class="btn btn-secondary" id="auto-detect-btn">Auto-detect grid</button>
       <button type="button" class="btn btn-secondary" id="reset-lines">Reset lines</button>
       <button type="button" class="btn" id="cut-btn">Cut and create 16 images</button>
     </div>
   </section>
 
+  <div class="loupe-container" id="loupe-container" aria-hidden="true">
+    <canvas id="loupe-canvas" width="120" height="120"></canvas>
+  </div>
+
   <section class="output" id="output" aria-label="Split result">
     <h2>Preview: 16 tiles</h2>
+    <p class="output-hint">Rename each file below if you like, then download.</p>
     <div class="preview-grid" id="preview-grid"></div>
     <button type="button" class="btn" id="download-zip">Download all as ZIP</button>
     <p class="download-hint">If Windows blocks the file, right-click it → Properties → check Unblock → OK.</p>
@@ -266,6 +328,11 @@
       var gridEditor = document.getElementById('grid-editor');
       var baseWidth = 0;
       var baseHeight = 0;
+      var loupeOn = false;
+      var loupeContainer = document.getElementById('loupe-container');
+      var loupeCanvas = document.getElementById('loupe-canvas');
+      var LOUPE_SIZE = 120;
+      var LOUPE_ZOOM = 4;
 
       function getTrimPixels() {
         var el = document.getElementById('trim-pixels-inline') || document.getElementById('trim-pixels');
@@ -290,6 +357,35 @@
       function initBounds(w, h) {
         xBounds = [0, w / 4, w / 2, (3 * w) / 4, w];
         yBounds = [0, h / 4, h / 2, (3 * h) / 4, h];
+      }
+
+      function updateLoupe(clientX, clientY) {
+        if (!loupeOn || !loupeContainer || !loupeCanvas || !currentImage) return;
+        var rect = gridOverlay.getBoundingClientRect();
+        if (clientX < rect.left || clientX > rect.right || clientY < rect.top || clientY > rect.bottom) {
+          loupeContainer.classList.remove('visible');
+          return;
+        }
+        var w = currentImage.naturalWidth;
+        var h = currentImage.naturalHeight;
+        var imgX = (clientX - rect.left) / (rect.width || 1) * w;
+        var imgY = (clientY - rect.top) / (rect.height || 1) * h;
+        var halfRegion = (LOUPE_SIZE / LOUPE_ZOOM) / 2;
+        var sx = Math.max(0, imgX - halfRegion);
+        var sy = Math.max(0, imgY - halfRegion);
+        var sw = Math.min(w - sx, halfRegion * 2);
+        var sh = Math.min(h - sy, halfRegion * 2);
+        if (sw <= 0 || sh <= 0) return;
+        loupeContainer.style.left = (clientX - LOUPE_SIZE / 2) + 'px';
+        loupeContainer.style.top = (clientY - LOUPE_SIZE / 2) + 'px';
+        var ctx = loupeCanvas.getContext('2d');
+        ctx.save();
+        ctx.beginPath();
+        ctx.arc(LOUPE_SIZE / 2, LOUPE_SIZE / 2, LOUPE_SIZE / 2, 0, 2 * Math.PI);
+        ctx.clip();
+        ctx.drawImage(currentImage, sx, sy, sw, sh, 0, 0, LOUPE_SIZE, LOUPE_SIZE);
+        ctx.restore();
+        loupeContainer.classList.add('visible');
       }
 
       function drawOverlay() {
@@ -425,11 +521,25 @@
             }
             tileBlobs = blobs;
             previewGrid.innerHTML = '';
-            blobs.forEach(function (blob) {
+            blobs.forEach(function (blob, index) {
+              var r = Math.floor(index / 4);
+              var c = index % 4;
+              var defaultName = 'tile_' + r + '_' + c + '.png';
+              var wrap = document.createElement('div');
+              wrap.className = 'preview-tile';
               var thumb = document.createElement('img');
               thumb.src = URL.createObjectURL(blob);
-              thumb.alt = 'Tile preview';
-              previewGrid.appendChild(thumb);
+              thumb.alt = 'Tile ' + (index + 1);
+              var input = document.createElement('input');
+              input.type = 'text';
+              input.className = 'tile-name';
+              input.value = defaultName;
+              input.setAttribute('data-index', index);
+              input.placeholder = 'filename.png';
+              input.title = 'Rename before download';
+              wrap.appendChild(thumb);
+              wrap.appendChild(input);
+              previewGrid.appendChild(wrap);
             });
             outputEl.classList.add('visible');
             downloadBtn.disabled = false;
@@ -479,6 +589,16 @@
         drag.index = null;
       });
 
+      document.getElementById('loupe-btn').addEventListener('click', function () {
+        loupeOn = !loupeOn;
+        this.classList.toggle('active', loupeOn);
+        this.setAttribute('aria-pressed', loupeOn);
+        if (!loupeOn) loupeContainer.classList.remove('visible');
+      });
+      document.addEventListener('mousemove', function (e) {
+        if (loupeOn) updateLoupe(e.clientX, e.clientY);
+      });
+
       document.getElementById('zoom').addEventListener('input', function () {
         applyZoom();
       });
@@ -487,6 +607,35 @@
         drawOverlay();
       });
 
+      document.getElementById('auto-detect-btn').addEventListener('click', function () {
+        if (!currentImage) {
+          showError('Load an image first.');
+          return;
+        }
+        if (typeof gridDetect === 'undefined' || !gridDetect.detectGridLines) {
+          showError('Grid detection not loaded.');
+          return;
+        }
+        clearError();
+        var result = gridDetect.detectGridLines(currentImage, {
+          blackThreshold: 100,
+          darknessThreshold: 0.12,
+          minLinePx: 1,
+          minGap: 6
+        });
+        if (!result || !result.xBounds || result.xBounds.length !== 5 || !result.yBounds || result.yBounds.length !== 5) {
+          showError('Could not detect grid. Try adjusting lines manually.');
+          return;
+        }
+        xBounds = result.xBounds.slice();
+        yBounds = result.yBounds.slice();
+        var trimVal = String(result.suggestedTrim || 0);
+        var trimMain = document.getElementById('trim-pixels');
+        var trimInline = document.getElementById('trim-pixels-inline');
+        if (trimMain) trimMain.value = trimVal;
+        if (trimInline) trimInline.value = trimVal;
+        drawOverlay();
+      });
       document.getElementById('reset-lines').addEventListener('click', function () {
         if (currentImage) {
           initBounds(currentImage.naturalWidth, currentImage.naturalHeight);
@@ -531,17 +680,31 @@
         handleFile(fileInput.files[0]);
       });
 
+      function sanitizeZipName(val) {
+        var s = (val || '').trim().replace(/[/\\:*?"<>|]/g, '_');
+        if (!s) return 'tile.png';
+        if (!/\.png$/i.test(s)) s = s.replace(/\.[^.]+$/, '') + '.png';
+        return s || 'tile.png';
+      }
+
       downloadBtn.addEventListener('click', function () {
         if (tileBlobs.length !== 16) return;
         downloadBtn.disabled = true;
         var zip = new JSZip();
-        var index = 0;
-        for (var r = 0; r < 4; r++) {
-          for (var c = 0; c < 4; c++) {
-            var name = 'tile_' + r + '_' + c + '.png';
-            zip.file(name, tileBlobs[index], { binary: true });
-            index++;
+        var inputs = previewGrid.querySelectorAll('.tile-name');
+        var used = {};
+        for (var i = 0; i < 16; i++) {
+          var name = sanitizeZipName(inputs[i] ? inputs[i].value : '');
+          if (used[name]) {
+            var base = name.replace(/\.png$/i, '');
+            var n = 1;
+            while (used[base + '_' + n + '.png']) n++;
+            name = base + '_' + n + '.png';
+            used[name] = true;
+          } else {
+            used[name] = true;
           }
+          zip.file(name, tileBlobs[i], { binary: true });
         }
         zip.generateAsync({ type: 'blob' }).then(function (blob) {
           var a = document.createElement('a');
