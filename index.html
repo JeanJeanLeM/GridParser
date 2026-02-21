@@ -416,11 +416,6 @@
       <p class="format-hint">Supports PNG, JPG, WebP.</p>
     </div>
     <input type="file" id="file-input" accept="image/png,image/jpeg,image/jpg,image/webp" aria-label="Choose 4×4 grid image">
-    <div class="trim-row">
-      <label for="trim-pixels">Border trim (px)</label>
-      <input type="number" id="trim-pixels" class="trim-input" min="0" max="20" value="4" step="1" aria-label="Pixels to remove from each tile edge">
-      <span class="trim-hint trim-hint-block">Removes pixels from each tile edge to eliminate grid lines. 4–6 px is typical for ChatGPT grids. Set before cutting.</span>
-    </div>
   </section>
   <p class="error" id="error" aria-live="polite"></p>
 
@@ -1075,14 +1070,16 @@
         }
         drawOverlay();
       }
-      if (trimMain && trimInline) {
+      if (trimInline) {
+        trimInline.addEventListener('input', function () {
+          if (trimMain) trimMain.value = trimInline.value;
+          syncTrimAndLineThickness(trimInline.value);
+        });
+      }
+      if (trimMain) {
         trimMain.addEventListener('input', function () {
           trimInline.value = trimMain.value;
           syncTrimAndLineThickness(trimMain.value);
-        });
-        trimInline.addEventListener('input', function () {
-          trimMain.value = trimInline.value;
-          syncTrimAndLineThickness(trimInline.value);
         });
       }
 
