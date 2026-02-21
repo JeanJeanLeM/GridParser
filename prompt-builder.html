@@ -1,0 +1,443 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>4×4 Grid Prompt Builder</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      max-width: 560px;
+      margin: 0 auto;
+      padding: 2rem 1.5rem;
+      min-height: 100vh;
+      background: #fafafa;
+    }
+    .page-header {
+      text-align: center;
+      margin-bottom: 1.5rem;
+    }
+    h1 {
+      font-size: 1.75rem;
+      font-weight: 700;
+      margin: 0 0 0.75rem 0;
+      color: #1a1a1a;
+    }
+    .intro {
+      font-size: 0.95rem;
+      color: #555;
+      line-height: 1.5;
+      margin: 0;
+      max-width: 420px;
+      margin-left: auto;
+      margin-right: auto;
+    }
+    .nav-link {
+      display: inline-block;
+      margin-top: 0.5rem;
+      font-size: 0.9rem;
+      color: #555;
+      text-decoration: none;
+    }
+    .nav-link:hover { color: #333; text-decoration: underline; }
+    .card {
+      background: #fff;
+      border-radius: 12px;
+      padding: 1.5rem;
+      margin-bottom: 1rem;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+    }
+    .card h2 {
+      font-size: 1rem;
+      margin: 0 0 1rem 0;
+      color: #333;
+    }
+    .form-row {
+      margin-bottom: 1rem;
+    }
+    .form-row:last-child { margin-bottom: 0; }
+    .form-row label {
+      display: block;
+      font-size: 0.9rem;
+      font-weight: 500;
+      color: #333;
+      margin-bottom: 0.35rem;
+    }
+    .form-row select,
+    .form-row input[type="text"] {
+      width: 100%;
+      padding: 0.5rem 0.6rem;
+      font-size: 0.95rem;
+      border: 1px solid #888;
+      border-radius: 6px;
+      background: #fff;
+    }
+    .form-row select:focus,
+    .form-row input[type="text"]:focus {
+      outline: none;
+      border-color: #333;
+    }
+    .label-language-wrap { display: none; }
+    .label-language-wrap.visible { display: block; }
+    .cells-grid {
+      display: grid;
+      gap: 8px;
+    }
+    .cells-grid.size-2 { grid-template-columns: repeat(2, 1fr); }
+    .cells-grid.size-3 { grid-template-columns: repeat(3, 1fr); }
+    .cells-grid.size-4 { grid-template-columns: repeat(4, 1fr); }
+    .cell-box {
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      padding: 0.5rem;
+      background: #f8f8f8;
+    }
+    .cell-box .cell-num {
+      font-size: 0.75rem;
+      font-weight: 600;
+      color: #666;
+      margin-bottom: 0.35rem;
+    }
+    .cell-box input {
+      width: 100%;
+      padding: 0.35rem 0.4rem;
+      font-size: 0.85rem;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      margin-bottom: 0.25rem;
+    }
+    .cell-box input:last-of-type { margin-bottom: 0; }
+    .cell-box input::placeholder { color: #999; }
+    .prompt-output {
+      width: 100%;
+      min-height: 280px;
+      padding: 0.75rem;
+      font-family: ui-monospace, monospace;
+      font-size: 0.85rem;
+      line-height: 1.45;
+      border: 1px solid #888;
+      border-radius: 6px;
+      background: #fff;
+      resize: vertical;
+    }
+    .prompt-output:focus { outline: none; border-color: #333; }
+    .copy-row {
+      margin-top: 0.75rem;
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+    .btn {
+      display: inline-block;
+      padding: 0.6rem 1.2rem;
+      background: #333;
+      color: #fff;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 1rem;
+    }
+    .btn:hover { background: #555; }
+    .copy-feedback {
+      font-size: 0.9rem;
+      color: #0a0;
+      min-height: 1.5em;
+    }
+    .copy-feedback[aria-live="polite"] { outline: none; }
+    .add-custom-row {
+      display: flex;
+      gap: 0.5rem;
+      margin-top: 0.35rem;
+      align-items: center;
+    }
+    .add-custom-row input { flex: 1; margin-bottom: 0 !important; }
+    .add-custom-row .btn-small {
+      padding: 0.4rem 0.75rem;
+      font-size: 0.85rem;
+    }
+  </style>
+</head>
+<body>
+  <header class="page-header">
+    <h1>Grid Prompt Builder</h1>
+    <p class="intro">Build an image prompt for a 2×2, 3×3, or 4×4 grid. Set options and name each cell; the final English prompt is below.</p>
+    <a class="nav-link" href="index.html">← Grid splitter</a>
+  </header>
+
+  <section class="card" aria-label="Global options">
+    <h2>Options</h2>
+    <div class="form-row">
+      <label for="grid-size">Grid size</label>
+      <select id="grid-size">
+        <option value="2">2×2 (4 cells)</option>
+        <option value="3">3×3 (9 cells)</option>
+        <option value="4" selected>4×4 (16 cells)</option>
+      </select>
+    </div>
+    <div class="form-row">
+      <label for="theme">Theme (e.g. fruits, animals, tools, clothing)</label>
+      <input type="text" id="theme" placeholder="e.g. fruits" value="fruits">
+    </div>
+    <div class="form-row">
+      <label for="style">Style</label>
+      <select id="style">
+        <option value="minimalist vector">minimalist vector</option>
+        <option value="watercolor">watercolor</option>
+        <option value="realistic">realistic</option>
+        <option value="cartoon">cartoon</option>
+        <option value="sketch">sketch</option>
+      </select>
+      <div class="add-custom-row">
+        <input type="text" id="style-add" placeholder="Add custom style" aria-label="Custom style value">
+        <button type="button" class="btn btn-small" id="style-add-btn">Add</button>
+      </div>
+    </div>
+    <div class="form-row">
+      <label for="background">Background color</label>
+      <select id="background">
+        <option value="pure white">pure white</option>
+        <option value="black">black</option>
+        <option value="pastel">pastel</option>
+        <option value="other">other</option>
+      </select>
+      <div class="add-custom-row">
+        <input type="text" id="background-add" placeholder="Add custom background" aria-label="Custom background value">
+        <button type="button" class="btn btn-small" id="background-add-btn">Add</button>
+      </div>
+    </div>
+    <div class="form-row">
+      <label for="palette">Palette</label>
+      <select id="palette">
+        <option value="flat and vivid">flat and vivid</option>
+        <option value="soft and pastel">soft and pastel</option>
+        <option value="monochrome">monochrome</option>
+        <option value="natural">natural</option>
+      </select>
+      <div class="add-custom-row">
+        <input type="text" id="palette-add" placeholder="Add custom palette" aria-label="Custom palette value">
+        <button type="button" class="btn btn-small" id="palette-add-btn">Add</button>
+      </div>
+    </div>
+    <div class="form-row">
+      <label for="outlines">Outlines</label>
+      <select id="outlines">
+        <option value="bold black">bold black</option>
+        <option value="fine">fine</option>
+        <option value="none">none</option>
+      </select>
+      <div class="add-custom-row">
+        <input type="text" id="outlines-add" placeholder="Add custom outlines" aria-label="Custom outlines value">
+        <button type="button" class="btn btn-small" id="outlines-add-btn">Add</button>
+      </div>
+    </div>
+    <div class="form-row">
+      <label for="labels">Labels under each illustration</label>
+      <select id="labels">
+        <option value="YES">YES</option>
+        <option value="NO">NO</option>
+      </select>
+    </div>
+    <div class="form-row label-language-wrap" id="label-language-wrap">
+      <label for="label-language">Label language</label>
+      <select id="label-language">
+        <option value="English">English</option>
+        <option value="French">French</option>
+        <option value="other">other</option>
+      </select>
+      <div class="add-custom-row">
+        <input type="text" id="label-language-add" placeholder="Add custom language" aria-label="Custom label language">
+        <button type="button" class="btn btn-small" id="label-language-add-btn">Add</button>
+      </div>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2 id="cells-heading">Grid cells 1–16</h2>
+    <fieldset style="border: none; padding: 0; margin: 0;">
+      <legend class="sr-only" id="cells-legend">Name and optional description for each cell</legend>
+      <div class="cells-grid size-4" id="cells-grid"></div>
+    </fieldset>
+  </section>
+
+  <section class="card">
+    <h2>Generated prompt (English)</h2>
+    <textarea class="prompt-output" id="prompt-output" readonly aria-label="Generated prompt"></textarea>
+    <div class="copy-row">
+      <button type="button" class="btn" id="copy-btn">Copy to clipboard</button>
+      <span class="copy-feedback" id="copy-feedback" aria-live="polite"></span>
+    </div>
+  </section>
+
+  <style>.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); border: 0; }</style>
+
+  <script>
+    (function () {
+      var theme = document.getElementById('theme');
+      var gridSizeSel = document.getElementById('grid-size');
+      var styleSel = document.getElementById('style');
+      var background = document.getElementById('background');
+      var palette = document.getElementById('palette');
+      var outlines = document.getElementById('outlines');
+      var labels = document.getElementById('labels');
+      var labelLanguageWrap = document.getElementById('label-language-wrap');
+      var labelLanguage = document.getElementById('label-language');
+      var cellsGrid = document.getElementById('cells-grid');
+      var cellsHeading = document.getElementById('cells-heading');
+      var cellsLegend = document.getElementById('cells-legend');
+      var promptOutput = document.getElementById('prompt-output');
+      var copyBtn = document.getElementById('copy-btn');
+      var copyFeedback = document.getElementById('copy-feedback');
+
+      function getGridSize() { return Math.max(2, Math.min(4, parseInt(gridSizeSel.value, 10) || 4)); }
+      function getTotalCells() { var n = getGridSize(); return n * n; }
+
+      function showLabelLanguage() {
+        labelLanguageWrap.classList.toggle('visible', labels.value === 'YES');
+      }
+      labels.addEventListener('change', showLabelLanguage);
+      showLabelLanguage();
+
+      function addOptionToSelect(selectId, addInputId, addBtnId, updatePrompt) {
+        var sel = document.getElementById(selectId);
+        var addInput = document.getElementById(addInputId);
+        var addBtn = document.getElementById(addBtnId);
+        addBtn.addEventListener('click', function () {
+          var val = (addInput.value || '').trim();
+          if (!val) return;
+          var opt = document.createElement('option');
+          opt.value = val;
+          opt.textContent = val;
+          sel.appendChild(opt);
+          sel.value = val;
+          addInput.value = '';
+          if (updatePrompt) updatePrompt();
+        });
+        addInput.addEventListener('keydown', function (e) {
+          if (e.key === 'Enter') { addBtn.click(); e.preventDefault(); }
+        });
+      }
+
+      function buildCellsGrid() {
+        var n = getGridSize();
+        var total = getTotalCells();
+        cellsGrid.className = 'cells-grid size-' + n;
+        cellsGrid.innerHTML = '';
+        for (var i = 1; i <= total; i++) {
+          var box = document.createElement('div');
+          box.className = 'cell-box';
+          box.innerHTML =
+            '<span class="cell-num">' + i + '</span>' +
+            '<input type="text" id="elem-' + i + '" placeholder="Element name" aria-label="Element ' + i + ' name">' +
+            '<input type="text" id="desc-' + i + '" placeholder="Description (optional)" aria-label="Element ' + i + ' description">';
+          cellsGrid.appendChild(box);
+        }
+        cellsHeading.textContent = 'Grid cells 1–' + total;
+        cellsLegend.textContent = 'Name and optional description for each of the ' + total + ' cells';
+        attachCellListeners(total);
+        updatePrompt();
+      }
+
+      function attachCellListeners(total) {
+        for (var j = 1; j <= total; j++) {
+          var elem = document.getElementById('elem-' + j);
+          var desc = document.getElementById('desc-' + j);
+          if (elem) { elem.addEventListener('input', updatePrompt); }
+          if (desc) { desc.addEventListener('input', updatePrompt); }
+        }
+      }
+
+      function getElementValue(id) {
+        var el = document.getElementById(id);
+        return el ? (el.value || '').trim() : '';
+      }
+
+      function buildPrompt() {
+        var n = getGridSize();
+        var total = getTotalCells();
+        var themeVal = (theme.value || '').trim() || 'fruits';
+        var styleVal = styleSel.value || 'minimalist vector';
+        var bgVal = background.value || 'pure white';
+        var paletteVal = palette.value || 'flat and vivid';
+        var outlineVal = outlines.value || 'bold black';
+        var labelsVal = labels.value || 'NO';
+        var langVal = labelLanguage.value || 'English';
+
+        var gridDesc = n + '×' + n;
+        var parts = [];
+        parts.push('Create an image in a perfectly aligned ' + gridDesc + ' grid, with thin, sharp black borders between each cell and a ' + bgVal + ' background.');
+        parts.push('');
+        parts.push('Uniform style for all ' + total + ' illustrations: ' + styleVal + ', clean and precise lines, ' + paletteVal + ' colors, ' + outlineVal + ' outlines. No shading, no gradients, no 3D, no pixelation, no complex texture.');
+        parts.push('');
+        parts.push('No anthropomorphism: no eyes, no face, no mouth, no arms, no human features on the illustrated elements.');
+        parts.push('');
+        parts.push('In each cell, place a single centered element from the category ' + themeVal + ', front view, clearly recognizable shape, occupying about 80% of the cell, centered with equal margins on all sides.');
+        parts.push('');
+        if (labelsVal === 'YES') {
+          parts.push('Below each illustration, write the name in ' + langVal + ', simple black sans-serif font, uniform and readable size.');
+        } else {
+          parts.push('No text, numbers, or letters in the grid.');
+        }
+        parts.push('');
+        parts.push('Exact layout of the ' + total + ' elements:');
+        var idx = 1;
+        for (var row = 1; row <= n; row++) {
+          var rowParts = [];
+          for (var col = 0; col < n; col++) {
+            rowParts.push(idx + '. [' + getElementValue('elem-' + idx) + ']');
+            idx++;
+          }
+          parts.push('Row ' + row + ': ' + rowParts.join('  '));
+        }
+        parts.push('');
+        parts.push('Perfectly square grid, strictly equal cell sizes, uniform spacing, high resolution, sharp details. No element may extend outside its cell.');
+
+        return parts.join('\n');
+      }
+
+      function updatePrompt() {
+        promptOutput.value = buildPrompt();
+      }
+
+      gridSizeSel.addEventListener('change', function () {
+        buildCellsGrid();
+      });
+
+      addOptionToSelect('style', 'style-add', 'style-add-btn', updatePrompt);
+      addOptionToSelect('background', 'background-add', 'background-add-btn', updatePrompt);
+      addOptionToSelect('palette', 'palette-add', 'palette-add-btn', updatePrompt);
+      addOptionToSelect('outlines', 'outlines-add', 'outlines-add-btn', updatePrompt);
+      addOptionToSelect('label-language', 'label-language-add', 'label-language-add-btn', updatePrompt);
+
+      var inputs = [theme, gridSizeSel, styleSel, background, palette, outlines, labels, labelLanguage];
+      inputs.forEach(function (el) {
+        el.addEventListener('input', updatePrompt);
+        el.addEventListener('change', updatePrompt);
+      });
+
+      buildCellsGrid();
+
+      copyBtn.addEventListener('click', function () {
+        promptOutput.select();
+        promptOutput.setSelectionRange(0, 99999);
+        try {
+          if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(promptOutput.value).then(function () {
+              copyFeedback.textContent = 'Copied!';
+              setTimeout(function () { copyFeedback.textContent = ''; }, 2000);
+            }).catch(function () {
+              copyFeedback.textContent = 'Select and copy manually.';
+            });
+          } else {
+            document.execCommand('copy');
+            copyFeedback.textContent = 'Copied!';
+            setTimeout(function () { copyFeedback.textContent = ''; }, 2000);
+          }
+        } catch (e) {
+          copyFeedback.textContent = 'Select and copy manually.';
+        }
+      });
+    })();
+  </script>
+</body>
+</html>

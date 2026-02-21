@@ -1,0 +1,12 @@
+{
+  "name": "imageparser",
+  "version": "1.0.0",
+  "description": "4x4 grid image splitter",
+  "private": true,
+  "scripts": {
+    "test:grid": "node scripts/test-grid-split.js"
+  },
+  "dependencies": {
+    "jimp": "^0.22.12"
+  }
+}

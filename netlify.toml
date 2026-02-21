@@ -1,0 +1,11 @@
+# Static site: publish current directory as site root
+[build]
+  publish = "."
+
+# Security headers when deployed (HTTPS is automatic on Netlify)
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Content-Type-Options = "nosniff"
+    X-Frame-Options = "DENY"
+    Content-Security-Policy = "default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self';"
