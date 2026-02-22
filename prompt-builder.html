@@ -234,6 +234,128 @@
       flex-wrap: wrap;
     }
     .cell-editor-nav .btn { flex: 1; min-width: 0; }
+
+    /* Prompt builder two-column layout + style preview */
+    .prompt-builder-page.main-content { max-width: 960px; }
+    .prompt-builder-layout {
+      display: grid;
+      grid-template-columns: 1fr 220px;
+      gap: 2rem;
+      align-items: start;
+    }
+    .style-preview {
+      position: sticky;
+      top: 1rem;
+      background: var(--card-bg);
+      border-radius: var(--radius-card);
+      padding: var(--card-padding);
+      box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+      max-height: calc(100vh - 2rem);
+      overflow: auto;
+    }
+    .style-preview__title {
+      font-size: var(--heading-md);
+      font-weight: 700;
+      margin: 0 0 0.35rem 0;
+      color: var(--text-secondary);
+    }
+    .style-preview__hint {
+      font-size: var(--text-xs);
+      color: var(--text-muted);
+      line-height: 1.4;
+      margin: 0 0 1rem 0;
+    }
+    .style-preview__grid-showcase {
+      margin-bottom: 1rem;
+    }
+    .style-preview__grid-label {
+      font-size: var(--text-xs);
+      font-weight: 600;
+      color: var(--text-hint);
+      margin: 0 0 0.35rem 0;
+    }
+    .style-preview__grid-cells {
+      display: grid;
+      gap: 2px;
+      width: 100%;
+      max-width: 120px;
+      aspect-ratio: 1;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 2px;
+      background: var(--border-light);
+    }
+    .style-preview__grid-cells.size-2 { grid-template-columns: repeat(2, 1fr); grid-template-rows: repeat(2, 1fr); }
+    .style-preview__grid-cells.size-3 { grid-template-columns: repeat(3, 1fr); grid-template-rows: repeat(3, 1fr); }
+    .style-preview__grid-cells.size-4 { grid-template-columns: repeat(4, 1fr); grid-template-rows: repeat(4, 1fr); }
+    .style-preview__grid-cell {
+      background: var(--card-bg);
+      border-radius: 2px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 0;
+    }
+    .style-preview__grid-cell img {
+      width: 85%;
+      height: 85%;
+      object-fit: contain;
+    }
+    .style-preview__example { margin: 0; }
+    .style-preview__bg {
+      border-radius: 8px;
+      padding: 1rem;
+      min-height: 140px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 0.5rem;
+    }
+    .style-preview__img-wrap {
+      width: 80px;
+      height: 80px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-sizing: border-box;
+    }
+    .style-preview__img-wrap.outline-bold {
+      border: 3px solid #000;
+      border-radius: 6px;
+    }
+    .style-preview__img-wrap.outline-fine {
+      border: 1px solid #333;
+      border-radius: 6px;
+    }
+    .style-preview__img-wrap.outline-none {
+      border: none;
+    }
+    .style-preview__img {
+      max-width: 100%;
+      max-height: 100%;
+      object-fit: contain;
+      display: block;
+    }
+    .style-preview__label {
+      font-size: 0.85rem;
+      font-family: var(--font-sans);
+      color: #333;
+      font-weight: 500;
+    }
+    .style-preview__label[aria-hidden="true"] { display: none; }
+    .style-preview__label.visible {
+      display: block;
+    }
+    @media (max-width: 900px) {
+      .prompt-builder-layout {
+        grid-template-columns: 1fr;
+      }
+      .style-preview {
+        position: static;
+        max-height: none;
+      }
+    }
   </style>
 </head>
 <body>
@@ -241,6 +363,7 @@
     <div class="app-header__inner">
       <a href="index.html" class="app-header__logo">Grid<span class="app-header__logo-num">2</span>Icons</a>
       <a href="index.html" class="app-header__nav">← GRID SPLITTER</a>
+      <a href="premium.html" class="app-header__nav">Premium</a>
       <div class="app-header__auth">
         <span id="auth-loading" class="auth-loading">Loading…</span>
         <span id="auth-guest" class="auth-guest" style="display:none;">
@@ -248,15 +371,23 @@
           <span class="app-header__auth-sep" aria-hidden="true">|</span>
           <button type="button" id="auth-btn-signup" class="app-header__auth-btn">Sign up</button>
         </span>
-        <span id="auth-user" class="auth-user" style="display:none;">
-          Signed in as <span id="auth-user-email"></span>
-          <button type="button" id="auth-btn-logout" class="app-header__auth-btn">Log out</button>
-        </span>
+        <div id="auth-user" class="profile-dropdown" style="display:none;">
+          <button type="button" id="auth-profile-trigger" class="app-header__auth-btn profile-dropdown__trigger" aria-expanded="false" aria-haspopup="true" aria-controls="auth-profile-menu">
+            Signed in as <span id="auth-user-email"></span> <span class="profile-dropdown__chevron" aria-hidden="true">▼</span>
+          </button>
+          <div id="auth-profile-menu" class="profile-dropdown__menu" role="menu" aria-label="Account menu" hidden>
+            <div class="profile-dropdown__email" id="auth-profile-email"></div>
+            <a href="premium.html" class="profile-dropdown__link" role="menuitem">Premium</a>
+            <button type="button" id="auth-btn-logout" class="profile-dropdown__btn" role="menuitem">Disconnect</button>
+          </div>
+        </div>
       </div>
     </div>
   </header>
 
-  <main class="main-content">
+  <main class="main-content prompt-builder-page">
+    <div class="prompt-builder-layout">
+      <div class="prompt-builder-form">
     <div class="hero">
       <p class="hero__label" aria-hidden="true">AI PROMPT TOOL</p>
       <h1>Grid Prompt Builder</h1>
@@ -384,6 +515,24 @@
     <p class="prompt-helper">Paste this prompt into ChatGPT (DALL·E), Midjourney, or any image AI. Then bring the resulting grid image back to <a href="index.html">Grid2Icons</a> to cut it into individual tiles.</p>
   </section>
 
+      </div>
+      <aside class="style-preview" aria-label="Style preview example">
+        <h2 class="style-preview__title">Style preview</h2>
+        <p class="style-preview__hint">This example reflects your current grid size, style, background, palette, outlines and label settings.</p>
+        <div class="style-preview__grid-showcase">
+          <p class="style-preview__grid-label" id="style-preview-grid-label">Grid 4×4</p>
+          <div class="style-preview__grid-cells" id="style-preview-grid-cells"></div>
+        </div>
+        <div class="style-preview__example">
+          <div class="style-preview__bg" id="style-preview-bg">
+            <div class="style-preview__img-wrap" id="style-preview-img-wrap">
+              <img class="style-preview__img" id="style-preview-img" src="assets/preview/apple-minimalist-vector.svg" alt="Example apple icon in selected style">
+            </div>
+            <span class="style-preview__label" id="style-preview-label" aria-hidden="true">Apple</span>
+          </div>
+        </div>
+      </aside>
+    </div>
   </main>
 
   <script>
@@ -410,8 +559,83 @@
       var promptOutput = document.getElementById('prompt-output');
       var copyBtn = document.getElementById('copy-btn');
       var copyFeedback = document.getElementById('copy-feedback');
+      var stylePreviewBg = document.getElementById('style-preview-bg');
+      var stylePreviewImgWrap = document.getElementById('style-preview-img-wrap');
+      var stylePreviewImg = document.getElementById('style-preview-img');
+      var stylePreviewLabel = document.getElementById('style-preview-label');
+      var stylePreviewGridLabel = document.getElementById('style-preview-grid-label');
+      var stylePreviewGridCells = document.getElementById('style-preview-grid-cells');
 
       var currentEditorCell = 0;
+
+      var backgroundColors = {
+        'pure white': '#fff',
+        'black': '#111',
+        'pastel': '#f0e6fa',
+        'other': '#f0f0f0'
+      };
+      var paletteImages = {
+        'flat and vivid': 'assets/preview/apple-flat-and-vivid.png',
+        'soft and pastel': 'assets/preview/apple-soft-and-pastel.png',
+        'monochrome': 'assets/preview/apple-monochrome.png',
+        'natural': 'assets/preview/apple-natural.png'
+      };
+      var styleImages = {
+        'minimalist vector': 'assets/preview/apple-minimalist-vector.svg',
+        'watercolor': 'assets/preview/apple-watercolor.svg',
+        'realistic': 'assets/preview/apple-realistic.svg',
+        'cartoon': 'assets/preview/apple-cartoon.svg',
+        'sketch': 'assets/preview/apple-sketch.svg'
+      };
+      var labelWords = {
+        'English': 'Apple',
+        'French': 'Pomme',
+        'other': 'Apple'
+      };
+
+      function buildGridShowcase() {
+        var n = getGridSize();
+        var total = n * n;
+        stylePreviewGridLabel.textContent = 'Grid ' + n + '×' + n;
+        stylePreviewGridCells.className = 'style-preview__grid-cells size-' + n;
+        stylePreviewGridCells.innerHTML = '';
+        var src = stylePreviewImg.src || styleImages[styleSel.value] || styleImages['minimalist vector'];
+        for (var i = 0; i < total; i++) {
+          var cell = document.createElement('div');
+          cell.className = 'style-preview__grid-cell';
+          if (i === 0) {
+            var img = document.createElement('img');
+            img.src = src;
+            img.alt = '';
+            cell.appendChild(img);
+          }
+          stylePreviewGridCells.appendChild(cell);
+        }
+      }
+
+      function updatePreview() {
+        var bgVal = background.value || 'pure white';
+        var styleVal = styleSel.value || 'minimalist vector';
+        var paletteVal = palette.value || 'flat and vivid';
+        var outlineVal = outlines.value || 'bold black';
+        var labelsVal = labels.value || 'NO';
+        var langVal = labelLanguage.value || 'English';
+
+        stylePreviewBg.style.backgroundColor = backgroundColors[bgVal] || backgroundColors['other'];
+        var imgSrc = styleImages[styleVal] || paletteImages[paletteVal] || styleImages['minimalist vector'];
+        stylePreviewImg.src = imgSrc;
+        stylePreviewImgWrap.className = 'style-preview__img-wrap outline-' + (outlineVal === 'bold black' ? 'bold' : outlineVal === 'fine' ? 'fine' : 'none');
+        buildGridShowcase();
+
+        if (labelsVal === 'YES') {
+          stylePreviewLabel.textContent = labelWords[langVal] || labelWords['English'];
+          stylePreviewLabel.classList.add('visible');
+          stylePreviewLabel.setAttribute('aria-hidden', 'false');
+        } else {
+          stylePreviewLabel.classList.remove('visible');
+          stylePreviewLabel.setAttribute('aria-hidden', 'true');
+        }
+      }
 
       function getGridSize() { return Math.max(2, Math.min(4, parseInt(gridSizeSel.value, 10) || 4)); }
       function getTotalCells() { var n = getGridSize(); return n * n; }
@@ -647,8 +871,13 @@
         el.addEventListener('input', updatePrompt);
         el.addEventListener('change', updatePrompt);
       });
+      [gridSizeSel, styleSel, background, palette, outlines, labels, labelLanguage].forEach(function (el) {
+        el.addEventListener('change', updatePreview);
+        el.addEventListener('input', updatePreview);
+      });
 
       buildCellsGrid();
+      updatePreview();
 
       copyBtn.addEventListener('click', function () {
         promptOutput.select();

@@ -382,6 +382,7 @@
     <div class="app-header__inner">
       <a href="index.html" class="app-header__logo">Grid<span class="app-header__logo-num">2</span>Icons</a>
       <a href="prompt-builder.html" class="app-header__nav">PROMPT BUILDER →</a>
+      <a href="premium.html" class="app-header__nav">Premium</a>
       <div class="app-header__auth">
         <span id="auth-loading" class="auth-loading">Loading…</span>
         <span id="auth-guest" class="auth-guest" style="display:none;">
@@ -389,10 +390,16 @@
           <span class="app-header__auth-sep" aria-hidden="true">|</span>
           <button type="button" id="auth-btn-signup" class="app-header__auth-btn">Sign up</button>
         </span>
-        <span id="auth-user" class="auth-user" style="display:none;">
-          Signed in as <span id="auth-user-email"></span>
-          <button type="button" id="auth-btn-logout" class="app-header__auth-btn">Log out</button>
-        </span>
+        <div id="auth-user" class="profile-dropdown" style="display:none;">
+          <button type="button" id="auth-profile-trigger" class="app-header__auth-btn profile-dropdown__trigger" aria-expanded="false" aria-haspopup="true" aria-controls="auth-profile-menu">
+            Signed in as <span id="auth-user-email"></span> <span class="profile-dropdown__chevron" aria-hidden="true">▼</span>
+          </button>
+          <div id="auth-profile-menu" class="profile-dropdown__menu" role="menu" aria-label="Account menu" hidden>
+            <div class="profile-dropdown__email" id="auth-profile-email"></div>
+            <a href="premium.html" class="profile-dropdown__link" role="menuitem">Premium</a>
+            <button type="button" id="auth-btn-logout" class="profile-dropdown__btn" role="menuitem">Disconnect</button>
+          </div>
+        </div>
       </div>
     </div>
   </header>

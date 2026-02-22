@@ -30,10 +30,42 @@
     var guest = getEl('auth-guest');
     var user = getEl('auth-user');
     var emailEl = getEl('auth-user-email');
+    var profileEmailEl = getEl('auth-profile-email');
     if (loading) loading.style.display = 'none';
     if (guest) guest.style.display = 'none';
-    if (user) user.style.display = '';
-    if (emailEl) emailEl.textContent = email || 'Signed in';
+    if (user) user.style.display = 'flex';
+    var text = email || 'Signed in';
+    if (emailEl) emailEl.textContent = text;
+    if (profileEmailEl) profileEmailEl.textContent = text;
+  }
+
+  function setupProfileDropdown() {
+    var trigger = getEl('auth-profile-trigger');
+    var menu = getEl('auth-profile-menu');
+    if (!trigger || !menu) return;
+    function isOpen() { return trigger.getAttribute('aria-expanded') === 'true'; }
+    function open() {
+      trigger.setAttribute('aria-expanded', 'true');
+      menu.removeAttribute('hidden');
+    }
+    function close() {
+      trigger.setAttribute('aria-expanded', 'false');
+      menu.setAttribute('hidden', '');
+    }
+    function toggle() {
+      if (isOpen()) close(); else open();
+    }
+    trigger.addEventListener('click', function (e) {
+      e.stopPropagation();
+      toggle();
+    });
+    menu.addEventListener('click', function (e) { e.stopPropagation(); });
+    document.addEventListener('click', function () {
+      if (isOpen()) close();
+    });
+    document.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape' && isOpen()) close();
+    });
   }
 
   function bindButtons() {
@@ -87,6 +119,7 @@
   function init() {
     showLoading();
     bindButtons();
+    setupProfileDropdown();
     if (window.auth0Api && window.auth0Api.ready) {
       window.auth0Api.ready.then(updateHeader).catch(showGuest);
     } else {
