@@ -1,6 +1,6 @@
 /**
  * Vercel serverless function: POST /api/generate-image
- * Accepts a full prompt string, calls OpenAI Images API (DALL·E) to generate
+ * Accepts a full prompt string, calls OpenAI Images API (GPT Image 1.5) to generate
  * the grid image. Returns image as base64 so the client can display/download
  * without relying on temporary URLs.
  * Requires env: OPENAI_API_KEY
@@ -45,12 +45,12 @@ module.exports = async function handler(req, res) {
         Authorization: 'Bearer ' + OPENAI_API_KEY,
       },
       body: JSON.stringify({
-        model: 'dall-e-3',
+        model: 'gpt-image-1.5',
         prompt: prompt,
         n: 1,
         size: '1024x1024',
-        response_format: 'b64_json',
-        quality: 'standard',
+        quality: 'medium',
+        output_format: 'png',
       }),
     });
 

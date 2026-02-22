@@ -184,7 +184,8 @@
 .profile-dropdown__trigger {
   display: inline-flex;
   align-items: center;
-  gap: 0.25rem;
+  gap: 0.35rem;
+  padding: 0.25rem 0.5rem;
 }
 
 .profile-dropdown__initial {

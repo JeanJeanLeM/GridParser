@@ -304,6 +304,7 @@
     }
     .btn:hover { background: var(--btn-primary-hover); }
     .btn:focus { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
+    .btn[aria-busy="true"] { cursor: wait; }
     .btn-outline {
       background: transparent;
       color: var(--text-primary);
@@ -553,9 +554,9 @@
           <button type="button" id="auth-btn-signup" class="app-header__auth-btn">Sign up</button>
         </span>
         <div id="auth-user" class="profile-dropdown" style="display:none;">
-          <button type="button" id="auth-profile-trigger" class="app-header__auth-btn profile-dropdown__trigger" aria-expanded="false" aria-haspopup="true" aria-controls="auth-profile-menu">
+          <button type="button" id="auth-profile-trigger" class="app-header__auth-btn profile-dropdown__trigger" aria-expanded="false" aria-haspopup="true" aria-controls="auth-profile-menu" title="Account menu">
             <span id="auth-user-initial" class="profile-dropdown__initial" aria-hidden="true"></span>
-            Signed in as <span id="auth-user-email"></span> <span class="profile-dropdown__chevron" aria-hidden="true">▼</span>
+            <span class="profile-dropdown__chevron" aria-hidden="true">▼</span>
           </button>
           <div id="auth-profile-menu" class="profile-dropdown__menu" role="menu" aria-label="Account menu" hidden>
             <div class="profile-dropdown__email" id="auth-profile-email"></div>
@@ -1171,13 +1172,11 @@
 
         var gridDesc = n + '×' + n;
         var parts = [];
-        parts.push('Create an image in a perfectly aligned ' + gridDesc + ' grid. The grid must be formed by thin, sharp black lines between the cells (like a table with visible grid lines), with a ' + bgVal + ' background. Do not draw a separate outline or frame around each illustration; only the grid lines separate the cells.');
+        parts.push('Create an image in a perfectly aligned ' + gridDesc + ' grid on a ' + bgVal + ' background. Use a single thin black line between adjacent cells only—one shared line per edge, no double lines, no extra borders. The grid is like a simple table: only these single lines separate the cells. Do not draw an outline or frame around each illustration.');
         parts.push('');
-        var styleLine = 'Uniform style for all ' + total + ' illustrations: ' + styleVal + ', clean and precise lines, ' + paletteVal + ' colors' + (outlineVal !== 'none' ? ', ' + outlineVal + ' outlines on the illustrated elements' : '; no outlines or frames around each illustration') + '.';
-        if (lightingVal && lightingVal !== '—') styleLine += ' Lighting: ' + lightingVal + '.';
+        var styleLine = 'Uniform style for all ' + total + ' illustrations: ' + styleVal + ', clean and precise lines, ' + paletteVal + ' colors' + (outlineVal !== 'none' ? ', ' + outlineVal + ' outlines on the illustrated elements' : '; no outlines or frames around each illustration') + '. Flat, no shadows, no shading, no gradients, no 3D, no pixelation, no complex texture.';
         if (moodVal) styleLine += ' Mood: ' + moodVal + '.';
         if (maxColorsVal) styleLine += ' Maximum ' + maxColorsVal + ' colors per cell.';
-        styleLine += ' No shading, no gradients, no 3D, no pixelation, no complex texture (unless the chosen style requires it).';
         parts.push(styleLine);
         parts.push('');
         var anthropoVal = (document.getElementById('anthropomorphism') && document.getElementById('anthropomorphism').value) || 'Off';
@@ -1208,7 +1207,7 @@
           parts.push('Row ' + row + ': ' + rowParts.join('  '));
         }
         parts.push('');
-        parts.push('Perfectly square grid, strictly equal cell sizes, uniform spacing, high resolution, sharp details. No element may extend outside its cell.');
+        parts.push('Perfectly square grid, strictly equal cell sizes, single grid lines only (no double lines), high resolution, sharp details. No element may extend outside its cell.');
 
         return parts.join('\n');
       }
@@ -1332,7 +1331,10 @@
         generatedImageImg.style.display = 'none';
         generatedImageImg.removeAttribute('src');
         generatedImageActions.style.display = 'none';
+        var btnLabel = generateImageBtn.textContent;
         generateImageBtn.disabled = true;
+        generateImageBtn.setAttribute('aria-busy', 'true');
+        generateImageBtn.textContent = 'Generating…';
         fetch('/api/generate-image', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -1371,6 +1373,8 @@
           })
           .then(function () {
             generateImageBtn.disabled = false;
+            generateImageBtn.removeAttribute('aria-busy');
+            generateImageBtn.textContent = btnLabel;
           });
       });
 

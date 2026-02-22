@@ -37,14 +37,12 @@
     var loading = getEl('auth-loading');
     var guest = getEl('auth-guest');
     var user = getEl('auth-user');
-    var emailEl = getEl('auth-user-email');
     var profileEmailEl = getEl('auth-profile-email');
     var initialEl = getEl('auth-user-initial');
     if (loading) loading.style.display = 'none';
     if (guest) guest.style.display = 'none';
     if (user) user.style.display = 'flex';
     var text = email || 'Signed in';
-    if (emailEl) emailEl.textContent = text;
     if (profileEmailEl) profileEmailEl.textContent = text;
     if (initialEl) initialEl.textContent = getInitial(text);
   }
