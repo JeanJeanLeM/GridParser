@@ -1,0 +1,6 @@
+# Env vars (Auth0, API keys, etc.) – use Vercel env in production
+.env
+.env.local
+.env.*.local
+
+node_modules/
