@@ -18,6 +18,7 @@ function buildSystemPrompt(cellCount) {
 }
 
 module.exports = async function handler(req, res) {
+  console.log('[generate-cells] Request', req.method);
   res.setHeader('Access-Control-Allow-Origin', req.headers.origin || '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
@@ -32,6 +33,7 @@ module.exports = async function handler(req, res) {
   }
 
   if (!OPENAI_API_KEY) {
+    console.error('[generate-cells] OPENAI_API_KEY not set');
     return res.status(500).json({ error: 'Server misconfiguration: OPENAI_API_KEY not set' });
   }
 
@@ -39,12 +41,14 @@ module.exports = async function handler(req, res) {
   try {
     body = typeof req.body === 'string' ? JSON.parse(req.body) : req.body || {};
   } catch (e) {
+    console.error('[generate-cells] Invalid JSON', e.message);
     return res.status(400).json({ error: 'Invalid JSON body' });
   }
 
   const description = (body.description || '').trim();
   const gridSize = Math.min(4, Math.max(2, parseInt(body.gridSize, 10) || 4));
   const cellCount = gridSize * gridSize;
+  console.log('[generate-cells] Body', { description: description.substring(0, 50), gridSize, cellCount });
 
   if (!description) {
     return res.status(400).json({ error: 'Missing or empty description' });
@@ -65,6 +69,7 @@ module.exports = async function handler(req, res) {
     ' objects with "name" and "description" for each cell in order.';
 
   try {
+    console.log('[generate-cells] Calling OpenAI');
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -85,11 +90,13 @@ module.exports = async function handler(req, res) {
     if (!response.ok) {
       const errText = await response.text();
       const status = response.status;
+      console.error('[generate-cells] OpenAI error', status, errText.substring(0, 200));
       return res.status(status >= 500 ? 502 : status).json({
         error: 'OpenAI API error',
         details: errText || response.statusText,
       });
     }
+    console.log('[generate-cells] OpenAI OK');
 
     const data = await response.json();
     const content = data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content;
@@ -104,10 +111,25 @@ module.exports = async function handler(req, res) {
       return res.status(502).json({ error: 'LLM did not return valid JSON', raw: content });
     }
 
-    // Accept either { cells: [...] } or direct array
-    let cells = Array.isArray(parsed) ? parsed : parsed.cells;
+    // Accept { cells: [...] }, { items: [...] }, direct array, or first array in object
+    let cells = null;
+    if (Array.isArray(parsed)) {
+      cells = parsed;
+    } else if (parsed && typeof parsed === 'object') {
+      cells = parsed.cells || parsed.items || parsed.elements || parsed.grid;
+      if (!Array.isArray(cells)) {
+        const keys = Object.keys(parsed);
+        for (let k = 0; k < keys.length; k++) {
+          const v = parsed[keys[k]];
+          if (Array.isArray(v) && v.length > 0) {
+            cells = v;
+            break;
+          }
+        }
+      }
+    }
     if (!Array.isArray(cells)) {
-      return res.status(502).json({ error: 'LLM response missing cells array', raw: content });
+      return res.status(502).json({ error: 'LLM response missing cells array', raw: content.substring(0, 500) });
     }
 
     // Normalize to { name, description } and trim to cellCount
@@ -122,9 +144,10 @@ module.exports = async function handler(req, res) {
       cells.push({ name: '', description: '' });
     }
 
+    console.log('[generate-cells] Returning', cells.length, 'cells');
     return res.status(200).json({ cells });
   } catch (err) {
-    console.error('generate-cells error:', err);
+    console.error('[generate-cells] Error', err.message);
     return res.status(500).json({ error: 'Server error', details: err.message });
   }
 };

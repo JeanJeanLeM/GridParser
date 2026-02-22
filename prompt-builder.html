@@ -1265,21 +1265,32 @@
         quickIdeaFeedback.textContent = 'Generating…';
         quickIdeaFeedback.className = 'quick-idea__feedback';
         generateCellsBtn.disabled = true;
+        var gridSize = getGridSize();
+        console.log('[generate-cells] Sending request', { description: description, gridSize: gridSize });
         fetch('/api/generate-cells', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             description: description,
-            gridSize: getGridSize(),
+            gridSize: gridSize,
           }),
         })
           .then(function (res) {
-            return res.json().then(function (data) {
-              if (!res.ok) throw new Error(data.error || data.details || 'Request failed');
+            console.log('[generate-cells] Response', res.status, res.statusText);
+            return res.text().then(function (text) {
+              var data;
+              try {
+                data = text ? JSON.parse(text) : {};
+              } catch (e) {
+                if (!res.ok) throw new Error('Server returned ' + res.status + (text ? ' (not JSON)' : ''));
+                throw new Error('Invalid response');
+              }
+              if (!res.ok) throw new Error(data.error || data.details || 'Request failed (' + res.status + ')');
               return data;
             });
           })
           .then(function (data) {
+            console.log('[generate-cells] Success', data.cells ? data.cells.length : 0, 'cells');
             var cells = data.cells || [];
             var total = getTotalCells();
             for (var i = 1; i <= total; i++) {
@@ -1297,7 +1308,12 @@
             quickIdeaFeedback.className = 'quick-idea__feedback success';
           })
           .catch(function (err) {
-            quickIdeaFeedback.textContent = err.message || 'Failed to generate cells.';
+            console.error('[generate-cells] Error', err);
+            var msg = err.message || 'Failed to generate cells.';
+            if (err.message && err.message.indexOf('Failed to fetch') !== -1) {
+              msg = 'Network error: is the app running with /api (e.g. Vercel or vercel dev)?';
+            }
+            quickIdeaFeedback.textContent = msg;
             quickIdeaFeedback.className = 'quick-idea__feedback error';
           })
           .then(function () {
