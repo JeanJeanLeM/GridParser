@@ -203,6 +203,10 @@
       color: #fff;
       font-weight: 600;
     }
+    .filter-dropdown__option--selected:hover {
+      background: #333;
+      color: #fff;
+    }
     .filter-dropdown__option--selected::before {
       content: "✓";
       font-size: 0.85rem;
@@ -227,12 +231,16 @@
     .cells-grid.size-3 { grid-template-columns: repeat(3, 1fr); }
     .cells-grid.size-4 { grid-template-columns: repeat(4, 1fr); }
     .cell-box {
+      aspect-ratio: 1;
       border: 1px solid var(--border-light);
       border-radius: 8px;
       padding: 0.5rem;
       background: var(--input-bg);
       cursor: pointer;
       transition: border-color 0.15s, background 0.15s;
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
     }
     .cell-box:hover {
       border-color: #999;
@@ -480,6 +488,7 @@
     <div class="app-header__inner">
       <a href="index.html" class="app-header__logo">Grid<span class="app-header__logo-num">2</span>Icons</a>
       <a href="index.html" class="app-header__nav">← GRID SPLITTER</a>
+      <a href="gallery.html" class="app-header__nav">Gallery</a>
       <a href="premium.html" class="app-header__nav">Premium</a>
       <div class="app-header__auth">
         <span id="auth-loading" class="auth-loading">Loading…</span>
@@ -490,6 +499,7 @@
         </span>
         <div id="auth-user" class="profile-dropdown" style="display:none;">
           <button type="button" id="auth-profile-trigger" class="app-header__auth-btn profile-dropdown__trigger" aria-expanded="false" aria-haspopup="true" aria-controls="auth-profile-menu">
+            <span id="auth-user-initial" class="profile-dropdown__initial" aria-hidden="true"></span>
             Signed in as <span id="auth-user-email"></span> <span class="profile-dropdown__chevron" aria-hidden="true">▼</span>
           </button>
           <div id="auth-profile-menu" class="profile-dropdown__menu" role="menu" aria-label="Account menu" hidden>
@@ -573,10 +583,21 @@
             <option value="realistic">realistic</option>
             <option value="cartoon">cartoon</option>
             <option value="sketch">sketch</option>
+            <option value="realistic / photographic">realistic / photographic</option>
+            <option value="illustration / digital painting">illustration / digital painting</option>
+            <option value="3D / Pixar-style">3D / Pixar-style</option>
+            <option value="anime / manga">anime / manga</option>
+            <option value="comic">comic</option>
+            <option value="minimalist">minimalist</option>
+            <option value="flat design">flat design</option>
+            <option value="cyberpunk">cyberpunk</option>
+            <option value="art deco">art deco</option>
+            <option value="surrealist">surrealist</option>
+            <option value="watercolor / oil / charcoal">watercolor / oil / charcoal</option>
           </select>
         </div>
         <div class="filter-dropdown">
-          <button type="button" class="filter-dropdown__trigger" aria-haspopup="listbox" aria-expanded="false" aria-label="Background color">
+          <button type="button" class="filter-dropdown__trigger" aria-haspopup="listbox" aria-expanded="false" aria-label="Background">
             <span class="filter-pill__label">Background</span>
             <span class="filter-pill__value" data-dropdown-display>pure white</span>
             <span class="filter-pill__chevron" aria-hidden="true">▾</span>
@@ -586,6 +607,14 @@
             <option value="pure white">pure white</option>
             <option value="black">black</option>
             <option value="pastel">pastel</option>
+            <option value="neutral">neutral</option>
+            <option value="blurred">blurred</option>
+            <option value="nature">nature</option>
+            <option value="futuristic city">futuristic city</option>
+            <option value="white studio">white studio</option>
+            <option value="specific texture">specific texture</option>
+            <option value="minimalist">minimalist</option>
+            <option value="very detailed">very detailed</option>
             <option value="other">other</option>
           </select>
         </div>
@@ -603,6 +632,13 @@
             <option value="soft and pastel">soft and pastel</option>
             <option value="monochrome">monochrome</option>
             <option value="natural">natural</option>
+            <option value="pastel colors">pastel colors</option>
+            <option value="warm / cool tones">warm / cool tones</option>
+            <option value="black and white">black and white</option>
+            <option value="neon">neon</option>
+            <option value="desaturated / muted">desaturated / muted</option>
+            <option value="high contrast">high contrast</option>
+            <option value="earth tones">earth tones</option>
           </select>
         </div>
         <div class="filter-dropdown">
@@ -645,6 +681,63 @@
           </select>
         </div>
       </div>
+      <div class="options-filters__row">
+        <div class="filter-dropdown">
+          <button type="button" class="filter-dropdown__trigger" aria-haspopup="listbox" aria-expanded="false" aria-label="Lighting">
+            <span class="filter-pill__label">Lighting</span>
+            <span class="filter-pill__value" data-dropdown-display>natural light</span>
+            <span class="filter-pill__chevron" aria-hidden="true">▾</span>
+          </button>
+          <div class="filter-dropdown__list" role="listbox" hidden></div>
+          <select id="lighting" class="filter-dropdown__select-hidden" aria-hidden="true" tabindex="-1">
+            <option value="natural light" selected>natural light</option>
+            <option value="golden hour">golden hour</option>
+            <option value="dramatic">dramatic</option>
+            <option value="rim light">rim light</option>
+            <option value="backlight">backlight</option>
+            <option value="soft lighting">soft lighting</option>
+            <option value="studio lighting">studio lighting</option>
+            <option value="volumetric">volumetric</option>
+            <option value="cinematic">cinematic</option>
+          </select>
+        </div>
+        <div class="filter-dropdown">
+          <button type="button" class="filter-dropdown__trigger" aria-haspopup="listbox" aria-expanded="false" aria-label="Mood">
+            <span class="filter-pill__label">Mood</span>
+            <span class="filter-pill__value" data-dropdown-display>—</span>
+            <span class="filter-pill__chevron" aria-hidden="true">▾</span>
+          </button>
+          <div class="filter-dropdown__list" role="listbox" hidden></div>
+          <select id="mood" class="filter-dropdown__select-hidden" aria-hidden="true" tabindex="-1">
+            <option value="—" selected>—</option>
+            <option value="mysterious">mysterious</option>
+            <option value="joyful">joyful</option>
+            <option value="epic">epic</option>
+            <option value="dark">dark</option>
+            <option value="cozy">cozy</option>
+            <option value="melancholic">melancholic</option>
+            <option value="futuristic">futuristic</option>
+            <option value="post-apocalyptic">post-apocalyptic</option>
+            <option value="luxurious">luxurious</option>
+            <option value="childlike">childlike</option>
+          </select>
+        </div>
+        <div class="filter-dropdown">
+          <button type="button" class="filter-dropdown__trigger" aria-haspopup="listbox" aria-expanded="false" aria-label="Max colors">
+            <span class="filter-pill__label">Max colors</span>
+            <span class="filter-pill__value" data-dropdown-display>—</span>
+            <span class="filter-pill__chevron" aria-hidden="true">▾</span>
+          </button>
+          <div class="filter-dropdown__list" role="listbox" hidden></div>
+          <select id="max-colors" class="filter-dropdown__select-hidden" aria-hidden="true" tabindex="-1">
+            <option value="—" selected>—</option>
+            <option value="2">2</option>
+            <option value="3">3</option>
+            <option value="5">5</option>
+            <option value="10">10</option>
+          </select>
+        </div>
+      </div>
     </div>
   </section>
 
@@ -684,6 +777,9 @@
       var outlines = document.getElementById('outlines');
       var labels = document.getElementById('labels');
       var anthropomorphism = document.getElementById('anthropomorphism');
+      var lighting = document.getElementById('lighting');
+      var mood = document.getElementById('mood');
+      var maxColors = document.getElementById('max-colors');
       var cellsGrid = document.getElementById('cells-grid');
       var cellsHeading = document.getElementById('cells-heading');
       var cellsLegend = document.getElementById('cells-legend');
@@ -695,6 +791,12 @@
       var cellEditorNext = document.getElementById('cell-editor-next');
       var cellEditorClear = document.getElementById('cell-editor-clear');
       var promptOutput = document.getElementById('prompt-output');
+      var galleryPrompt = null;
+      try { galleryPrompt = sessionStorage.getItem('galleryPrompt'); } catch (e) {}
+      if (galleryPrompt) {
+        promptOutput.value = galleryPrompt;
+        try { sessionStorage.removeItem('galleryPrompt'); } catch (e) {}
+      }
       var copyBtn = document.getElementById('copy-btn');
       var copyFeedback = document.getElementById('copy-feedback');
       var stylePreviewBg = document.getElementById('style-preview-bg');
@@ -979,12 +1081,20 @@
         var outlineVal = outlines.value || 'bold black';
         var labelsVal = labels.value || 'NO';
         var langVal = labelsVal === 'NO' ? 'English' : labelsVal;
+        var lightingVal = lighting && lighting.value ? lighting.value : 'natural light';
+        var moodVal = mood && mood.value && mood.value !== '—' ? mood.value : '';
+        var maxColorsVal = maxColors && maxColors.value && maxColors.value !== '—' ? maxColors.value : '';
 
         var gridDesc = n + '×' + n;
         var parts = [];
         parts.push('Create an image in a perfectly aligned ' + gridDesc + ' grid, with thin, sharp black borders between each cell and a ' + bgVal + ' background.');
         parts.push('');
-        parts.push('Uniform style for all ' + total + ' illustrations: ' + styleVal + ', clean and precise lines, ' + paletteVal + ' colors, ' + outlineVal + ' outlines. No shading, no gradients, no 3D, no pixelation, no complex texture.');
+        var styleLine = 'Uniform style for all ' + total + ' illustrations: ' + styleVal + ', clean and precise lines, ' + paletteVal + ' colors, ' + outlineVal + ' outlines.';
+        if (lightingVal && lightingVal !== '—') styleLine += ' Lighting: ' + lightingVal + '.';
+        if (moodVal) styleLine += ' Mood: ' + moodVal + '.';
+        if (maxColorsVal) styleLine += ' Maximum ' + maxColorsVal + ' colors per cell.';
+        styleLine += ' No shading, no gradients, no 3D, no pixelation, no complex texture (unless the chosen style requires it).';
+        parts.push(styleLine);
         parts.push('');
         var anthropoVal = (document.getElementById('anthropomorphism') && document.getElementById('anthropomorphism').value) || 'Off';
         if (anthropoVal === 'Off') {
@@ -1045,7 +1155,7 @@
         }
       });
 
-      var inputs = [theme, gridSizeSel, styleSel, background, palette, outlines, labels, anthropomorphism];
+      var inputs = [theme, gridSizeSel, styleSel, background, palette, outlines, labels, anthropomorphism, lighting, mood, maxColors];
       inputs.forEach(function (el) {
         el.addEventListener('input', updatePrompt);
         el.addEventListener('change', updatePrompt);

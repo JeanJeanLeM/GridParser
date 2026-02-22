@@ -1,0 +1,452 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Grid gallery – Imagine</title>
+  <link rel="stylesheet" href="css/shared.css">
+  <style>
+    body {
+      font-family: var(--font-sans);
+      margin: 0;
+      min-height: 100vh;
+      background: var(--page-bg);
+    }
+    .hero {
+      text-align: center;
+      margin-bottom: var(--section-gap);
+    }
+    .hero__label {
+      font-size: var(--text-xs);
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--accent);
+      margin: 0 0 0.35rem 0;
+    }
+    .hero h1 {
+      font-family: var(--font-serif);
+      font-size: var(--heading-lg);
+      font-weight: 700;
+      margin: 0 0 0.75rem 0;
+      color: var(--text-primary);
+    }
+    .hero .intro {
+      font-size: var(--text-base);
+      color: var(--text-muted);
+      line-height: 1.5;
+      margin: 0;
+      max-width: 480px;
+      margin-left: auto;
+      margin-right: auto;
+    }
+    .gallery-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      gap: 1.25rem;
+      margin-top: 1rem;
+    }
+    .gallery-card {
+      background: var(--card-bg);
+      border-radius: var(--radius-card);
+      overflow: hidden;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+      cursor: pointer;
+      transition: transform 0.15s, box-shadow 0.15s;
+      display: flex;
+      flex-direction: column;
+    }
+    .gallery-card:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    }
+    .gallery-card__img-wrap {
+      aspect-ratio: 1;
+      overflow: hidden;
+      background: var(--input-bg);
+    }
+    .gallery-card__img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+    .gallery-card__body {
+      padding: 0.75rem 1rem;
+      flex: 1;
+    }
+    .gallery-card__badge {
+      display: inline-block;
+      font-size: 0.7rem;
+      font-weight: 600;
+      letter-spacing: 0.05em;
+      padding: 0.2rem 0.5rem;
+      border-radius: 999px;
+      margin-bottom: 0.35rem;
+    }
+    .gallery-card__badge--grok {
+      background: #e8f0fe;
+      color: #1a73e8;
+    }
+    .gallery-card__badge--gpt {
+      background: #e6f4ea;
+      color: #0d652d;
+    }
+    .gallery-card__title {
+      font-size: var(--text-sm);
+      font-weight: 600;
+      color: var(--text-primary);
+      margin: 0 0 0.25rem 0;
+      line-height: 1.3;
+    }
+    .gallery-card__desc {
+      font-size: var(--text-xs);
+      color: var(--text-muted);
+      margin: 0;
+      line-height: 1.4;
+    }
+    .gallery-loading, .gallery-error {
+      text-align: center;
+      padding: 2rem;
+      color: var(--text-muted);
+    }
+    .gallery-error { color: var(--error); }
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.5);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+      padding: 1rem;
+      box-sizing: border-box;
+      opacity: 0;
+      visibility: hidden;
+      transition: opacity 0.2s, visibility 0.2s;
+    }
+    .modal-overlay.is-open {
+      opacity: 1;
+      visibility: visible;
+    }
+    .modal {
+      background: var(--card-bg);
+      border-radius: var(--radius-card);
+      max-width: 560px;
+      width: 100%;
+      max-height: 90vh;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.2);
+    }
+    .modal__img-wrap {
+      flex-shrink: 0;
+      max-height: 240px;
+      overflow: hidden;
+      background: var(--input-bg);
+    }
+    .modal__img {
+      width: 100%;
+      height: auto;
+      display: block;
+      object-fit: contain;
+      max-height: 240px;
+    }
+    .modal__body {
+      padding: var(--card-padding);
+      overflow-y: auto;
+      flex: 1;
+      min-height: 0;
+    }
+    .modal__badge {
+      display: inline-block;
+      font-size: 0.75rem;
+      font-weight: 600;
+      letter-spacing: 0.05em;
+      padding: 0.25rem 0.6rem;
+      border-radius: 999px;
+      margin-bottom: 0.5rem;
+    }
+    .modal__badge--grok { background: #e8f0fe; color: #1a73e8; }
+    .modal__badge--gpt { background: #e6f4ea; color: #0d652d; }
+    .modal__title {
+      font-size: var(--heading-md);
+      font-weight: 700;
+      color: var(--text-primary);
+      margin: 0 0 0.5rem 0;
+    }
+    .modal__meta {
+      font-size: var(--text-sm);
+      color: var(--text-muted);
+      margin: 0 0 0.75rem 0;
+    }
+    .modal__meta strong { color: var(--text-secondary); }
+    .modal__desc {
+      font-size: var(--text-sm);
+      color: var(--text-secondary);
+      line-height: 1.5;
+      margin: 0 0 1rem 0;
+    }
+    .modal__prompt-label {
+      font-size: var(--text-xs);
+      font-weight: 600;
+      color: var(--text-hint);
+      margin: 0 0 0.35rem 0;
+    }
+    .modal__prompt {
+      width: 100%;
+      min-height: 120px;
+      padding: 0.75rem;
+      font-family: var(--font-mono);
+      font-size: var(--text-xs);
+      line-height: 1.45;
+      border: 1px solid var(--border-input);
+      border-radius: var(--radius-input);
+      background: var(--input-bg);
+      resize: vertical;
+      margin-bottom: 1rem;
+      box-sizing: border-box;
+    }
+    .modal__actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.75rem;
+      align-items: center;
+    }
+    .btn {
+      display: inline-block;
+      padding: var(--btn-padding);
+      background: var(--btn-primary-bg);
+      color: #fff;
+      border: none;
+      border-radius: var(--radius-input);
+      cursor: pointer;
+      font-size: 1rem;
+      text-decoration: none;
+      transition: background 0.15s;
+    }
+    .btn:hover { background: var(--btn-primary-hover); }
+    .btn:focus { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
+    .btn--accent {
+      background: var(--accent);
+      color: #1a1a1a;
+    }
+    .btn--accent:hover { background: #d49245; color: #1a1a1a; }
+    .btn-outline {
+      background: transparent;
+      color: var(--text-primary);
+      border: 1px solid var(--border-input);
+    }
+    .btn-outline:hover { background: var(--input-bg); }
+    .modal__copy-feedback {
+      font-size: var(--text-sm);
+      color: var(--success);
+    }
+  </style>
+</head>
+<body>
+  <header class="app-header">
+    <div class="app-header__inner">
+      <a href="index.html" class="app-header__logo">Grid<span class="app-header__logo-num">2</span>Icons</a>
+      <a href="index.html" class="app-header__nav">← GRID SPLITTER</a>
+      <a href="prompt-builder.html" class="app-header__nav">PROMPT BUILDER →</a>
+      <a href="gallery.html" class="app-header__nav">Gallery</a>
+      <a href="premium.html" class="app-header__nav">Premium</a>
+      <div class="app-header__auth">
+        <span id="auth-loading" class="auth-loading">Loading…</span>
+        <span id="auth-guest" class="auth-guest" style="display:none;">
+          <button type="button" id="auth-btn-login" class="app-header__auth-btn">Sign in</button>
+          <span class="app-header__auth-sep" aria-hidden="true">|</span>
+          <button type="button" id="auth-btn-signup" class="app-header__auth-btn">Sign up</button>
+        </span>
+        <div id="auth-user" class="profile-dropdown" style="display:none;">
+          <button type="button" id="auth-profile-trigger" class="app-header__auth-btn profile-dropdown__trigger" aria-expanded="false" aria-haspopup="true" aria-controls="auth-profile-menu">
+            Signed in as <span id="auth-user-email"></span> <span class="profile-dropdown__chevron" aria-hidden="true">▼</span>
+          </button>
+          <div id="auth-profile-menu" class="profile-dropdown__menu" role="menu" aria-label="Account menu" hidden>
+            <div class="profile-dropdown__email" id="auth-profile-email"></div>
+            <a href="premium.html" class="profile-dropdown__link" role="menuitem">Premium</a>
+            <button type="button" id="auth-btn-logout" class="profile-dropdown__btn" role="menuitem">Disconnect</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <main class="main-content">
+    <div class="hero">
+      <p class="hero__label" aria-hidden="true">GALLERY</p>
+      <h1>Imagine</h1>
+      <p class="intro">Browse grids by model. Click one to see the prompt and create a similar image.</p>
+    </div>
+
+    <div id="gallery-loading" class="gallery-loading">Loading gallery…</div>
+    <div id="gallery-error" class="gallery-error" style="display:none;"></div>
+    <div id="gallery-grid" class="gallery-grid" style="display:none;"></div>
+  </main>
+
+  <div id="modal-overlay" class="modal-overlay" aria-hidden="true" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+    <div class="modal" role="document">
+      <div class="modal__img-wrap">
+        <img id="modal-img" class="modal__img" src="" alt="">
+      </div>
+      <div class="modal__body">
+        <span id="modal-badge" class="modal__badge"></span>
+        <h2 id="modal-title" class="modal__title"></h2>
+        <p id="modal-meta" class="modal__meta"></p>
+        <p id="modal-desc" class="modal__desc"></p>
+        <p class="modal__prompt-label">Prompt (use as template)</p>
+        <textarea id="modal-prompt" class="modal__prompt" readonly></textarea>
+        <div class="modal__actions">
+          <button type="button" id="modal-create-similar" class="btn btn--accent">Create similar</button>
+          <button type="button" id="modal-copy" class="btn btn-outline">Copy prompt</button>
+          <span id="modal-copy-feedback" class="modal__copy-feedback" aria-live="polite"></span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    (function () {
+      var GALLERY_KEY = 'galleryPrompt';
+      var overlay = document.getElementById('modal-overlay');
+      var modalImg = document.getElementById('modal-img');
+      var modalBadge = document.getElementById('modal-badge');
+      var modalTitle = document.getElementById('modal-title');
+      var modalMeta = document.getElementById('modal-meta');
+      var modalDesc = document.getElementById('modal-desc');
+      var modalPrompt = document.getElementById('modal-prompt');
+      var modalCreateSimilar = document.getElementById('modal-create-similar');
+      var modalCopy = document.getElementById('modal-copy');
+      var modalCopyFeedback = document.getElementById('modal-copy-feedback');
+      var galleryGrid = document.getElementById('gallery-grid');
+      var galleryLoading = document.getElementById('gallery-loading');
+      var galleryError = document.getElementById('gallery-error');
+      var currentItem = null;
+
+      function renderCard(item) {
+        var card = document.createElement('button');
+        card.type = 'button';
+        card.className = 'gallery-card';
+        card.setAttribute('data-id', item.id);
+        var badgeClass = item.model === 'Grok' ? 'gallery-card__badge--grok' : 'gallery-card__badge--gpt';
+        card.innerHTML =
+          '<div class="gallery-card__img-wrap">' +
+            '<img class="gallery-card__img" src="' + escapeHtml(item.image) + '" alt="" loading="lazy">' +
+          '</div>' +
+          '<div class="gallery-card__body">' +
+            '<span class="gallery-card__badge ' + badgeClass + '">' + escapeHtml(item.model) + '</span>' +
+            '<p class="gallery-card__title">' + escapeHtml(item.title) + '</p>' +
+            '<p class="gallery-card__desc">' + escapeHtml(item.description) + '</p>' +
+          '</div>';
+        card.addEventListener('click', function () { openModal(item); });
+        return card;
+      }
+
+      function escapeHtml(s) {
+        if (!s) return '';
+        var div = document.createElement('div');
+        div.textContent = s;
+        return div.innerHTML;
+      }
+
+      function openModal(item) {
+        currentItem = item;
+        modalImg.src = item.image;
+        modalImg.alt = item.title;
+        modalBadge.textContent = item.model;
+        modalBadge.className = 'modal__badge modal__badge--' + (item.model === 'Grok' ? 'grok' : 'gpt');
+        modalTitle.textContent = item.title;
+        var metaParts = [];
+        if (item.size) metaParts.push('<strong>Size:</strong> ' + escapeHtml(item.size));
+        if (item.style) metaParts.push('<strong>Style:</strong> ' + escapeHtml(item.style));
+        if (item.background) metaParts.push('<strong>Background:</strong> ' + escapeHtml(item.background));
+        if (item.palette) metaParts.push('<strong>Palette:</strong> ' + escapeHtml(item.palette));
+        if (item.outlines) metaParts.push('<strong>Outlines:</strong> ' + escapeHtml(item.outlines));
+        if (item.labels) metaParts.push('<strong>Labels:</strong> ' + escapeHtml(item.labels));
+        if (item.anthropomorphism) metaParts.push('<strong>Anthropomorphism:</strong> ' + escapeHtml(item.anthropomorphism));
+        if (item.lumiere) metaParts.push('<strong>Lumière:</strong> ' + escapeHtml(item.lumiere));
+        if (item.couleursMax != null && item.couleursMax !== '') metaParts.push('<strong>Couleurs max:</strong> ' + escapeHtml(String(item.couleursMax)));
+        if (item.mood) metaParts.push('<strong>Mood:</strong> ' + escapeHtml(item.mood));
+        modalMeta.innerHTML = metaParts.length ? metaParts.join(' &middot; ') : '';
+        modalDesc.textContent = item.description;
+        modalPrompt.value = item.prompt || '';
+        modalCopyFeedback.textContent = '';
+        overlay.classList.add('is-open');
+        overlay.setAttribute('aria-hidden', 'false');
+      }
+
+      function closeModal() {
+        overlay.classList.remove('is-open');
+        overlay.setAttribute('aria-hidden', 'true');
+        currentItem = null;
+      }
+
+      overlay.addEventListener('click', function (e) {
+        if (e.target === overlay) closeModal();
+      });
+      document.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape' && overlay.classList.contains('is-open')) closeModal();
+      });
+
+      modalCreateSimilar.addEventListener('click', function () {
+        if (!currentItem || !currentItem.prompt) return;
+        try {
+          sessionStorage.setItem(GALLERY_KEY, currentItem.prompt);
+          window.location.href = 'prompt-builder.html';
+        } catch (err) {
+          modalCopyFeedback.textContent = 'Could not open Prompt Builder. Copy the prompt instead.';
+        }
+      });
+
+      modalCopy.addEventListener('click', function () {
+        if (!modalPrompt.value) return;
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(modalPrompt.value).then(function () {
+            modalCopyFeedback.textContent = 'Copied!';
+            setTimeout(function () { modalCopyFeedback.textContent = ''; }, 2000);
+          }).catch(function () {
+            modalCopyFeedback.textContent = 'Copy failed.';
+          });
+        } else {
+          modalPrompt.select();
+          try {
+            document.execCommand('copy');
+            modalCopyFeedback.textContent = 'Copied!';
+            setTimeout(function () { modalCopyFeedback.textContent = ''; }, 2000);
+          } catch (e) {
+            modalCopyFeedback.textContent = 'Select and copy manually.';
+          }
+        }
+      });
+
+      fetch('data/gallery-grids.json')
+        .then(function (res) {
+          if (!res.ok) throw new Error('Failed to load gallery');
+          return res.json();
+        })
+        .then(function (items) {
+          galleryLoading.style.display = 'none';
+          if (!items || !items.length) {
+            galleryError.textContent = 'No grids in gallery yet.';
+            galleryError.style.display = 'block';
+            return;
+          }
+          items.forEach(function (item) {
+            galleryGrid.appendChild(renderCard(item));
+          });
+          galleryGrid.style.display = 'grid';
+        })
+        .catch(function (err) {
+          galleryLoading.style.display = 'none';
+          galleryError.textContent = err.message || 'Could not load gallery.';
+          galleryError.style.display = 'block';
+        });
+    })();
+  </script>
+  <script src="js/auth0-config.js"></script>
+  <script type="module" src="js/auth.js"></script>
+  <script src="js/auth-ui.js"></script>
+</body>
+</html>

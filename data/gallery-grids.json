@@ -1,0 +1,60 @@
+[
+  {
+    "id": "grok-realistic-1",
+    "image": "Examples/ChatGPT Image 21 févr. 2026, 15_05_26.png",
+    "model": "Grok",
+    "title": "Realistic landscape grid",
+    "description": "Natural scenes in a 4×4 grid with photorealistic style.",
+    "prompt": "Create an image in a perfectly aligned 4×4 grid, with thin, sharp black borders between each cell and a pastel background.\n\nUniform style for all 16 illustrations: realistic, clean and precise lines, monochrome colors, fine outlines. Anthropomorphism On: illustrated elements may have eyes, face, or character.\n\nIn each cell, place a single centered element, front view, clearly recognizable shape.\n\nBelow each illustration, write the name in French, simple black sans-serif font, uniform and readable size.\n\nPerfectly square grid, strictly equal cell sizes, uniform spacing, high resolution, sharp details.",
+    "style": "realistic",
+    "palette": "monochrome",
+    "size": "4×4",
+    "background": "pastel",
+    "outlines": "fine",
+    "labels": "French",
+    "anthropomorphism": "On",
+    "lumiere": "doux",
+    "couleursMax": 4,
+    "mood": "calme"
+  },
+  {
+    "id": "gpt-icons-1",
+    "image": "Examples/ChatGPT Image 21 févr. 2026, 15_10_07.png",
+    "model": "GPT",
+    "title": "Icon set – minimalist",
+    "description": "Clean icon grid for UI or app assets.",
+    "prompt": "Create an image in a perfectly aligned 4×4 grid, with thin, sharp black borders between each cell and a pure white background. Uniform style for all 16 illustrations: minimalist vector, clean and precise lines, flat and vivid colors, bold black outlines. In each cell, place a single centered element from the category fruits, front view, clearly recognizable shape.",
+    "style": "minimalist vector",
+    "palette": "flat and vivid"
+  },
+  {
+    "id": "grok-realistic-2",
+    "image": "Examples/Gemini_Generated_Image_gl6qqygl6qqygl6q.png",
+    "model": "Grok",
+    "title": "Realistic variety grid",
+    "description": "Mixed realistic subjects in grid layout.",
+    "prompt": "Generate a 4×4 grid of realistic images. Each cell is a high-quality photograph-style image: varied subjects (objects, nature, architecture). Consistent aspect ratio, sharp borders between cells, professional color palette.",
+    "style": "realistic",
+    "palette": "natural"
+  },
+  {
+    "id": "gpt-schema-1",
+    "image": "Examples/ChatGPT Image 21 févr. 2026, 15_04_34.png",
+    "model": "GPT",
+    "title": "Schema / diagram style",
+    "description": "Structured visual schema in grid form.",
+    "prompt": "Create a 4×4 grid with thin black borders. Each cell contains a simple, diagrammatic illustration: clean lines, no shading, flat colors. Style: schematic, educational. Uniform icon-like elements, white background.",
+    "style": "schematic",
+    "palette": "flat and vivid"
+  },
+  {
+    "id": "gpt-icons-2",
+    "image": "Examples/Gemini_Generated_Image_zbex2yzbex2yzbex.png",
+    "model": "GPT",
+    "title": "Icons – soft palette",
+    "description": "Soft pastel icon grid for gentle UI.",
+    "prompt": "Create an image in a 4×4 grid with thin black borders and white background. All 16 cells: soft and pastel colors, minimalist vector style, no gradients. Single centered element per cell from a chosen theme, front view, clean outlines.",
+    "style": "minimalist vector",
+    "palette": "soft and pastel"
+  }
+]
