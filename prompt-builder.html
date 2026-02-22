@@ -94,7 +94,84 @@
       box-shadow: 0 0 0 2px rgba(229, 161, 82, 0.2);
     }
     .label-language-wrap { display: none; }
-    .label-language-wrap.visible { display: block; }
+    .label-language-wrap.visible { display: flex; }
+    /* Options pill filters (screenshot style) */
+    .options-filters {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+    .options-filters__row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      align-items: center;
+    }
+    .filter-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      padding: 0.4rem 0.75rem;
+      border-radius: 999px;
+      background: #e8e4df;
+      border: 1px solid transparent;
+      cursor: pointer;
+      transition: border-color 0.15s, background 0.15s;
+      font-size: var(--text-sm);
+    }
+    .filter-pill:hover { background: #dfdbd6; }
+    .filter-pill:focus-within {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 1px var(--accent);
+    }
+    .filter-pill__label {
+      font-weight: 600;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      color: var(--text-hint);
+      font-size: var(--text-xs);
+    }
+    .filter-pill__input {
+      border: none;
+      background: transparent;
+      min-width: 4ch;
+      max-width: 10ch;
+      font-size: inherit;
+      color: var(--text-primary);
+    }
+    .filter-pill__input:focus { outline: none; }
+    .filter-pill__select {
+      border: none;
+      background: transparent;
+      cursor: pointer;
+      font-size: inherit;
+      color: var(--text-primary);
+      font-weight: 500;
+      padding: 0;
+      padding-right: 1.25rem;
+      appearance: none;
+      background-image: none;
+      min-width: 5ch;
+    }
+    .filter-pill__select:focus { outline: none; }
+    .filter-pill__chevron {
+      position: absolute;
+      right: 0.6rem;
+      pointer-events: none;
+      color: var(--text-hint);
+      font-size: 0.65rem;
+    }
+    .filter-pill--select {
+      position: relative;
+    }
+    .options-add-custom {
+      margin-top: 0.75rem;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      align-items: center;
+    }
+    .options-add-custom .add-custom-row { margin-top: 0; }
     .cells-grid {
       display: grid;
       gap: 8px;
@@ -394,90 +471,93 @@
       <p class="intro">Configure style, theme and cell content – get a ready-to-use English prompt for ChatGPT or any AI image generator.</p>
     </div>
 
-  <section class="card" aria-label="Global options">
+  <section class="card card--prompt-first">
+    <h2>Generated prompt (English)</h2>
+    <textarea class="prompt-output" id="prompt-output" readonly aria-label="Generated prompt"></textarea>
+    <div class="copy-row">
+      <button type="button" class="btn btn-primary" id="copy-btn">Copy to clipboard</button>
+      <span class="copy-feedback" id="copy-feedback" aria-live="polite"></span>
+    </div>
+    <p class="prompt-helper">Paste this prompt into ChatGPT (DALL·E), Midjourney, or any image AI. Then bring the resulting grid image back to <a href="index.html">Grid2Icons</a> to cut it into individual tiles.</p>
+  </section>
+
+  <section class="card card--options" aria-label="Global options">
     <h2>Options</h2>
-    <div class="form-row">
-      <label for="grid-size" class="form-label-caps">Grid size</label>
-      <select id="grid-size">
-        <option value="2">2×2 (4 cells)</option>
-        <option value="3">3×3 (9 cells)</option>
-        <option value="4" selected>4×4 (16 cells)</option>
-      </select>
-    </div>
-    <div class="form-row">
-      <label for="theme" class="form-label-caps">Theme (e.g. fruits, animals, tools, clothing)</label>
-      <input type="text" id="theme" placeholder="e.g. fruits" value="fruits">
-    </div>
-    <div class="form-row">
-      <label for="style" class="form-label-caps">Style</label>
-      <select id="style">
-        <option value="minimalist vector">minimalist vector</option>
-        <option value="watercolor">watercolor</option>
-        <option value="realistic">realistic</option>
-        <option value="cartoon">cartoon</option>
-        <option value="sketch">sketch</option>
-      </select>
-      <div class="add-custom-row">
-        <input type="text" id="style-add" placeholder="Add custom style" aria-label="Custom style value">
-        <button type="button" class="btn btn-small" id="style-add-btn">Add</button>
+    <div class="options-filters">
+      <div class="options-filters__row">
+        <label class="filter-pill" for="theme">
+          <span class="filter-pill__label">Theme</span>
+          <input type="text" id="theme" class="filter-pill__input" placeholder="e.g. fruits" value="fruits" aria-label="Theme">
+        </label>
+        <label class="filter-pill filter-pill--select">
+          <span class="filter-pill__label">Size</span>
+          <select id="grid-size" class="filter-pill__select" aria-label="Grid size">
+            <option value="2">2×2</option>
+            <option value="3">3×3</option>
+            <option value="4" selected>4×4</option>
+          </select>
+          <span class="filter-pill__chevron" aria-hidden="true">▾</span>
+        </label>
+        <label class="filter-pill filter-pill--select">
+          <span class="filter-pill__label">Style</span>
+          <select id="style" class="filter-pill__select" aria-label="Style">
+            <option value="minimalist vector">minimalist vector</option>
+            <option value="watercolor">watercolor</option>
+            <option value="realistic">realistic</option>
+            <option value="cartoon">cartoon</option>
+            <option value="sketch">sketch</option>
+          </select>
+          <span class="filter-pill__chevron" aria-hidden="true">▾</span>
+        </label>
+        <label class="filter-pill filter-pill--select">
+          <span class="filter-pill__label">Background</span>
+          <select id="background" class="filter-pill__select" aria-label="Background color">
+            <option value="pure white">pure white</option>
+            <option value="black">black</option>
+            <option value="pastel">pastel</option>
+            <option value="other">other</option>
+          </select>
+          <span class="filter-pill__chevron" aria-hidden="true">▾</span>
+        </label>
+      </div>
+      <div class="options-filters__row">
+        <label class="filter-pill filter-pill--select">
+          <span class="filter-pill__label">Palette</span>
+          <select id="palette" class="filter-pill__select" aria-label="Palette">
+            <option value="flat and vivid">flat and vivid</option>
+            <option value="soft and pastel">soft and pastel</option>
+            <option value="monochrome">monochrome</option>
+            <option value="natural">natural</option>
+          </select>
+          <span class="filter-pill__chevron" aria-hidden="true">▾</span>
+        </label>
+        <label class="filter-pill filter-pill--select">
+          <span class="filter-pill__label">Outlines</span>
+          <select id="outlines" class="filter-pill__select" aria-label="Outlines">
+            <option value="bold black">bold black</option>
+            <option value="fine">fine</option>
+            <option value="none">none</option>
+          </select>
+          <span class="filter-pill__chevron" aria-hidden="true">▾</span>
+        </label>
+        <label class="filter-pill filter-pill--select">
+          <span class="filter-pill__label">Labels</span>
+          <select id="labels" class="filter-pill__select" aria-label="Labels">
+            <option value="NO">NO</option>
+            <option value="English">English</option>
+            <option value="French">French</option>
+            <option value="other">other</option>
+          </select>
+          <span class="filter-pill__chevron" aria-hidden="true">▾</span>
+        </label>
       </div>
     </div>
-    <div class="form-row">
-      <label for="background" class="form-label-caps">Background color</label>
-      <select id="background">
-        <option value="pure white">pure white</option>
-        <option value="black">black</option>
-        <option value="pastel">pastel</option>
-        <option value="other">other</option>
-      </select>
-      <div class="add-custom-row">
-        <input type="text" id="background-add" placeholder="Add custom background" aria-label="Custom background value">
-        <button type="button" class="btn btn-small" id="background-add-btn">Add</button>
-      </div>
-    </div>
-    <div class="form-row">
-      <label for="palette" class="form-label-caps">Palette</label>
-      <select id="palette">
-        <option value="flat and vivid">flat and vivid</option>
-        <option value="soft and pastel">soft and pastel</option>
-        <option value="monochrome">monochrome</option>
-        <option value="natural">natural</option>
-      </select>
-      <div class="add-custom-row">
-        <input type="text" id="palette-add" placeholder="Add custom palette" aria-label="Custom palette value">
-        <button type="button" class="btn btn-small" id="palette-add-btn">Add</button>
-      </div>
-    </div>
-    <div class="form-row">
-      <label for="outlines" class="form-label-caps">Outlines</label>
-      <select id="outlines">
-        <option value="bold black">bold black</option>
-        <option value="fine">fine</option>
-        <option value="none">none</option>
-      </select>
-      <div class="add-custom-row">
-        <input type="text" id="outlines-add" placeholder="Add custom outlines" aria-label="Custom outlines value">
-        <button type="button" class="btn btn-small" id="outlines-add-btn">Add</button>
-      </div>
-    </div>
-    <div class="form-row">
-      <label for="labels" class="form-label-caps">Labels under each illustration</label>
-      <select id="labels">
-        <option value="YES">YES</option>
-        <option value="NO">NO</option>
-      </select>
-    </div>
-    <div class="form-row label-language-wrap" id="label-language-wrap">
-      <label for="label-language" class="form-label-caps">Label language</label>
-      <select id="label-language">
-        <option value="English">English</option>
-        <option value="French">French</option>
-        <option value="other">other</option>
-      </select>
-      <div class="add-custom-row">
-        <input type="text" id="label-language-add" placeholder="Add custom language" aria-label="Custom label language">
-        <button type="button" class="btn btn-small" id="label-language-add-btn">Add</button>
-      </div>
+    <div class="options-add-custom" aria-label="Add custom options">
+      <div class="add-custom-row"><label for="style-add" class="sr-only">Custom style</label><input type="text" id="style-add" placeholder="Add custom style"><button type="button" class="btn btn-small" id="style-add-btn">Add</button></div>
+      <div class="add-custom-row"><label for="background-add" class="sr-only">Custom background</label><input type="text" id="background-add" placeholder="Add custom background"><button type="button" class="btn btn-small" id="background-add-btn">Add</button></div>
+      <div class="add-custom-row"><label for="palette-add" class="sr-only">Custom palette</label><input type="text" id="palette-add" placeholder="Add custom palette"><button type="button" class="btn btn-small" id="palette-add-btn">Add</button></div>
+      <div class="add-custom-row"><label for="outlines-add" class="sr-only">Custom outlines</label><input type="text" id="outlines-add" placeholder="Add custom outlines"><button type="button" class="btn btn-small" id="outlines-add-btn">Add</button></div>
+      <div class="add-custom-row"><label for="label-language-add" class="sr-only">Custom language</label><input type="text" id="label-language-add" placeholder="Add custom language"><button type="button" class="btn btn-small" id="label-language-add-btn">Add</button></div>
     </div>
   </section>
 
@@ -503,16 +583,6 @@
       <legend class="sr-only" id="cells-legend">Name and optional description for each cell. Click a cell to edit.</legend>
       <div class="cells-grid size-4" id="cells-grid"></div>
     </fieldset>
-  </section>
-
-  <section class="card">
-    <h2>Generated prompt (English)</h2>
-    <textarea class="prompt-output" id="prompt-output" readonly aria-label="Generated prompt"></textarea>
-    <div class="copy-row">
-      <button type="button" class="btn btn-primary" id="copy-btn">Copy to clipboard</button>
-      <span class="copy-feedback" id="copy-feedback" aria-live="polite"></span>
-    </div>
-    <p class="prompt-helper">Paste this prompt into ChatGPT (DALL·E), Midjourney, or any image AI. Then bring the resulting grid image back to <a href="index.html">Grid2Icons</a> to cut it into individual tiles.</p>
   </section>
 
       </div>
@@ -544,8 +614,6 @@
       var palette = document.getElementById('palette');
       var outlines = document.getElementById('outlines');
       var labels = document.getElementById('labels');
-      var labelLanguageWrap = document.getElementById('label-language-wrap');
-      var labelLanguage = document.getElementById('label-language');
       var cellsGrid = document.getElementById('cells-grid');
       var cellsHeading = document.getElementById('cells-heading');
       var cellsLegend = document.getElementById('cells-legend');
@@ -619,7 +687,7 @@
         var paletteVal = palette.value || 'flat and vivid';
         var outlineVal = outlines.value || 'bold black';
         var labelsVal = labels.value || 'NO';
-        var langVal = labelLanguage.value || 'English';
+        var langVal = labelsVal === 'NO' ? 'English' : labelsVal;
 
         stylePreviewBg.style.backgroundColor = backgroundColors[bgVal] || backgroundColors['other'];
         var imgSrc = styleImages[styleVal] || paletteImages[paletteVal] || styleImages['minimalist vector'];
@@ -627,8 +695,8 @@
         stylePreviewImgWrap.className = 'style-preview__img-wrap outline-' + (outlineVal === 'bold black' ? 'bold' : outlineVal === 'fine' ? 'fine' : 'none');
         buildGridShowcase();
 
-        if (labelsVal === 'YES') {
-          stylePreviewLabel.textContent = labelWords[langVal] || labelWords['English'];
+        if (labelsVal !== 'NO') {
+          stylePreviewLabel.textContent = labelWords[langVal] || 'Apple';
           stylePreviewLabel.classList.add('visible');
           stylePreviewLabel.setAttribute('aria-hidden', 'false');
         } else {
@@ -710,11 +778,6 @@
         cellEditorName.focus();
       }
 
-      function showLabelLanguage() {
-        labelLanguageWrap.classList.toggle('visible', labels.value === 'YES');
-      }
-      labels.addEventListener('change', showLabelLanguage);
-      showLabelLanguage();
 
       function addOptionToSelect(selectId, addInputId, addBtnId, updatePrompt) {
         var sel = document.getElementById(selectId);
@@ -798,7 +861,7 @@
         var paletteVal = palette.value || 'flat and vivid';
         var outlineVal = outlines.value || 'bold black';
         var labelsVal = labels.value || 'NO';
-        var langVal = labelLanguage.value || 'English';
+        var langVal = labelsVal === 'NO' ? 'English' : labelsVal;
 
         var gridDesc = n + '×' + n;
         var parts = [];
@@ -810,8 +873,8 @@
         parts.push('');
         parts.push('In each cell, place a single centered element from the category ' + themeVal + ', front view, clearly recognizable shape, occupying about 80% of the cell, centered with equal margins on all sides.');
         parts.push('');
-        if (labelsVal === 'YES') {
-          parts.push('Below each illustration, write the name in ' + langVal + ', simple black sans-serif font, uniform and readable size.');
+        if (labelsVal !== 'NO') {
+          parts.push('Below each illustration, write the name in ' + labelsVal + ', simple black sans-serif font, uniform and readable size.');
         } else {
           parts.push('No text, numbers, or letters in the grid.');
         }
@@ -848,7 +911,7 @@
       addOptionToSelect('background', 'background-add', 'background-add-btn', updatePrompt);
       addOptionToSelect('palette', 'palette-add', 'palette-add-btn', updatePrompt);
       addOptionToSelect('outlines', 'outlines-add', 'outlines-add-btn', updatePrompt);
-      addOptionToSelect('label-language', 'label-language-add', 'label-language-add-btn', updatePrompt);
+      addOptionToSelect('labels', 'label-language-add', 'label-language-add-btn', function () { updatePrompt(); updatePreview(); });
 
       cellEditorPrev.addEventListener('click', goPrevCell);
       cellEditorNext.addEventListener('click', goNextCell);
@@ -866,12 +929,12 @@
         }
       });
 
-      var inputs = [theme, gridSizeSel, styleSel, background, palette, outlines, labels, labelLanguage];
+      var inputs = [theme, gridSizeSel, styleSel, background, palette, outlines, labels];
       inputs.forEach(function (el) {
         el.addEventListener('input', updatePrompt);
         el.addEventListener('change', updatePrompt);
       });
-      [gridSizeSel, styleSel, background, palette, outlines, labels, labelLanguage].forEach(function (el) {
+      [gridSizeSel, styleSel, background, palette, outlines, labels].forEach(function (el) {
         el.addEventListener('change', updatePreview);
         el.addEventListener('input', updatePreview);
       });

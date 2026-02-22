@@ -42,9 +42,14 @@
     }
     .pricing-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      grid-template-columns: repeat(3, 1fr);
       gap: 1.5rem;
       margin-top: 1.5rem;
+    }
+    @media (max-width: 720px) {
+      .pricing-grid {
+        grid-template-columns: 1fr;
+      }
     }
     .pricing-card {
       background: var(--card-bg);
