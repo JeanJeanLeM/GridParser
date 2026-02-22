@@ -125,53 +125,100 @@
       box-shadow: 0 0 0 1px var(--accent);
     }
     .filter-pill__label {
-      font-weight: 600;
-      letter-spacing: 0.04em;
+      font-size: 0.7rem;
+      font-weight: 500;
+      letter-spacing: 0.06em;
       text-transform: uppercase;
       color: var(--text-hint);
-      font-size: var(--text-xs);
+      font-family: var(--font-sans);
+    }
+    .filter-pill__value {
+      font-weight: 700;
+      color: var(--text-primary);
+      font-size: var(--text-sm);
     }
     .filter-pill__input {
       border: none;
       background: transparent;
       min-width: 4ch;
       max-width: 10ch;
-      font-size: inherit;
+      font-size: var(--text-sm);
+      font-weight: 700;
       color: var(--text-primary);
     }
     .filter-pill__input:focus { outline: none; }
-    .filter-pill__select {
-      border: none;
-      background: transparent;
+    .filter-dropdown {
+      position: relative;
+      display: inline-block;
+    }
+    .filter-dropdown__trigger {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      padding: 0.4rem 0.75rem;
+      border-radius: 999px;
+      background: #e8e4df;
+      border: 1px solid transparent;
       cursor: pointer;
-      font-size: inherit;
+      transition: border-color 0.15s, background 0.15s;
+      font-size: var(--text-sm);
+    }
+    .filter-dropdown__trigger:hover { background: #dfdbd6; }
+    .filter-dropdown__trigger[aria-expanded="true"] {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 1px var(--accent);
+    }
+    .filter-dropdown__list {
+      position: absolute;
+      top: 100%;
+      left: 0;
+      margin-top: 0.25rem;
+      min-width: 100%;
+      background: #fff;
+      border-radius: 10px;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.12);
+      border: 1px solid var(--border-light);
+      z-index: 50;
+      max-height: 240px;
+      overflow-y: auto;
+      padding: 0.25rem;
+    }
+    .filter-dropdown__list[hidden] { display: none; }
+    .filter-dropdown__option {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.5rem 0.75rem;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: var(--text-sm);
       color: var(--text-primary);
       font-weight: 500;
-      padding: 0;
-      padding-right: 1.25rem;
-      appearance: none;
-      background-image: none;
-      min-width: 5ch;
     }
-    .filter-pill__select:focus { outline: none; }
-    .filter-pill__chevron {
+    .filter-dropdown__option:hover {
+      background: var(--input-bg);
+    }
+    .filter-dropdown__option--selected {
+      background: #1a1a1a;
+      color: #fff;
+      font-weight: 600;
+    }
+    .filter-dropdown__option--selected::before {
+      content: "✓";
+      font-size: 0.85rem;
+    }
+    .filter-dropdown .filter-pill__chevron {
+      position: static;
+      margin-left: 0.15rem;
+    }
+    .filter-dropdown select.filter-dropdown__select-hidden {
       position: absolute;
-      right: 0.6rem;
+      opacity: 0;
+      width: 1px;
+      height: 1px;
+      overflow: hidden;
       pointer-events: none;
-      color: var(--text-hint);
-      font-size: 0.65rem;
     }
-    .filter-pill--select {
-      position: relative;
-    }
-    .options-add-custom {
-      margin-top: 0.75rem;
-      display: flex;
-      flex-wrap: wrap;
-      gap: 0.5rem;
-      align-items: center;
-    }
-    .options-add-custom .add-custom-row { margin-top: 0; }
     .cells-grid {
       display: grid;
       gap: 8px;
@@ -312,23 +359,20 @@
     }
     .cell-editor-nav .btn { flex: 1; min-width: 0; }
 
-    /* Prompt builder two-column layout + style preview */
+    /* Prompt section with preview aligned alongside */
     .prompt-builder-page.main-content { max-width: 960px; }
-    .prompt-builder-layout {
+    .prompt-and-preview {
       display: grid;
       grid-template-columns: 1fr 220px;
       gap: 2rem;
       align-items: start;
+      margin-top: 0.5rem;
     }
     .style-preview {
-      position: sticky;
-      top: 1rem;
       background: var(--card-bg);
       border-radius: var(--radius-card);
       padding: var(--card-padding);
       box-shadow: 0 1px 3px rgba(0,0,0,0.06);
-      max-height: calc(100vh - 2rem);
-      overflow: auto;
     }
     .style-preview__title {
       font-size: var(--heading-md);
@@ -425,12 +469,8 @@
       display: block;
     }
     @media (max-width: 900px) {
-      .prompt-builder-layout {
+      .prompt-and-preview {
         grid-template-columns: 1fr;
-      }
-      .style-preview {
-        position: static;
-        max-height: none;
       }
     }
   </style>
@@ -463,8 +503,6 @@
   </header>
 
   <main class="main-content prompt-builder-page">
-    <div class="prompt-builder-layout">
-      <div class="prompt-builder-form">
     <div class="hero">
       <p class="hero__label" aria-hidden="true">AI PROMPT TOOL</p>
       <h1>Grid Prompt Builder</h1>
@@ -473,12 +511,32 @@
 
   <section class="card card--prompt-first">
     <h2>Generated prompt (English)</h2>
-    <textarea class="prompt-output" id="prompt-output" readonly aria-label="Generated prompt"></textarea>
-    <div class="copy-row">
-      <button type="button" class="btn btn-primary" id="copy-btn">Copy to clipboard</button>
-      <span class="copy-feedback" id="copy-feedback" aria-live="polite"></span>
+    <div class="prompt-and-preview">
+      <div class="prompt-and-preview__main">
+        <textarea class="prompt-output" id="prompt-output" aria-label="Generated prompt (editable)"></textarea>
+        <div class="copy-row">
+          <button type="button" class="btn btn-primary" id="copy-btn">Copy to clipboard</button>
+          <span class="copy-feedback" id="copy-feedback" aria-live="polite"></span>
+        </div>
+        <p class="prompt-helper">You can edit the prompt above. Changing options will regenerate it. Paste into ChatGPT (DALL·E), Midjourney, or any image AI, then bring the resulting grid image back to <a href="index.html">Grid2Icons</a> to cut it into individual tiles.</p>
+      </div>
+      <aside class="style-preview" aria-label="Style preview example">
+        <h2 class="style-preview__title">Style preview</h2>
+        <p class="style-preview__hint">This example reflects your current grid size, style, background, palette, outlines and label settings.</p>
+        <div class="style-preview__grid-showcase">
+          <p class="style-preview__grid-label" id="style-preview-grid-label">Grid 4×4</p>
+          <div class="style-preview__grid-cells" id="style-preview-grid-cells"></div>
+        </div>
+        <div class="style-preview__example">
+          <div class="style-preview__bg" id="style-preview-bg">
+            <div class="style-preview__img-wrap" id="style-preview-img-wrap">
+              <img class="style-preview__img" id="style-preview-img" src="assets/preview/apple-minimalist-vector.svg" alt="Example apple icon in selected style">
+            </div>
+            <span class="style-preview__label" id="style-preview-label" aria-hidden="true">Apple</span>
+          </div>
+        </div>
+      </aside>
     </div>
-    <p class="prompt-helper">Paste this prompt into ChatGPT (DALL·E), Midjourney, or any image AI. Then bring the resulting grid image back to <a href="index.html">Grid2Icons</a> to cut it into individual tiles.</p>
   </section>
 
   <section class="card card--options" aria-label="Global options">
@@ -489,75 +547,104 @@
           <span class="filter-pill__label">Theme</span>
           <input type="text" id="theme" class="filter-pill__input" placeholder="e.g. fruits" value="fruits" aria-label="Theme">
         </label>
-        <label class="filter-pill filter-pill--select">
-          <span class="filter-pill__label">Size</span>
-          <select id="grid-size" class="filter-pill__select" aria-label="Grid size">
+        <div class="filter-dropdown">
+          <button type="button" class="filter-dropdown__trigger" aria-haspopup="listbox" aria-expanded="false" aria-label="Grid size">
+            <span class="filter-pill__label">Size</span>
+            <span class="filter-pill__value" data-dropdown-display>4×4</span>
+            <span class="filter-pill__chevron" aria-hidden="true">▾</span>
+          </button>
+          <div class="filter-dropdown__list" role="listbox" hidden></div>
+          <select id="grid-size" class="filter-dropdown__select-hidden" aria-hidden="true" tabindex="-1">
             <option value="2">2×2</option>
             <option value="3">3×3</option>
             <option value="4" selected>4×4</option>
           </select>
-          <span class="filter-pill__chevron" aria-hidden="true">▾</span>
-        </label>
-        <label class="filter-pill filter-pill--select">
-          <span class="filter-pill__label">Style</span>
-          <select id="style" class="filter-pill__select" aria-label="Style">
+        </div>
+        <div class="filter-dropdown">
+          <button type="button" class="filter-dropdown__trigger" aria-haspopup="listbox" aria-expanded="false" aria-label="Style">
+            <span class="filter-pill__label">Style</span>
+            <span class="filter-pill__value" data-dropdown-display>minimalist vector</span>
+            <span class="filter-pill__chevron" aria-hidden="true">▾</span>
+          </button>
+          <div class="filter-dropdown__list" role="listbox" hidden></div>
+          <select id="style" class="filter-dropdown__select-hidden" aria-hidden="true" tabindex="-1">
             <option value="minimalist vector">minimalist vector</option>
             <option value="watercolor">watercolor</option>
             <option value="realistic">realistic</option>
             <option value="cartoon">cartoon</option>
             <option value="sketch">sketch</option>
           </select>
-          <span class="filter-pill__chevron" aria-hidden="true">▾</span>
-        </label>
-        <label class="filter-pill filter-pill--select">
-          <span class="filter-pill__label">Background</span>
-          <select id="background" class="filter-pill__select" aria-label="Background color">
+        </div>
+        <div class="filter-dropdown">
+          <button type="button" class="filter-dropdown__trigger" aria-haspopup="listbox" aria-expanded="false" aria-label="Background color">
+            <span class="filter-pill__label">Background</span>
+            <span class="filter-pill__value" data-dropdown-display>pure white</span>
+            <span class="filter-pill__chevron" aria-hidden="true">▾</span>
+          </button>
+          <div class="filter-dropdown__list" role="listbox" hidden></div>
+          <select id="background" class="filter-dropdown__select-hidden" aria-hidden="true" tabindex="-1">
             <option value="pure white">pure white</option>
             <option value="black">black</option>
             <option value="pastel">pastel</option>
             <option value="other">other</option>
           </select>
-          <span class="filter-pill__chevron" aria-hidden="true">▾</span>
-        </label>
+        </div>
       </div>
       <div class="options-filters__row">
-        <label class="filter-pill filter-pill--select">
-          <span class="filter-pill__label">Palette</span>
-          <select id="palette" class="filter-pill__select" aria-label="Palette">
+        <div class="filter-dropdown">
+          <button type="button" class="filter-dropdown__trigger" aria-haspopup="listbox" aria-expanded="false" aria-label="Palette">
+            <span class="filter-pill__label">Palette</span>
+            <span class="filter-pill__value" data-dropdown-display>flat and vivid</span>
+            <span class="filter-pill__chevron" aria-hidden="true">▾</span>
+          </button>
+          <div class="filter-dropdown__list" role="listbox" hidden></div>
+          <select id="palette" class="filter-dropdown__select-hidden" aria-hidden="true" tabindex="-1">
             <option value="flat and vivid">flat and vivid</option>
             <option value="soft and pastel">soft and pastel</option>
             <option value="monochrome">monochrome</option>
             <option value="natural">natural</option>
           </select>
-          <span class="filter-pill__chevron" aria-hidden="true">▾</span>
-        </label>
-        <label class="filter-pill filter-pill--select">
-          <span class="filter-pill__label">Outlines</span>
-          <select id="outlines" class="filter-pill__select" aria-label="Outlines">
+        </div>
+        <div class="filter-dropdown">
+          <button type="button" class="filter-dropdown__trigger" aria-haspopup="listbox" aria-expanded="false" aria-label="Outlines">
+            <span class="filter-pill__label">Outlines</span>
+            <span class="filter-pill__value" data-dropdown-display>bold black</span>
+            <span class="filter-pill__chevron" aria-hidden="true">▾</span>
+          </button>
+          <div class="filter-dropdown__list" role="listbox" hidden></div>
+          <select id="outlines" class="filter-dropdown__select-hidden" aria-hidden="true" tabindex="-1">
             <option value="bold black">bold black</option>
             <option value="fine">fine</option>
             <option value="none">none</option>
           </select>
-          <span class="filter-pill__chevron" aria-hidden="true">▾</span>
-        </label>
-        <label class="filter-pill filter-pill--select">
-          <span class="filter-pill__label">Labels</span>
-          <select id="labels" class="filter-pill__select" aria-label="Labels">
+        </div>
+        <div class="filter-dropdown">
+          <button type="button" class="filter-dropdown__trigger" aria-haspopup="listbox" aria-expanded="false" aria-label="Labels">
+            <span class="filter-pill__label">Labels</span>
+            <span class="filter-pill__value" data-dropdown-display>NO</span>
+            <span class="filter-pill__chevron" aria-hidden="true">▾</span>
+          </button>
+          <div class="filter-dropdown__list" role="listbox" hidden></div>
+          <select id="labels" class="filter-dropdown__select-hidden" aria-hidden="true" tabindex="-1">
             <option value="NO">NO</option>
             <option value="English">English</option>
             <option value="French">French</option>
             <option value="other">other</option>
           </select>
-          <span class="filter-pill__chevron" aria-hidden="true">▾</span>
-        </label>
+        </div>
+        <div class="filter-dropdown">
+          <button type="button" class="filter-dropdown__trigger" aria-haspopup="listbox" aria-expanded="false" aria-label="Anthropomorphism">
+            <span class="filter-pill__label">Anthropomorphism</span>
+            <span class="filter-pill__value" data-dropdown-display>Off</span>
+            <span class="filter-pill__chevron" aria-hidden="true">▾</span>
+          </button>
+          <div class="filter-dropdown__list" role="listbox" hidden></div>
+          <select id="anthropomorphism" class="filter-dropdown__select-hidden" aria-hidden="true" tabindex="-1">
+            <option value="Off" selected>Off</option>
+            <option value="On">On</option>
+          </select>
+        </div>
       </div>
-    </div>
-    <div class="options-add-custom" aria-label="Add custom options">
-      <div class="add-custom-row"><label for="style-add" class="sr-only">Custom style</label><input type="text" id="style-add" placeholder="Add custom style"><button type="button" class="btn btn-small" id="style-add-btn">Add</button></div>
-      <div class="add-custom-row"><label for="background-add" class="sr-only">Custom background</label><input type="text" id="background-add" placeholder="Add custom background"><button type="button" class="btn btn-small" id="background-add-btn">Add</button></div>
-      <div class="add-custom-row"><label for="palette-add" class="sr-only">Custom palette</label><input type="text" id="palette-add" placeholder="Add custom palette"><button type="button" class="btn btn-small" id="palette-add-btn">Add</button></div>
-      <div class="add-custom-row"><label for="outlines-add" class="sr-only">Custom outlines</label><input type="text" id="outlines-add" placeholder="Add custom outlines"><button type="button" class="btn btn-small" id="outlines-add-btn">Add</button></div>
-      <div class="add-custom-row"><label for="label-language-add" class="sr-only">Custom language</label><input type="text" id="label-language-add" placeholder="Add custom language"><button type="button" class="btn btn-small" id="label-language-add-btn">Add</button></div>
     </div>
   </section>
 
@@ -585,24 +672,6 @@
     </fieldset>
   </section>
 
-      </div>
-      <aside class="style-preview" aria-label="Style preview example">
-        <h2 class="style-preview__title">Style preview</h2>
-        <p class="style-preview__hint">This example reflects your current grid size, style, background, palette, outlines and label settings.</p>
-        <div class="style-preview__grid-showcase">
-          <p class="style-preview__grid-label" id="style-preview-grid-label">Grid 4×4</p>
-          <div class="style-preview__grid-cells" id="style-preview-grid-cells"></div>
-        </div>
-        <div class="style-preview__example">
-          <div class="style-preview__bg" id="style-preview-bg">
-            <div class="style-preview__img-wrap" id="style-preview-img-wrap">
-              <img class="style-preview__img" id="style-preview-img" src="assets/preview/apple-minimalist-vector.svg" alt="Example apple icon in selected style">
-            </div>
-            <span class="style-preview__label" id="style-preview-label" aria-hidden="true">Apple</span>
-          </div>
-        </div>
-      </aside>
-    </div>
   </main>
 
   <script>
@@ -614,6 +683,7 @@
       var palette = document.getElementById('palette');
       var outlines = document.getElementById('outlines');
       var labels = document.getElementById('labels');
+      var anthropomorphism = document.getElementById('anthropomorphism');
       var cellsGrid = document.getElementById('cells-grid');
       var cellsHeading = document.getElementById('cells-heading');
       var cellsLegend = document.getElementById('cells-legend');
@@ -779,23 +849,70 @@
       }
 
 
-      function addOptionToSelect(selectId, addInputId, addBtnId, updatePrompt) {
-        var sel = document.getElementById(selectId);
-        var addInput = document.getElementById(addInputId);
-        var addBtn = document.getElementById(addBtnId);
-        addBtn.addEventListener('click', function () {
-          var val = (addInput.value || '').trim();
-          if (!val) return;
-          var opt = document.createElement('option');
-          opt.value = val;
-          opt.textContent = val;
-          sel.appendChild(opt);
-          sel.value = val;
-          addInput.value = '';
-          if (updatePrompt) updatePrompt();
+      function initFilterDropdowns() {
+        document.querySelectorAll('.filter-dropdown').forEach(function (wrap) {
+          var sel = wrap.querySelector('select');
+          var trigger = wrap.querySelector('.filter-dropdown__trigger');
+          var list = wrap.querySelector('.filter-dropdown__list');
+          var display = wrap.querySelector('[data-dropdown-display]');
+          if (!sel || !trigger || !list || !display) return;
+
+          function setDisplay() {
+            var opt = sel.options[sel.selectedIndex];
+            display.textContent = opt ? opt.textContent : sel.value;
+          }
+
+          function buildList() {
+            list.innerHTML = '';
+            for (var i = 0; i < sel.options.length; i++) {
+              var opt = sel.options[i];
+              var div = document.createElement('div');
+              div.className = 'filter-dropdown__option' + (opt.value === sel.value ? ' filter-dropdown__option--selected' : '');
+              div.setAttribute('role', 'option');
+              div.setAttribute('aria-selected', opt.value === sel.value);
+              div.setAttribute('data-value', opt.value);
+              div.textContent = opt.textContent;
+              div.addEventListener('click', function () {
+                var v = this.getAttribute('data-value');
+                sel.value = v;
+                setDisplay();
+                list.querySelectorAll('.filter-dropdown__option').forEach(function (o) {
+                  o.classList.toggle('filter-dropdown__option--selected', o.getAttribute('data-value') === v);
+                  o.setAttribute('aria-selected', o.getAttribute('data-value') === v);
+                });
+                list.hidden = true;
+                trigger.setAttribute('aria-expanded', 'false');
+                sel.dispatchEvent(new Event('change', { bubbles: true }));
+              });
+              list.appendChild(div);
+            }
+          }
+
+          trigger.addEventListener('click', function (e) {
+            e.stopPropagation();
+            var open = list.hidden === false;
+            if (open) {
+              list.hidden = true;
+              trigger.setAttribute('aria-expanded', 'false');
+            } else {
+              buildList();
+              list.hidden = false;
+              trigger.setAttribute('aria-expanded', 'true');
+            }
+          });
+
+          setDisplay();
         });
-        addInput.addEventListener('keydown', function (e) {
-          if (e.key === 'Enter') { addBtn.click(); e.preventDefault(); }
+
+        document.addEventListener('click', function (e) {
+          if (e.target.closest('.filter-dropdown')) return;
+          document.querySelectorAll('.filter-dropdown__list').forEach(function (list) {
+            if (!list.hidden) {
+              list.hidden = true;
+              var t = list.closest('.filter-dropdown').querySelector('.filter-dropdown__trigger');
+              if (t) t.setAttribute('aria-expanded', 'false');
+            }
+          });
         });
       }
 
@@ -815,7 +932,7 @@
           box.innerHTML =
             '<span class="cell-num">CELL ' + i + '</span>' +
             '<input type="text" id="elem-' + i + '" placeholder="Element name" aria-label="Element ' + i + ' name">' +
-            '<input type="text" id="desc-' + i + '" placeholder="Description (optional)" aria-label="Element ' + i + ' description">';
+            '<input type="hidden" id="desc-' + i + '" aria-label="Element ' + i + ' description">';
           (function (idx) {
             box.addEventListener('click', function (e) {
               e.preventDefault();
@@ -869,8 +986,11 @@
         parts.push('');
         parts.push('Uniform style for all ' + total + ' illustrations: ' + styleVal + ', clean and precise lines, ' + paletteVal + ' colors, ' + outlineVal + ' outlines. No shading, no gradients, no 3D, no pixelation, no complex texture.');
         parts.push('');
-        parts.push('No anthropomorphism: no eyes, no face, no mouth, no arms, no human features on the illustrated elements.');
-        parts.push('');
+        var anthropoVal = (document.getElementById('anthropomorphism') && document.getElementById('anthropomorphism').value) || 'Off';
+        if (anthropoVal === 'Off') {
+          parts.push('No anthropomorphism: no eyes, no face, no mouth, no arms, no human features on the illustrated elements.');
+          parts.push('');
+        }
         parts.push('In each cell, place a single centered element from the category ' + themeVal + ', front view, clearly recognizable shape, occupying about 80% of the cell, centered with equal margins on all sides.');
         parts.push('');
         if (labelsVal !== 'NO') {
@@ -907,11 +1027,7 @@
         buildCellsGrid();
       });
 
-      addOptionToSelect('style', 'style-add', 'style-add-btn', updatePrompt);
-      addOptionToSelect('background', 'background-add', 'background-add-btn', updatePrompt);
-      addOptionToSelect('palette', 'palette-add', 'palette-add-btn', updatePrompt);
-      addOptionToSelect('outlines', 'outlines-add', 'outlines-add-btn', updatePrompt);
-      addOptionToSelect('labels', 'label-language-add', 'label-language-add-btn', function () { updatePrompt(); updatePreview(); });
+      initFilterDropdowns();
 
       cellEditorPrev.addEventListener('click', goPrevCell);
       cellEditorNext.addEventListener('click', goNextCell);
@@ -929,7 +1045,7 @@
         }
       });
 
-      var inputs = [theme, gridSizeSel, styleSel, background, palette, outlines, labels];
+      var inputs = [theme, gridSizeSel, styleSel, background, palette, outlines, labels, anthropomorphism];
       inputs.forEach(function (el) {
         el.addEventListener('input', updatePrompt);
         el.addEventListener('change', updatePrompt);
