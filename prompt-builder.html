@@ -1171,9 +1171,9 @@
 
         var gridDesc = n + '×' + n;
         var parts = [];
-        parts.push('Create an image in a perfectly aligned ' + gridDesc + ' grid, with thin, sharp black borders between each cell and a ' + bgVal + ' background.');
+        parts.push('Create an image in a perfectly aligned ' + gridDesc + ' grid. The grid must be formed by thin, sharp black lines between the cells (like a table with visible grid lines), with a ' + bgVal + ' background. Do not draw a separate outline or frame around each illustration; only the grid lines separate the cells.');
         parts.push('');
-        var styleLine = 'Uniform style for all ' + total + ' illustrations: ' + styleVal + ', clean and precise lines, ' + paletteVal + ' colors, ' + outlineVal + ' outlines.';
+        var styleLine = 'Uniform style for all ' + total + ' illustrations: ' + styleVal + ', clean and precise lines, ' + paletteVal + ' colors' + (outlineVal !== 'none' ? ', ' + outlineVal + ' outlines on the illustrated elements' : '; no outlines or frames around each illustration') + '.';
         if (lightingVal && lightingVal !== '—') styleLine += ' Lighting: ' + lightingVal + '.';
         if (moodVal) styleLine += ' Mood: ' + moodVal + '.';
         if (maxColorsVal) styleLine += ' Maximum ' + maxColorsVal + ' colors per cell.';
@@ -1266,7 +1266,6 @@
         quickIdeaFeedback.className = 'quick-idea__feedback';
         generateCellsBtn.disabled = true;
         var gridSize = getGridSize();
-        console.log('[generate-cells] Sending request', { description: description, gridSize: gridSize });
         fetch('/api/generate-cells', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -1276,7 +1275,6 @@
           }),
         })
           .then(function (res) {
-            console.log('[generate-cells] Response', res.status, res.statusText);
             return res.text().then(function (text) {
               var data;
               try {
@@ -1290,7 +1288,6 @@
             });
           })
           .then(function (data) {
-            console.log('[generate-cells] Success', data.cells ? data.cells.length : 0, 'cells');
             var cells = data.cells || [];
             var total = getTotalCells();
             for (var i = 1; i <= total; i++) {
@@ -1308,7 +1305,6 @@
             quickIdeaFeedback.className = 'quick-idea__feedback success';
           })
           .catch(function (err) {
-            console.error('[generate-cells] Error', err);
             var msg = err.message || 'Failed to generate cells.';
             if (err.message && err.message.indexOf('Failed to fetch') !== -1) {
               msg = 'Network error: is the app running with /api (e.g. Vercel or vercel dev)?';
