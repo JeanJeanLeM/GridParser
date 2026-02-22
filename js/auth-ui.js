@@ -25,18 +25,28 @@
     if (user) user.style.display = 'none';
   }
 
+  function getInitial(str) {
+    if (!str || typeof str !== 'string') return '?';
+    var trimmed = str.trim();
+    if (!trimmed) return '?';
+    var first = trimmed[0].toUpperCase();
+    return /[A-Z0-9]/.test(first) ? first : '?';
+  }
+
   function showUser(email) {
     var loading = getEl('auth-loading');
     var guest = getEl('auth-guest');
     var user = getEl('auth-user');
     var emailEl = getEl('auth-user-email');
     var profileEmailEl = getEl('auth-profile-email');
+    var initialEl = getEl('auth-user-initial');
     if (loading) loading.style.display = 'none';
     if (guest) guest.style.display = 'none';
     if (user) user.style.display = 'flex';
     var text = email || 'Signed in';
     if (emailEl) emailEl.textContent = text;
     if (profileEmailEl) profileEmailEl.textContent = text;
+    if (initialEl) initialEl.textContent = getInitial(text);
   }
 
   function setupProfileDropdown() {

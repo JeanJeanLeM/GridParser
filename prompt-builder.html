@@ -332,6 +332,61 @@
       outline: 2px solid var(--accent);
       outline-offset: 2px;
     }
+    .generated-image-area {
+      margin-top: 1rem;
+      padding-top: 1rem;
+      border-top: 1px solid var(--border);
+    }
+    .generated-image-area__img {
+      max-width: 100%;
+      height: auto;
+      display: block;
+      border-radius: var(--radius-input);
+      border: 1px solid var(--border-input);
+    }
+    .generated-image-area__actions {
+      margin-top: 0.75rem;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+    }
+    .generated-image-area__error {
+      margin-top: 0.5rem;
+      font-size: var(--text-sm);
+      color: var(--error, #c00);
+    }
+    .quick-idea__hint {
+      font-size: var(--text-sm);
+      color: var(--text-muted);
+      margin: 0 0 0.75rem 0;
+      line-height: 1.4;
+    }
+    .quick-idea__row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      align-items: center;
+    }
+    .quick-idea__input {
+      flex: 1;
+      min-width: 200px;
+      padding: var(--input-padding);
+      font-size: 1rem;
+      border: 1px solid var(--border-input);
+      border-radius: var(--radius-input);
+      background: var(--card-bg);
+    }
+    .quick-idea__input:focus {
+      outline: none;
+      border-color: var(--text-secondary);
+    }
+    .quick-idea__feedback {
+      margin: 0.5rem 0 0 0;
+      font-size: var(--text-sm);
+      min-height: 1.5em;
+    }
+    .quick-idea__feedback.error { color: var(--error, #c00); }
+    .quick-idea__feedback.success { color: var(--success, #0a0); }
     .add-custom-row {
       display: flex;
       gap: 0.5rem;
@@ -526,7 +581,16 @@
         <textarea class="prompt-output" id="prompt-output" aria-label="Generated prompt (editable)"></textarea>
         <div class="copy-row">
           <button type="button" class="btn btn-primary" id="copy-btn">Copy to clipboard</button>
+          <button type="button" class="btn" id="generate-image-btn">Generate image</button>
           <span class="copy-feedback" id="copy-feedback" aria-live="polite"></span>
+        </div>
+        <div id="generated-image-area" class="generated-image-area" style="display:none;" aria-live="polite">
+          <img id="generated-image-img" src="" alt="Generated grid image" class="generated-image-area__img">
+          <div id="generated-image-actions" class="generated-image-area__actions" style="display:none;">
+            <a id="generated-image-download" href="#" download="grid-image.png" class="btn btn-outline">Download</a>
+            <a id="generated-image-open-grid2icons" href="index.html" class="btn">Open in Grid2Icons</a>
+          </div>
+          <p id="generated-image-error" class="generated-image-area__error" style="display:none;"></p>
         </div>
         <p class="prompt-helper">You can edit the prompt above. Changing options will regenerate it. Paste into ChatGPT (DALL·E), Midjourney, or any image AI, then bring the resulting grid image back to <a href="index.html">Grid2Icons</a> to cut it into individual tiles.</p>
       </div>
@@ -547,6 +611,16 @@
         </div>
       </aside>
     </div>
+  </section>
+
+  <section class="card card--quick-idea" aria-label="Quick idea">
+    <h2>Quick idea</h2>
+    <p class="quick-idea__hint">Describe what you want in one sentence; an AI will fill the grid cells for you.</p>
+    <div class="quick-idea__row">
+      <input type="text" id="quick-idea-input" class="quick-idea__input" placeholder="e.g. I want a set of icons for Fruits" aria-label="Quick idea description">
+      <button type="button" class="btn btn-primary" id="generate-cells-btn">Generate cells</button>
+    </div>
+    <p id="quick-idea-feedback" class="quick-idea__feedback" aria-live="polite"></p>
   </section>
 
   <section class="card card--options" aria-label="Global options">
@@ -799,6 +873,16 @@
       }
       var copyBtn = document.getElementById('copy-btn');
       var copyFeedback = document.getElementById('copy-feedback');
+      var quickIdeaInput = document.getElementById('quick-idea-input');
+      var generateCellsBtn = document.getElementById('generate-cells-btn');
+      var quickIdeaFeedback = document.getElementById('quick-idea-feedback');
+      var generateImageBtn = document.getElementById('generate-image-btn');
+      var generatedImageArea = document.getElementById('generated-image-area');
+      var generatedImageImg = document.getElementById('generated-image-img');
+      var generatedImageDownload = document.getElementById('generated-image-download');
+      var generatedImageOpenGrid2icons = document.getElementById('generated-image-open-grid2icons');
+      var generatedImageActions = document.getElementById('generated-image-actions');
+      var generatedImageError = document.getElementById('generated-image-error');
       var stylePreviewBg = document.getElementById('style-preview-bg');
       var stylePreviewImgWrap = document.getElementById('style-preview-img-wrap');
       var stylePreviewImg = document.getElementById('style-preview-img');
@@ -1166,7 +1250,126 @@
       });
 
       buildCellsGrid();
+      updatePrompt();
       updatePreview();
+
+      var GENERATED_IMAGE_KEY = 'generatedGridImage';
+
+      generateCellsBtn.addEventListener('click', function () {
+        var description = (quickIdeaInput.value || '').trim();
+        if (!description) {
+          quickIdeaFeedback.textContent = 'Enter a short description first.';
+          quickIdeaFeedback.className = 'quick-idea__feedback error';
+          return;
+        }
+        quickIdeaFeedback.textContent = 'Generating…';
+        quickIdeaFeedback.className = 'quick-idea__feedback';
+        generateCellsBtn.disabled = true;
+        fetch('/api/generate-cells', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            description: description,
+            gridSize: getGridSize(),
+          }),
+        })
+          .then(function (res) {
+            return res.json().then(function (data) {
+              if (!res.ok) throw new Error(data.error || data.details || 'Request failed');
+              return data;
+            });
+          })
+          .then(function (data) {
+            var cells = data.cells || [];
+            var total = getTotalCells();
+            for (var i = 1; i <= total; i++) {
+              var c = cells[i - 1] || { name: '', description: '' };
+              var elemEl = document.getElementById('elem-' + i);
+              var descEl = document.getElementById('desc-' + i);
+              if (elemEl) elemEl.value = c.name || '';
+              if (descEl) descEl.value = c.description || '';
+            }
+            updatePrompt();
+            if (currentEditorCell >= 1 && currentEditorCell <= total) {
+              syncCellToEditor(currentEditorCell);
+            }
+            quickIdeaFeedback.textContent = 'Cells filled. You can edit them below.';
+            quickIdeaFeedback.className = 'quick-idea__feedback success';
+          })
+          .catch(function (err) {
+            quickIdeaFeedback.textContent = err.message || 'Failed to generate cells.';
+            quickIdeaFeedback.className = 'quick-idea__feedback error';
+          })
+          .then(function () {
+            generateCellsBtn.disabled = false;
+          });
+      });
+
+      generateImageBtn.addEventListener('click', function () {
+        var promptText = (promptOutput.value || buildPrompt() || '').trim();
+        if (!promptText) {
+          generatedImageError.textContent = 'Build or paste a prompt first.';
+          generatedImageError.style.display = 'block';
+          generatedImageArea.style.display = 'block';
+          generatedImageImg.style.display = 'none';
+          generatedImageActions.style.display = 'none';
+          return;
+        }
+        generatedImageError.style.display = 'none';
+        generatedImageArea.style.display = 'block';
+        generatedImageImg.style.display = 'none';
+        generatedImageImg.removeAttribute('src');
+        generatedImageActions.style.display = 'none';
+        generateImageBtn.disabled = true;
+        fetch('/api/generate-image', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ prompt: promptText }),
+        })
+          .then(function (res) {
+            return res.json().then(function (data) {
+              if (!res.ok) throw new Error(data.error || data.details || 'Request failed');
+              return data;
+            });
+          })
+          .then(function (data) {
+            var dataUrl = null;
+            if (data.imageBase64) {
+              dataUrl = 'data:image/png;base64,' + data.imageBase64;
+            } else if (data.imageUrl) {
+              dataUrl = data.imageUrl;
+            }
+            if (!dataUrl) {
+              throw new Error('No image in response');
+            }
+            generatedImageImg.src = dataUrl;
+            generatedImageImg.style.display = 'block';
+            generatedImageImg.alt = 'Generated grid image';
+            generatedImageDownload.href = dataUrl;
+            generatedImageDownload.download = 'grid-image.png';
+            generatedImageActions.style.display = 'flex';
+            try {
+              sessionStorage.setItem(GENERATED_IMAGE_KEY, dataUrl);
+            } catch (e) {}
+            generatedImageError.style.display = 'none';
+          })
+          .catch(function (err) {
+            generatedImageError.textContent = err.message || 'Failed to generate image.';
+            generatedImageError.style.display = 'block';
+          })
+          .then(function () {
+            generateImageBtn.disabled = false;
+          });
+      });
+
+      generatedImageOpenGrid2icons.addEventListener('click', function (e) {
+        try {
+          var url = sessionStorage.getItem(GENERATED_IMAGE_KEY);
+          if (url) {
+            sessionStorage.setItem('galleryPrompt', promptOutput.value || '');
+          }
+        } catch (e) {}
+      });
 
       copyBtn.addEventListener('click', function () {
         promptOutput.select();

@@ -1216,6 +1216,16 @@
           downloadBtn.disabled = false;
         });
       });
+
+      var storedImageUrl;
+      try { storedImageUrl = sessionStorage.getItem('generatedGridImage'); } catch (e) {}
+      if (storedImageUrl) {
+        try { sessionStorage.removeItem('generatedGridImage'); } catch (e) {}
+        var img = new Image();
+        img.onload = function () { setupGridEditor(img); };
+        img.onerror = function () { showError('Could not load generated image.'); };
+        img.src = storedImageUrl;
+      }
     })();
   </script>
   <script src="js/auth0-config.js"></script>

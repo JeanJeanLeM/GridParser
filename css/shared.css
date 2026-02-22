@@ -187,6 +187,21 @@
   gap: 0.25rem;
 }
 
+.profile-dropdown__initial {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.5em;
+  height: 1.5em;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  font-size: 0.85em;
+  font-weight: 600;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
 .profile-dropdown__chevron {
   font-size: 0.65em;
   opacity: 0.8;
