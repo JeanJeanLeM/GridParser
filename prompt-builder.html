@@ -232,6 +232,9 @@
     .cells-grid.size-3 { grid-template-columns: repeat(3, 1fr); }
     .cells-grid.size-4 { grid-template-columns: repeat(4, 1fr); }
     .cells-grid.size-5 { grid-template-columns: repeat(5, 1fr); }
+    .cells-grid.size-auto {
+      grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+    }
     .cell-box {
       aspect-ratio: 1;
       border: 1px solid var(--border-light);
@@ -607,9 +610,9 @@
   <header class="app-header">
     <div class="app-header__inner">
       <a href="index.html" class="app-header__logo">Grid<span class="app-header__logo-num">2</span>Icons</a>
-      <a href="index.html" class="app-header__nav">← GRID SPLITTER</a>
+      <a href="index.html" class="app-header__nav">Grid Splitter</a>
+      <a href="prompt-builder.html" class="app-header__nav">Prompt Builder</a>
       <a href="gallery.html" class="app-header__nav">Gallery</a>
-      <a href="premium.html" class="app-header__nav">Premium</a>
       <div class="app-header__auth">
         <span id="auth-loading" class="auth-loading">Loading…</span>
         <span id="auth-guest" class="auth-guest" style="display:none;">
@@ -1375,7 +1378,8 @@
 
       function buildCellsGrid() {
         var total = getTotalCells();
-        cellsGrid.className = 'cells-grid size-' + total;
+        var sizeClass = (total >= 2 && total <= 5) ? 'size-' + total : 'size-auto';
+        cellsGrid.className = 'cells-grid ' + sizeClass;
         cellsGrid.innerHTML = '';
         for (var i = 1; i <= total; i++) {
           var box = document.createElement('div');

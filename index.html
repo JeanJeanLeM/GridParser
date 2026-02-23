@@ -388,9 +388,9 @@
   <header class="app-header">
     <div class="app-header__inner">
       <a href="index.html" class="app-header__logo">Grid<span class="app-header__logo-num">2</span>Icons</a>
-      <a href="prompt-builder.html" class="app-header__nav">PROMPT BUILDER →</a>
+      <a href="index.html" class="app-header__nav">Grid Splitter</a>
+      <a href="prompt-builder.html" class="app-header__nav">Prompt Builder</a>
       <a href="gallery.html" class="app-header__nav">Gallery</a>
-      <a href="premium.html" class="app-header__nav">Premium</a>
       <div class="app-header__auth">
         <span id="auth-loading" class="auth-loading">Loading…</span>
         <span id="auth-guest" class="auth-guest" style="display:none;">
@@ -441,7 +441,7 @@
       <h2 id="step2-title" class="section-title">Adjust cutting lines</h2>
     </div>
     <p class="grid-editor-intro" id="grid-editor-intro">Grid and outer borders are auto-detected on upload. Drag <strong style="color: rgba(50,100,220,0.95);">blue</strong> (outer) and <strong style="color: rgba(220,50,50,0.9);">red</strong> (inner) lines to set where tiles are cut. These lines are guides only—they are not drawn on your image and do not appear in the downloaded tiles.</p>
-    <p class="grid-editor-intro grid-editor-intro--freeform" id="grid-editor-intro-freeform" style="display: none;">Freeform mode: segments define cell boundaries. Drag endpoints to resize; add or delete segments; exclude cells from export. Auto-detect finds white gaps.</p>
+    <p class="grid-editor-intro grid-editor-intro--freeform" id="grid-editor-intro-freeform" style="display: none;">Freeform mode: auto-detect finds forms (black-line grid or panel shapes). Click a form to select it; add or delete forms; exclude cells from export.</p>
     <div class="grid-editor-legend" id="grid-editor-legend">
       <span><span class="legend-dot legend-dot--blue" aria-hidden="true"></span> Outer border lines</span>
       <span><span class="legend-dot legend-dot--red" aria-hidden="true"></span> Inner cutting lines (where each tile is split)</span>
@@ -449,7 +449,7 @@
     <div class="editor-mode-row">
       <span class="editor-mode-label">Editor:</span>
       <label class="editor-mode-option"><input type="radio" name="editor-mode" value="uniform" checked> Uniform grid</label>
-      <label class="editor-mode-option"><input type="radio" name="editor-mode" value="freeform"> Freeform segments</label>
+      <label class="editor-mode-option"><input type="radio" name="editor-mode" value="freeform"> Freeform forms</label>
     </div>
     <div class="grid-editor-toolbar">
       <div class="grid-editor-toolbar__row grid-editor-toolbar__row--grid" id="uniform-grid-toolbar">
@@ -480,9 +480,8 @@
         </div>
       </div>
       <div class="grid-editor-toolbar__row grid-editor-toolbar__row--freeform" id="freeform-toolbar" style="display: none;">
-        <button type="button" class="btn btn-secondary" id="add-segment-h">Add horizontal</button>
-        <button type="button" class="btn btn-secondary" id="add-segment-v">Add vertical</button>
-        <button type="button" class="btn btn-secondary" id="delete-segment-btn" disabled>Delete segment</button>
+        <button type="button" class="btn btn-secondary" id="add-form-btn">Add form</button>
+        <button type="button" class="btn btn-secondary" id="delete-form-btn" disabled>Delete form</button>
         <button type="button" class="btn btn-secondary" id="exclude-cell-btn" disabled>Exclude cell</button>
       </div>
       <div class="grid-editor-toolbar__row grid-editor-toolbar__row--controls">
@@ -520,7 +519,7 @@
         <button type="button" class="btn btn-secondary" id="auto-detect-btn">Auto-detect grid</button>
         <button type="button" class="btn btn-secondary" id="reset-lines">Reset lines</button>
         <button type="button" class="btn btn-secondary" id="freeform-autodetect-btn" style="display: none;">Auto-detect cells</button>
-        <button type="button" class="btn btn-secondary" id="freeform-reset-btn" style="display: none;">Reset segments</button>
+        <button type="button" class="btn btn-secondary" id="freeform-reset-btn" style="display: none;">Reset forms</button>
         <button type="button" class="btn btn-primary" id="cut-btn">Cut and create images</button>
       </div>
     </div>
@@ -559,13 +558,10 @@
       var editorMode = 'uniform';
       var xBounds = [];
       var yBounds = [];
-      var segments = [];
       var freeformCells = [];
       var excludedCellIds = {};
-      var selectedSegmentIndex = null;
       var selectedCellIndex = null;
       var drag = { active: false, axis: null, index: null };
-      var freeformDrag = { active: false, segmentIndex: null, whichEnd: null };
       var gridImg = document.getElementById('grid-image');
       var gridOverlay = document.getElementById('grid-overlay');
       var gridWrapper = document.getElementById('grid-preview-wrapper');
@@ -700,54 +696,20 @@
         function dispX(px) { return MARGIN + (px / w) * baseWidth; }
         function dispY(py) { return MARGIN + (py / h) * baseHeight; }
         if (getEditorMode() === 'freeform') {
-          if (freeformCells.length > 0) {
+          for (var fc = 0; fc < freeformCells.length; fc++) {
+            var cell = freeformCells[fc];
+            var selected = fc === selectedCellIndex;
+            var excluded = excludedCellIds[fc];
             ctx.save();
-            ctx.strokeStyle = 'rgba(70, 170, 90, 0.95)';
-            ctx.lineWidth = Math.max(1, thickness);
-            for (var fc = 0; fc < freeformCells.length; fc++) {
-              var cell = freeformCells[fc];
-              ctx.strokeRect(
-                dispX(cell.x),
-                dispY(cell.y),
-                (cell.w / w) * baseWidth,
-                (cell.h / h) * baseHeight
-              );
-            }
-            ctx.restore();
-          }
-          if (segments.length === 0) return;
-          ctx.strokeStyle = 'rgba(220, 50, 50, 0.9)';
-          ctx.lineWidth = thickness;
-          ctx.beginPath();
-          for (var s = 0; s < segments.length; s++) {
-            var seg = segments[s];
-            ctx.moveTo(dispX(seg.x1), dispY(seg.y1));
-            ctx.lineTo(dispX(seg.x2), dispY(seg.y2));
-          }
-          ctx.stroke();
-          for (var hs = 0; hs < segments.length; hs++) {
-            var hseg = segments[hs];
-            var selected = hs === selectedSegmentIndex;
-            var hx1 = dispX(hseg.x1);
-            var hy1 = dispY(hseg.y1);
-            var hx2 = dispX(hseg.x2);
-            var hy2 = dispY(hseg.y2);
-            if (selected) {
-              ctx.save();
-              ctx.strokeStyle = 'rgba(255, 210, 60, 0.95)';
-              ctx.lineWidth = Math.max(2, thickness + 1);
-              ctx.beginPath();
-              ctx.moveTo(hx1, hy1);
-              ctx.lineTo(hx2, hy2);
-              ctx.stroke();
-              ctx.restore();
-            }
-            ctx.save();
-            ctx.fillStyle = selected ? 'rgba(255, 210, 60, 0.95)' : 'rgba(220, 50, 50, 0.95)';
-            ctx.beginPath();
-            ctx.arc(hx1, hy1, 4, 0, Math.PI * 2);
-            ctx.arc(hx2, hy2, 4, 0, Math.PI * 2);
-            ctx.fill();
+            ctx.strokeStyle = excluded ? 'rgba(120, 120, 120, 0.9)' : (selected ? 'rgba(255, 200, 60, 0.95)' : 'rgba(70, 170, 90, 0.95)');
+            ctx.lineWidth = selected ? Math.max(2, thickness + 1) : Math.max(1, thickness);
+            ctx.setLineDash(excluded ? [6, 4] : []);
+            ctx.strokeRect(
+              dispX(cell.x),
+              dispY(cell.y),
+              (cell.w / w) * baseWidth,
+              (cell.h / h) * baseHeight
+            );
             ctx.restore();
           }
           return;
@@ -796,10 +758,10 @@
       }
 
       function updateFreeformButtons() {
-        var delBtn = document.getElementById('delete-segment-btn');
+        var delBtn = document.getElementById('delete-form-btn');
         var excludeBtn = document.getElementById('exclude-cell-btn');
-        if (delBtn) delBtn.disabled = selectedSegmentIndex == null;
-        if (excludeBtn) excludeBtn.disabled = true;
+        if (delBtn) delBtn.disabled = selectedCellIndex == null;
+        if (excludeBtn) excludeBtn.disabled = selectedCellIndex == null;
       }
 
       function clamp01(v, lo, hi) {
@@ -816,49 +778,13 @@
         return { x: x, y: y };
       }
 
-      function isHorizontalSegment(seg) {
-        return Math.abs(seg.y2 - seg.y1) <= Math.abs(seg.x2 - seg.x1);
-      }
-
-      function hitFreeformSegment(imgX, imgY) {
-        if (!currentImage || !segments.length) return null;
-        var w = currentImage.naturalWidth;
-        var hitPx = Math.max(8, w / 80);
-        var best = null;
-        var bestDist = Infinity;
-        function consider(dist, info) {
-          if (dist <= hitPx && dist < bestDist) {
-            best = info;
-            bestDist = dist;
-          }
+      function hitFreeformCell(imgX, imgY) {
+        if (!currentImage || !freeformCells.length) return null;
+        for (var i = freeformCells.length - 1; i >= 0; i--) {
+          var c = freeformCells[i];
+          if (imgX >= c.x && imgX <= c.x + c.w && imgY >= c.y && imgY <= c.y + c.h) return i;
         }
-        for (var i = 0; i < segments.length; i++) {
-          var seg = segments[i];
-          var d1 = Math.hypot(imgX - seg.x1, imgY - seg.y1);
-          var d2 = Math.hypot(imgX - seg.x2, imgY - seg.y2);
-          consider(d1, { segmentIndex: i, whichEnd: 'start' });
-          consider(d2, { segmentIndex: i, whichEnd: 'end' });
-        }
-        if (best) return best;
-        for (var j = 0; j < segments.length; j++) {
-          var s = segments[j];
-          if (isHorizontalSegment(s)) {
-            var minX = Math.min(s.x1, s.x2) - hitPx;
-            var maxX = Math.max(s.x1, s.x2) + hitPx;
-            if (imgX >= minX && imgX <= maxX) {
-              var dy = Math.abs(imgY - s.y1);
-              consider(dy, { segmentIndex: j, whichEnd: 'body' });
-            }
-          } else {
-            var minY = Math.min(s.y1, s.y2) - hitPx;
-            var maxY = Math.max(s.y1, s.y2) + hitPx;
-            if (imgY >= minY && imgY <= maxY) {
-              var dx = Math.abs(imgX - s.x1);
-              consider(dx, { segmentIndex: j, whichEnd: 'body' });
-            }
-          }
-        }
-        return best;
+        return null;
       }
 
       function setupGridEditor(img) {
@@ -947,27 +873,51 @@
         return true;
       }
 
-      function rectsToSegments(rects, w, h) {
-        var out = [];
-        var add = function (x1, y1, x2, y2) {
-          out.push({ x1: Math.max(0, Math.min(w, x1)), y1: Math.max(0, Math.min(h, y1)), x2: Math.max(0, Math.min(w, x2)), y2: Math.max(0, Math.min(h, y2)) });
-        };
-        for (var i = 0; i < rects.length; i++) {
-          var r = rects[i];
-          add(r.x, r.y, r.x + r.w, r.y);
-          add(r.x, r.y + r.h, r.x + r.w, r.y + r.h);
-          add(r.x, r.y, r.x, r.y + r.h);
-          add(r.x + r.w, r.y, r.x + r.w, r.y + r.h);
+      function boundsToCells(xBounds, yBounds) {
+        var cells = [];
+        for (var j = 0; j < yBounds.length - 1; j++) {
+          for (var i = 0; i < xBounds.length - 1; i++) {
+            cells.push({
+              x: xBounds[i],
+              y: yBounds[j],
+              w: xBounds[i + 1] - xBounds[i],
+              h: yBounds[j + 1] - yBounds[j]
+            });
+          }
         }
-        return out;
+        return cells;
+      }
+
+      function tryBlackLineGrid(w, h) {
+        if (typeof gridDetect === 'undefined' || !gridDetect.detectGridLines) return [];
+        var layouts = [[2, 3], [3, 2], [2, 2], [3, 3], [1, 2], [2, 1], [1, 3], [3, 1], [4, 2], [2, 4]];
+        var opts = {
+          blackThreshold: 100,
+          darknessThreshold: 0.12,
+          minLinePx: 1,
+          minGap: 6
+        };
+        for (var L = 0; L < layouts.length; L++) {
+          var cols = layouts[L][0];
+          var rows = layouts[L][1];
+          opts.gridCols = cols;
+          opts.gridRows = rows;
+          var result = gridDetect.detectGridLines(currentImage, opts);
+          var wantX = cols + 1;
+          var wantY = rows + 1;
+          if (result && result.xBounds && result.xBounds.length === wantX && result.yBounds && result.yBounds.length === wantY) {
+            return boundsToCells(result.xBounds, result.yBounds);
+          }
+        }
+        return [];
       }
 
       function runFreeformAutoDetect() {
-        if (!currentImage || typeof segmentDetect === 'undefined') return false;
+        if (!currentImage) return false;
         var w = currentImage.naturalWidth;
         var h = currentImage.naturalHeight;
-        var cellsFound = [];
-        if (segmentDetect.detectPanelRects) {
+        var cellsFound = tryBlackLineGrid(w, h);
+        if (cellsFound.length === 0 && typeof segmentDetect !== 'undefined' && segmentDetect.detectPanelRects) {
           var panelPresets = [
             { nonWhiteThreshold: 246, minAreaFraction: 0.015, minWFrac: 0.1, minHFrac: 0.1, minFillRatio: 0.22, padPx: 1, mergeGapPx: 1 },
             { nonWhiteThreshold: 242, minAreaFraction: 0.012, minWFrac: 0.08, minHFrac: 0.08, minFillRatio: 0.18, padPx: 1, mergeGapPx: 2 },
@@ -979,31 +929,12 @@
           }
         }
         freeformCells = cellsFound;
-        if (freeformCells.length) {
-          segments = rectsToSegments(freeformCells, w, h);
-        } else if (segmentDetect.detectWhiteGaps) {
-          var optionPresets = [
-            { whiteThreshold: 230, minRunFraction: 0.14, minGapPx: 2, maxGapPx: 24, mergeGap: 1, maxTrackGapPx: 2, minOverlapRatio: 0.5 },
-            { whiteThreshold: 220, minRunFraction: 0.12, minGapPx: 2, maxGapPx: 28, mergeGap: 2, maxTrackGapPx: 2, minOverlapRatio: 0.45 },
-            { whiteThreshold: 210, minRunFraction: 0.1, minGapPx: 2, maxGapPx: 32, mergeGap: 2, maxTrackGapPx: 3, minOverlapRatio: 0.4 },
-            { whiteThreshold: 198, minRunFraction: 0.08, minGapPx: 1, maxGapPx: 40, mergeGap: 3, maxTrackGapPx: 3, minOverlapRatio: 0.35 }
-          ];
-          var found = [];
-          for (var i = 0; i < optionPresets.length; i++) {
-            found = segmentDetect.detectWhiteGaps(currentImage, optionPresets[i]) || [];
-            if (found.length) break;
-          }
-          segments = found;
-        } else {
-          segments = [];
-        }
         excludedCellIds = {};
-        selectedSegmentIndex = null;
         selectedCellIndex = null;
         updateFreeformButtons();
         updateCutButtonLabel();
         drawOverlay();
-        return freeformCells.length > 0 || segments.length > 0;
+        return freeformCells.length > 0;
       }
 
       function handleFile(file) {
@@ -1037,25 +968,18 @@
         var splitPromise;
 
         if (mode === 'freeform') {
-          if (typeof segmentSplit === 'undefined' || !segmentSplit.splitBySegments) {
+          if (typeof segmentSplit === 'undefined' || !segmentSplit.splitByCells) {
             showError('Freeform splitter not loaded.');
             return;
           }
-          if (!freeformCells.length && !segments.length && !runFreeformAutoDetect()) {
-            showError('No freeform forms detected. Click Auto-detect cells or add segments manually.');
+          if (!freeformCells.length && !runFreeformAutoDetect()) {
+            showError('No forms detected. Click Auto-detect cells or add a form.');
             return;
           }
-          if (freeformCells.length && segmentSplit.splitByCells) {
-            splitPromise = segmentSplit.splitByCells(currentImage, freeformCells, {
-              trimPixels: getTrimPixels(),
-              excludedCellIds: excludedCellIds
-            });
-          } else {
-            splitPromise = segmentSplit.splitBySegments(currentImage, segments, {
-              trimPixels: getTrimPixels(),
-              excludedCellIds: excludedCellIds
-            });
-          }
+          splitPromise = segmentSplit.splitByCells(currentImage, freeformCells, {
+            trimPixels: getTrimPixels(),
+            excludedCellIds: excludedCellIds
+          });
         } else {
           if (typeof gridSplit === 'undefined' || !gridSplit.splitGridCustom) {
             showError('Grid splitter not loaded.');
@@ -1075,7 +999,7 @@
             return;
           }
           if (!blobs.length) {
-            showError('No tiles were produced. Check segments/exclusions and try again.');
+            showError('No tiles were produced. Check exclusions and try again.');
             return;
           }
           tileBlobs = blobs;
@@ -1168,22 +1092,8 @@
         var imgX = clamp01(pt.x, 0, w);
         var imgY = clamp01(pt.y, 0, h);
         if (getEditorMode() === 'freeform') {
-          var fHit = hitFreeformSegment(imgX, imgY);
-          if (!fHit) {
-            selectedSegmentIndex = null;
-            updateFreeformButtons();
-            drawOverlay();
-            return;
-          }
-          e.preventDefault();
-          selectedSegmentIndex = fHit.segmentIndex;
-          freeformDrag.active = true;
-          freeformDrag.segmentIndex = fHit.segmentIndex;
-          freeformDrag.whichEnd = fHit.whichEnd;
-          freeformDrag.startX = imgX;
-          freeformDrag.startY = imgY;
-          var seg0 = segments[fHit.segmentIndex];
-          freeformDrag.orig = { x1: seg0.x1, y1: seg0.y1, x2: seg0.x2, y2: seg0.y2 };
+          var cellIdx = hitFreeformCell(imgX, imgY);
+          selectedCellIndex = cellIdx;
           updateFreeformButtons();
           drawOverlay();
           return;
@@ -1197,82 +1107,6 @@
         }
       });
       document.addEventListener('mousemove', function (e) {
-        if (freeformDrag.active && currentImage && getEditorMode() === 'freeform') {
-          // Once user starts modifying lines, stop using auto-detected form rectangles.
-          freeformCells = [];
-          var ptF = getImagePointFromMouseEvent(e);
-          if (!ptF) return;
-          var wF = currentImage.naturalWidth;
-          var hF = currentImage.naturalHeight;
-          var fx = clamp01(ptF.x, 0, wF);
-          var fy = clamp01(ptF.y, 0, hF);
-          var idx = freeformDrag.segmentIndex;
-          if (idx == null || !segments[idx]) return;
-          var seg = segments[idx];
-          var horizontal = isHorizontalSegment(seg);
-          if (freeformDrag.whichEnd === 'start') {
-            if (horizontal) {
-              seg.x1 = fx;
-              seg.y1 = seg.y2;
-            } else {
-              seg.y1 = fy;
-              seg.x1 = seg.x2;
-            }
-          } else if (freeformDrag.whichEnd === 'end') {
-            if (horizontal) {
-              seg.x2 = fx;
-              seg.y2 = seg.y1;
-            } else {
-              seg.y2 = fy;
-              seg.x2 = seg.x1;
-            }
-          } else if (freeformDrag.whichEnd === 'body' && freeformDrag.orig) {
-            var dxF = fx - freeformDrag.startX;
-            var dyF = fy - freeformDrag.startY;
-            if (horizontal) {
-              var oy = freeformDrag.orig.y1 + dyF;
-              var ox1 = freeformDrag.orig.x1 + dxF;
-              var ox2 = freeformDrag.orig.x2 + dxF;
-              var minX = Math.min(ox1, ox2);
-              var maxX = Math.max(ox1, ox2);
-              if (minX < 0) {
-                ox1 -= minX;
-                ox2 -= minX;
-              }
-              if (maxX > wF) {
-                var shiftX = maxX - wF;
-                ox1 -= shiftX;
-                ox2 -= shiftX;
-              }
-              seg.x1 = ox1;
-              seg.x2 = ox2;
-              seg.y1 = clamp01(oy, 0, hF);
-              seg.y2 = seg.y1;
-            } else {
-              var ox = freeformDrag.orig.x1 + dxF;
-              var oy1 = freeformDrag.orig.y1 + dyF;
-              var oy2 = freeformDrag.orig.y2 + dyF;
-              var minY = Math.min(oy1, oy2);
-              var maxY = Math.max(oy1, oy2);
-              if (minY < 0) {
-                oy1 -= minY;
-                oy2 -= minY;
-              }
-              if (maxY > hF) {
-                var shiftY = maxY - hF;
-                oy1 -= shiftY;
-                oy2 -= shiftY;
-              }
-              seg.y1 = oy1;
-              seg.y2 = oy2;
-              seg.x1 = clamp01(ox, 0, wF);
-              seg.x2 = seg.x1;
-            }
-          }
-          drawOverlay();
-          updateCutButtonLabel();
-          return;
-        }
         if (!drag.active || !currentImage) return;
         var rect = gridOverlay.getBoundingClientRect();
         var w = currentImage.naturalWidth;
@@ -1300,12 +1134,6 @@
         drag.active = false;
         drag.axis = null;
         drag.index = null;
-        freeformDrag.active = false;
-        freeformDrag.segmentIndex = null;
-        freeformDrag.whichEnd = null;
-        freeformDrag.startX = null;
-        freeformDrag.startY = null;
-        freeformDrag.orig = null;
       });
 
       document.getElementById('loupe-btn').addEventListener('click', function () {
@@ -1335,16 +1163,7 @@
         var mode = getEditorMode();
         var n;
         if (mode === 'freeform') {
-          if (freeformCells.length > 0) {
-            n = freeformCells.length;
-          } else if (currentImage && segments.length && typeof segmentArrangement !== 'undefined' && segmentArrangement.segmentsToCells) {
-            var w = currentImage.naturalWidth;
-            var h = currentImage.naturalHeight;
-            var cells = segmentArrangement.segmentsToCells(w, h, segments) || [];
-            n = cells.length;
-          } else {
-            n = 0;
-          }
+          n = freeformCells.length;
         } else {
           var fmt = getGridFormat();
           n = fmt.rows * fmt.cols;
@@ -1434,7 +1253,6 @@
         if (freeformAutodetectBtn) freeformAutodetectBtn.style.display = isFreeform ? '' : 'none';
         if (freeformResetBtn) freeformResetBtn.style.display = isFreeform ? '' : 'none';
         if (introFreeform) introFreeform.style.display = isFreeform ? 'block' : 'none';
-        if (!isFreeform) selectedSegmentIndex = null;
         updateFreeformButtons();
         updateCutButtonLabel();
         if (currentImage && isFreeform) {
@@ -1478,51 +1296,46 @@
           showError('Load an image first.');
           return;
         }
-        if (!runFreeformAutoDetect()) showError('Could not detect segments. Try adding segments manually.');
+        if (!runFreeformAutoDetect()) showError('Could not detect forms. Try adding a form manually.');
       });
       document.getElementById('freeform-reset-btn').addEventListener('click', function () {
         if (currentImage) {
-          segments = [];
           freeformCells = [];
           excludedCellIds = {};
-          selectedSegmentIndex = null;
           selectedCellIndex = null;
           updateFreeformButtons();
           updateCutButtonLabel();
           drawOverlay();
         }
       });
-      document.getElementById('add-segment-h').addEventListener('click', function () {
+      document.getElementById('add-form-btn').addEventListener('click', function () {
         if (!currentImage) return;
-        freeformCells = [];
         var w = currentImage.naturalWidth;
         var h = currentImage.naturalHeight;
-        var y = h / 2;
-        segments.push({ x1: w * 0.1, y1: y, x2: w * 0.9, y2: y });
-        selectedSegmentIndex = segments.length - 1;
+        freeformCells.push({ x: w * 0.15, y: h * 0.15, w: w * 0.35, h: h * 0.35 });
+        selectedCellIndex = freeformCells.length - 1;
         updateFreeformButtons();
         updateCutButtonLabel();
         drawOverlay();
       });
-      document.getElementById('add-segment-v').addEventListener('click', function () {
-        if (!currentImage) return;
-        freeformCells = [];
-        var w = currentImage.naturalWidth;
-        var h = currentImage.naturalHeight;
-        var x = w / 2;
-        segments.push({ x1: x, y1: h * 0.1, x2: x, y2: h * 0.9 });
-        selectedSegmentIndex = segments.length - 1;
+      document.getElementById('delete-form-btn').addEventListener('click', function () {
+        if (selectedCellIndex == null || selectedCellIndex < 0 || selectedCellIndex >= freeformCells.length) return;
+        var newExcluded = {};
+        for (var k in excludedCellIds) {
+          var idx = parseInt(k, 10);
+          if (idx < selectedCellIndex) newExcluded[idx] = true;
+          else if (idx > selectedCellIndex) newExcluded[idx - 1] = true;
+        }
+        excludedCellIds = newExcluded;
+        freeformCells.splice(selectedCellIndex, 1);
+        selectedCellIndex = freeformCells.length ? Math.min(selectedCellIndex, freeformCells.length - 1) : null;
         updateFreeformButtons();
         updateCutButtonLabel();
         drawOverlay();
       });
-      document.getElementById('delete-segment-btn').addEventListener('click', function () {
-        if (selectedSegmentIndex == null || selectedSegmentIndex < 0 || selectedSegmentIndex >= segments.length) return;
-        freeformCells = [];
-        segments.splice(selectedSegmentIndex, 1);
-        if (!segments.length) selectedSegmentIndex = null;
-        else selectedSegmentIndex = Math.min(selectedSegmentIndex, segments.length - 1);
-        updateFreeformButtons();
+      document.getElementById('exclude-cell-btn').addEventListener('click', function () {
+        if (selectedCellIndex == null || selectedCellIndex < 0 || selectedCellIndex >= freeformCells.length) return;
+        excludedCellIds[selectedCellIndex] = !excludedCellIds[selectedCellIndex];
         updateCutButtonLabel();
         drawOverlay();
       });
