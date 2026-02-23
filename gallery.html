@@ -102,6 +102,29 @@
       background: rgba(198, 70, 0, 0.12);
       color: #c64600;
     }
+    .gallery-card__img-wrap {
+      aspect-ratio: 1;
+      overflow: hidden;
+      background: var(--input-bg);
+      position: relative;
+    }
+    .gallery-card__img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+    .gallery-card__layout-badge {
+      position: absolute;
+      bottom: 4px;
+      right: 4px;
+      font-size: 0.6rem;
+      font-weight: 700;
+      padding: 2px 6px;
+      border-radius: 4px;
+      background: rgba(0,0,0,0.7);
+      color: #fff;
+    }
     .gallery-card__body {
       padding: 0.75rem 1rem;
       flex: 1;
@@ -135,6 +158,37 @@
       color: var(--text-muted);
       margin: 0;
       line-height: 1.4;
+    }
+    .gallery-tabs {
+      display: flex;
+      gap: 0;
+      margin-bottom: 1rem;
+      border-bottom: 1px solid var(--border);
+    }
+    .gallery-tab {
+      padding: 0.6rem 1rem;
+      font-size: var(--text-sm);
+      font-weight: 500;
+      background: none;
+      border: none;
+      border-bottom: 2px solid transparent;
+      margin-bottom: -1px;
+      cursor: pointer;
+      color: var(--text-muted);
+    }
+    .gallery-tab:hover { color: var(--text-secondary); }
+    .gallery-tab.is-active {
+      color: var(--accent);
+      border-bottom-color: var(--accent);
+    }
+    .gallery-panel {
+      display: none;
+    }
+    .gallery-panel.is-active { display: block; }
+    .gallery-panel__hint {
+      font-size: var(--text-sm);
+      color: var(--text-muted);
+      margin: 0 0 0.75rem 0;
     }
     .gallery-loading, .gallery-error {
       text-align: center;
@@ -310,12 +364,30 @@
     <div class="hero">
       <p class="hero__label" aria-hidden="true">GALLERY</p>
       <h1>Imagine</h1>
-      <p class="intro">Browse grids by model. Click one to see the prompt and create a similar image.</p>
+      <p class="intro">Browse by grid layouts, image styles, or full examples. Click one to see the prompt and create a similar image.</p>
     </div>
 
     <div id="gallery-loading" class="gallery-loading">Loading gallery…</div>
     <div id="gallery-error" class="gallery-error" style="display:none;"></div>
-    <div id="gallery-grid" class="gallery-grid" style="display:none;"></div>
+    <div id="gallery-tabs-wrap" style="display:none;">
+      <div class="gallery-tabs" role="tablist" aria-label="Gallery type">
+        <button type="button" class="gallery-tab is-active" role="tab" aria-selected="true" aria-controls="panel-grid" id="tab-grid">Grid layouts</button>
+        <button type="button" class="gallery-tab" role="tab" aria-selected="false" aria-controls="panel-style" id="tab-style">Styles</button>
+        <button type="button" class="gallery-tab" role="tab" aria-selected="false" aria-controls="panel-example" id="tab-example">Full examples</button>
+      </div>
+      <div id="panel-grid" class="gallery-panel is-active" role="tabpanel" aria-labelledby="tab-grid">
+        <p class="gallery-panel__hint">Numeric grid structures. No example images.</p>
+        <div id="gallery-grid" class="gallery-grid"></div>
+      </div>
+      <div id="panel-style" class="gallery-panel" role="tabpanel" aria-labelledby="tab-style" hidden>
+        <p class="gallery-panel__hint">Image style showcase (realistic, minimalist, schematic, etc.).</p>
+        <div id="gallery-style" class="gallery-grid"></div>
+      </div>
+      <div id="panel-example" class="gallery-panel" role="tabpanel" aria-labelledby="tab-example" hidden>
+        <p class="gallery-panel__hint">Example images that illustrate grid layouts.</p>
+        <div id="gallery-example" class="gallery-grid"></div>
+      </div>
+    </div>
   </main>
 
   <div id="modal-overlay" class="modal-overlay" aria-hidden="true" role="dialog" aria-modal="true" aria-labelledby="modal-title">
@@ -340,7 +412,7 @@
   </div>
 
   <script>
-    window.__GALLERY_FALLBACK__ = [{"id":"grok-realistic-1","image":"Examples/ChatGPT Image 21 févr. 2026, 15_05_26.png","model":"Grok","title":"Realistic landscape grid","description":"Natural scenes in a 4×4 grid with photorealistic style.","prompt":"Create an image in a perfectly aligned 4×4 grid, with thin, sharp black borders between each cell and a pastel background.\n\nUniform style for all 16 illustrations: realistic, clean and precise lines, monochrome colors, fine outlines. Anthropomorphism On: illustrated elements may have eyes, face, or character.\n\nIn each cell, place a single centered element, front view, clearly recognizable shape.\n\nBelow each illustration, write the name in French, simple black sans-serif font, uniform and readable size.\n\nPerfectly square grid, strictly equal cell sizes, uniform spacing, high resolution, sharp details.","style":"realistic","palette":"monochrome","size":"4×4","background":"pastel","outlines":"fine","labels":"French","anthropomorphism":"On"},{"id":"gpt-icons-1","image":"Examples/ChatGPT Image 21 févr. 2026, 15_10_07.png","model":"GPT","title":"Icon set – minimalist","description":"Clean icon grid for UI or app assets.","prompt":"Create an image in a perfectly aligned 4×4 grid, with thin, sharp black borders between each cell and a pure white background. Uniform style for all 16 illustrations: minimalist vector, clean and precise lines, flat and vivid colors, bold black outlines. In each cell, place a single centered element from the category fruits, front view, clearly recognizable shape.","style":"minimalist vector","palette":"flat and vivid"},{"id":"grok-realistic-2","image":"Examples/Gemini_Generated_Image_gl6qqygl6qqygl6q.png","model":"Grok","title":"Realistic variety grid","description":"Mixed realistic subjects in grid layout.","prompt":"Generate a 4×4 grid of realistic images. Each cell is a high-quality photograph-style image: varied subjects (objects, nature, architecture). Consistent aspect ratio, sharp borders between cells, professional color palette.","style":"realistic","palette":"natural"},{"id":"gpt-schema-1","image":"Examples/ChatGPT Image 21 févr. 2026, 15_04_34.png","model":"GPT","title":"Schema / diagram style","description":"Structured visual schema in grid form.","prompt":"Create a 4×4 grid with thin black borders. Each cell contains a simple, diagrammatic illustration: clean lines, no shading, flat colors. Style: schematic, educational. Uniform icon-like elements, white background.","style":"schematic","palette":"flat and vivid"},{"id":"gpt-icons-2","image":"Examples/Gemini_Generated_Image_zbex2yzbex2yzbex.png","model":"GPT","title":"Icons – soft palette","description":"Soft pastel icon grid for gentle UI.","prompt":"Create an image in a 4×4 grid with thin black borders and white background. All 16 cells: soft and pastel colors, minimalist vector style, no gradients. Single centered element per cell from a chosen theme, front view, clean outlines.","style":"minimalist vector","palette":"soft and pastel"}];
+    window.__GALLERY_FALLBACK__ = [{"id":"grid-2x2","galleries":["grid"],"layout":"2x2","model":"GPT","title":"2×2 Classic","description":"4 cells.","prompt":"Create a 2×2 grid.","size":"2×2"},{"id":"grid-4x4","galleries":["grid"],"layout":"4x4","model":"GPT","title":"4×4 Classic","description":"16 cells.","prompt":"Create a 4×4 grid.","size":"4×4"},{"id":"grok-realistic-1","galleries":["style","example"],"image":"Examples/ChatGPT Image 21 févr. 2026, 15_05_26.png","layout":"4x4","model":"Grok","title":"Realistic landscape grid","description":"Natural scenes in a 4×4 grid with photorealistic style.","prompt":"Create an image in a perfectly aligned 4×4 grid, with thin, sharp black borders between each cell and a pastel background. Uniform style for all 16 illustrations: realistic, clean and precise lines, monochrome colors, fine outlines.","style":"realistic","palette":"monochrome","size":"4×4"},{"id":"gpt-icons-1","galleries":["style","example"],"image":"Examples/ChatGPT Image 21 févr. 2026, 15_10_07.png","layout":"4x4","model":"GPT","title":"Icon set – minimalist","description":"Clean icon grid for UI or app assets.","prompt":"Create an image in a perfectly aligned 4×4 grid with thin black borders and pure white background. Minimalist vector, flat and vivid colors.","style":"minimalist vector","palette":"flat and vivid"},{"id":"gpt-icons-2","galleries":["style","example"],"image":"Examples/Gemini_Generated_Image_zbex2yzbex2yzbex.png","model":"GPT","title":"Icons – soft palette","description":"Soft pastel icon grid.","prompt":"Create a 4×4 grid with soft and pastel colors, minimalist vector style.","style":"minimalist vector","palette":"soft and pastel"}];
   </script>
   <script>
     (function () {
@@ -356,9 +428,31 @@
       var modalCopy = document.getElementById('modal-copy');
       var modalCopyFeedback = document.getElementById('modal-copy-feedback');
       var galleryGrid = document.getElementById('gallery-grid');
+      var galleryStyle = document.getElementById('gallery-style');
+      var galleryExample = document.getElementById('gallery-example');
       var galleryLoading = document.getElementById('gallery-loading');
       var galleryError = document.getElementById('gallery-error');
+      var galleryTabsWrap = document.getElementById('gallery-tabs-wrap');
       var currentItem = null;
+
+      function inGalleries(item, name) {
+        var g = item.galleries;
+        if (Array.isArray(g)) return g.indexOf(name) !== -1;
+        if (item.gallery === name) return true;
+        if (name === 'grid') return !item.image && (item.layout || item.size);
+        if (name === 'style' || name === 'example') return !!(item.image && item.style);
+        return false;
+      }
+
+      function partitionByGalleries(items) {
+        var grid = [], style = [], example = [];
+        items.forEach(function (item) {
+          if (inGalleries(item, 'grid')) grid.push(item);
+          if (inGalleries(item, 'style')) style.push(item);
+          if (inGalleries(item, 'example')) example.push(item);
+        });
+        return { grid: grid, style: style, example: example };
+      }
 
       function getLayoutKey(item) {
         if (item.layout) return item.layout;
@@ -414,15 +508,65 @@
         return wrap;
       }
 
-      function renderCard(item) {
+      function renderCardGrid(item) {
         var card = document.createElement('button');
         card.type = 'button';
         card.className = 'gallery-card';
         card.setAttribute('data-id', item.id);
         var badgeClass = item.model === 'Grok' ? 'gallery-card__badge--grok' : 'gallery-card__badge--gpt';
         var layoutKey = getLayoutKey(item);
-        var gridWrap = renderGridPreview(layoutKey);
-        card.appendChild(gridWrap);
+        card.appendChild(renderGridPreview(layoutKey));
+        var body = document.createElement('div');
+        body.className = 'gallery-card__body';
+        body.innerHTML =
+          '<span class="gallery-card__badge ' + badgeClass + '">' + escapeHtml(item.model) + '</span>' +
+          '<p class="gallery-card__title">' + escapeHtml(item.title) + '</p>' +
+          '<p class="gallery-card__desc">' + escapeHtml(item.description) + '</p>';
+        card.appendChild(body);
+        card.addEventListener('click', function () { openModal(item); });
+        return card;
+      }
+
+      function renderCardStyle(item) {
+        var card = document.createElement('button');
+        card.type = 'button';
+        card.className = 'gallery-card';
+        card.setAttribute('data-id', item.id);
+        var badgeClass = item.model === 'Grok' ? 'gallery-card__badge--grok' : 'gallery-card__badge--gpt';
+        var imgSrc = (item.image && typeof item.image === 'string') ? item.image : '';
+        try { imgSrc = encodeURI(imgSrc); } catch (e) { imgSrc = ''; }
+        imgSrc = escapeHtml(imgSrc);
+        var wrap = document.createElement('div');
+        wrap.className = 'gallery-card__img-wrap';
+        wrap.innerHTML = '<img class="gallery-card__img" src="' + imgSrc + '" alt="" loading="lazy">';
+        card.appendChild(wrap);
+        var body = document.createElement('div');
+        body.className = 'gallery-card__body';
+        body.innerHTML =
+          '<span class="gallery-card__badge ' + badgeClass + '">' + escapeHtml(item.model) + '</span>' +
+          '<p class="gallery-card__title">' + escapeHtml(item.title) + '</p>' +
+          '<p class="gallery-card__desc">' + escapeHtml(item.description) + '</p>';
+        card.appendChild(body);
+        card.addEventListener('click', function () { openModal(item); });
+        return card;
+      }
+
+      function renderCardExample(item) {
+        var card = document.createElement('button');
+        card.type = 'button';
+        card.className = 'gallery-card';
+        card.setAttribute('data-id', item.id);
+        var badgeClass = item.model === 'Grok' ? 'gallery-card__badge--grok' : 'gallery-card__badge--gpt';
+        var layoutKey = getLayoutKey(item);
+        var imgSrc = (item.image && typeof item.image === 'string') ? item.image : '';
+        try { imgSrc = encodeURI(imgSrc); } catch (e) { imgSrc = ''; }
+        imgSrc = escapeHtml(imgSrc);
+        var wrap = document.createElement('div');
+        wrap.className = 'gallery-card__img-wrap';
+        wrap.innerHTML =
+          '<img class="gallery-card__img" src="' + imgSrc + '" alt="" loading="lazy">' +
+          '<span class="gallery-card__layout-badge">' + escapeHtml(layoutKey) + '</span>';
+        card.appendChild(wrap);
         var body = document.createElement('div');
         body.className = 'gallery-card__body';
         body.innerHTML =
@@ -528,12 +672,33 @@
             galleryError.style.display = 'block';
             return;
           }
+          var parts = partitionByGalleries(items);
           galleryGrid.innerHTML = '';
-          items.forEach(function (item) {
-            galleryGrid.appendChild(renderCard(item));
-          });
-          galleryGrid.style.display = 'grid';
+          galleryStyle.innerHTML = '';
+          galleryExample.innerHTML = '';
+          parts.grid.forEach(function (item) { galleryGrid.appendChild(renderCardGrid(item)); });
+          parts.style.forEach(function (item) { galleryStyle.appendChild(renderCardStyle(item)); });
+          parts.example.forEach(function (item) { galleryExample.appendChild(renderCardExample(item)); });
+          galleryTabsWrap.style.display = 'block';
         }
+
+      function switchTab(panelId) {
+          document.querySelectorAll('.gallery-tab').forEach(function (t) {
+            t.classList.remove('is-active');
+            t.setAttribute('aria-selected', 'false');
+          });
+          document.querySelectorAll('.gallery-panel').forEach(function (p) {
+            p.classList.remove('is-active');
+            p.hidden = true;
+          });
+          var tab = document.getElementById('tab-' + (panelId === 'panel-grid' ? 'grid' : panelId === 'panel-style' ? 'style' : 'example'));
+          var panel = document.getElementById(panelId);
+          if (tab) { tab.classList.add('is-active'); tab.setAttribute('aria-selected', 'true'); }
+          if (panel) { panel.classList.add('is-active'); panel.hidden = false; }
+        }
+      document.getElementById('tab-grid').addEventListener('click', function () { switchTab('panel-grid'); });
+      document.getElementById('tab-style').addEventListener('click', function () { switchTab('panel-style'); });
+      document.getElementById('tab-example').addEventListener('click', function () { switchTab('panel-example'); });
 
       fetch('data/gallery-grids.json')
         .then(function (res) {

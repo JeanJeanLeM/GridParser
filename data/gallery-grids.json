@@ -1,6 +1,7 @@
 [
   {
     "id": "grid-2x2",
+    "galleries": ["grid"],
     "layout": "2x2",
     "model": "GPT",
     "title": "2×2 Classic",
@@ -10,6 +11,7 @@
   },
   {
     "id": "grid-2x2-b",
+    "galleries": ["grid"],
     "layout": "2x2-B",
     "model": "GPT",
     "title": "2×2 One big + 3 small",
@@ -19,6 +21,7 @@
   },
   {
     "id": "grid-3x3",
+    "galleries": ["grid"],
     "layout": "3x3",
     "model": "GPT",
     "title": "3×3 Classic",
@@ -28,6 +31,7 @@
   },
   {
     "id": "grid-3x3-a",
+    "galleries": ["grid"],
     "layout": "3x3-A",
     "model": "GPT",
     "title": "3×3 Text center",
@@ -37,6 +41,7 @@
   },
   {
     "id": "grid-3x3-b",
+    "galleries": ["grid"],
     "layout": "3x3-B",
     "model": "GPT",
     "title": "3×3 Text band",
@@ -46,6 +51,7 @@
   },
   {
     "id": "grok-realistic-1",
+    "galleries": ["style", "example"],
     "image": "Examples/ChatGPT Image 21 févr. 2026, 15_05_26.png",
     "layout": "4x4",
     "model": "Grok",
@@ -65,6 +71,7 @@
   },
   {
     "id": "gpt-icons-1",
+    "galleries": ["style", "example"],
     "image": "Examples/ChatGPT Image 21 févr. 2026, 15_10_07.png",
     "layout": "4x4",
     "model": "GPT",
@@ -76,6 +83,7 @@
   },
   {
     "id": "grok-realistic-2",
+    "galleries": ["style", "example"],
     "image": "Examples/Gemini_Generated_Image_gl6qqygl6qqygl6q.png",
     "layout": "4x4",
     "model": "Grok",
@@ -87,6 +95,7 @@
   },
   {
     "id": "gpt-schema-1",
+    "galleries": ["style", "example"],
     "image": "Examples/ChatGPT Image 21 févr. 2026, 15_04_34.png",
     "layout": "4x4",
     "model": "GPT",
@@ -98,6 +107,7 @@
   },
   {
     "id": "gpt-icons-2",
+    "galleries": ["style", "example"],
     "image": "Examples/Gemini_Generated_Image_zbex2yzbex2yzbex.png",
     "layout": "4x4",
     "model": "GPT",
@@ -109,6 +119,7 @@
   },
   {
     "id": "grid-4x4-a",
+    "galleries": ["grid"],
     "layout": "4x4-A",
     "model": "GPT",
     "title": "4×4 Center 2×2 text",
@@ -118,6 +129,7 @@
   },
   {
     "id": "grid-4x4-b",
+    "galleries": ["grid"],
     "layout": "4x4-B",
     "model": "GPT",
     "title": "4×4 Vertical band text",
@@ -127,6 +139,7 @@
   },
   {
     "id": "grid-4x4-c",
+    "galleries": ["grid"],
     "layout": "4x4-C",
     "model": "GPT",
     "title": "4×4 Frame (B + IMG)",
