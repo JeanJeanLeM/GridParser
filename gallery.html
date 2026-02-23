@@ -309,6 +309,9 @@
   </div>
 
   <script>
+    window.__GALLERY_FALLBACK__ = [{"id":"grok-realistic-1","image":"Examples/ChatGPT Image 21 févr. 2026, 15_05_26.png","model":"Grok","title":"Realistic landscape grid","description":"Natural scenes in a 4×4 grid with photorealistic style.","prompt":"Create an image in a perfectly aligned 4×4 grid, with thin, sharp black borders between each cell and a pastel background.\n\nUniform style for all 16 illustrations: realistic, clean and precise lines, monochrome colors, fine outlines. Anthropomorphism On: illustrated elements may have eyes, face, or character.\n\nIn each cell, place a single centered element, front view, clearly recognizable shape.\n\nBelow each illustration, write the name in French, simple black sans-serif font, uniform and readable size.\n\nPerfectly square grid, strictly equal cell sizes, uniform spacing, high resolution, sharp details.","style":"realistic","palette":"monochrome","size":"4×4","background":"pastel","outlines":"fine","labels":"French","anthropomorphism":"On"},{"id":"gpt-icons-1","image":"Examples/ChatGPT Image 21 févr. 2026, 15_10_07.png","model":"GPT","title":"Icon set – minimalist","description":"Clean icon grid for UI or app assets.","prompt":"Create an image in a perfectly aligned 4×4 grid, with thin, sharp black borders between each cell and a pure white background. Uniform style for all 16 illustrations: minimalist vector, clean and precise lines, flat and vivid colors, bold black outlines. In each cell, place a single centered element from the category fruits, front view, clearly recognizable shape.","style":"minimalist vector","palette":"flat and vivid"},{"id":"grok-realistic-2","image":"Examples/Gemini_Generated_Image_gl6qqygl6qqygl6q.png","model":"Grok","title":"Realistic variety grid","description":"Mixed realistic subjects in grid layout.","prompt":"Generate a 4×4 grid of realistic images. Each cell is a high-quality photograph-style image: varied subjects (objects, nature, architecture). Consistent aspect ratio, sharp borders between cells, professional color palette.","style":"realistic","palette":"natural"},{"id":"gpt-schema-1","image":"Examples/ChatGPT Image 21 févr. 2026, 15_04_34.png","model":"GPT","title":"Schema / diagram style","description":"Structured visual schema in grid form.","prompt":"Create a 4×4 grid with thin black borders. Each cell contains a simple, diagrammatic illustration: clean lines, no shading, flat colors. Style: schematic, educational. Uniform icon-like elements, white background.","style":"schematic","palette":"flat and vivid"},{"id":"gpt-icons-2","image":"Examples/Gemini_Generated_Image_zbex2yzbex2yzbex.png","model":"GPT","title":"Icons – soft palette","description":"Soft pastel icon grid for gentle UI.","prompt":"Create an image in a 4×4 grid with thin black borders and white background. All 16 cells: soft and pastel colors, minimalist vector style, no gradients. Single centered element per cell from a chosen theme, front view, clean outlines.","style":"minimalist vector","palette":"soft and pastel"}];
+  </script>
+  <script>
     (function () {
       var GALLERY_KEY = 'galleryPrompt';
       var overlay = document.getElementById('modal-overlay');
@@ -332,9 +335,14 @@
         card.className = 'gallery-card';
         card.setAttribute('data-id', item.id);
         var badgeClass = item.model === 'Grok' ? 'gallery-card__badge--grok' : 'gallery-card__badge--gpt';
+        var imgSrc = (item.image && typeof item.image === 'string') ? item.image : '';
+        try {
+          imgSrc = encodeURI(imgSrc);
+        } catch (e) { imgSrc = ''; }
+        imgSrc = escapeHtml(imgSrc);
         card.innerHTML =
           '<div class="gallery-card__img-wrap">' +
-            '<img class="gallery-card__img" src="' + escapeHtml(item.image) + '" alt="" loading="lazy">' +
+            '<img class="gallery-card__img" src="' + imgSrc + '" alt="" loading="lazy">' +
           '</div>' +
           '<div class="gallery-card__body">' +
             '<span class="gallery-card__badge ' + badgeClass + '">' + escapeHtml(item.model) + '</span>' +
@@ -354,7 +362,11 @@
 
       function openModal(item) {
         currentItem = item;
-        modalImg.src = item.image;
+        try {
+          modalImg.src = item.image ? encodeURI(item.image) : '';
+        } catch (e) {
+          modalImg.src = item.image || '';
+        }
         modalImg.alt = item.title;
         modalBadge.textContent = item.model;
         modalBadge.className = 'modal__badge modal__badge--' + (item.model === 'Grok' ? 'grok' : 'gpt');
@@ -422,24 +434,34 @@
         }
       });
 
+      function showGallery(items) {
+          galleryLoading.style.display = 'none';
+          galleryError.style.display = 'none';
+          if (!items || !items.length) {
+            galleryError.textContent = 'No grids in gallery yet.';
+            galleryError.style.display = 'block';
+            return;
+          }
+          galleryGrid.innerHTML = '';
+          items.forEach(function (item) {
+            galleryGrid.appendChild(renderCard(item));
+          });
+          galleryGrid.style.display = 'grid';
+        }
+
       fetch('data/gallery-grids.json')
         .then(function (res) {
           if (!res.ok) throw new Error('Failed to load gallery');
           return res.json();
         })
         .then(function (items) {
-          galleryLoading.style.display = 'none';
-          if (!items || !items.length) {
-            galleryError.textContent = 'No grids in gallery yet.';
-            galleryError.style.display = 'block';
-            return;
-          }
-          items.forEach(function (item) {
-            galleryGrid.appendChild(renderCard(item));
-          });
-          galleryGrid.style.display = 'grid';
+          showGallery(items);
         })
         .catch(function (err) {
+          if (window.__GALLERY_FALLBACK__ && window.__GALLERY_FALLBACK__.length) {
+            showGallery(window.__GALLERY_FALLBACK__);
+            return;
+          }
           galleryLoading.style.display = 'none';
           galleryError.textContent = err.message || 'Could not load gallery.';
           galleryError.style.display = 'block';

@@ -933,10 +933,10 @@
       function runFreeformAutoDetect() {
         if (!currentImage || typeof segmentDetect === 'undefined' || !segmentDetect.detectWhiteGaps) return false;
         var optionPresets = [
-          { whiteThreshold: 220, lightFraction: 0.85, minGapPx: 3, mergeGap: 2 },
-          { whiteThreshold: 210, lightFraction: 0.78, minGapPx: 2, mergeGap: 2 },
-          { whiteThreshold: 200, lightFraction: 0.7, minGapPx: 2, mergeGap: 3 },
-          { whiteThreshold: 190, lightFraction: 0.62, minGapPx: 2, mergeGap: 4 }
+          { whiteThreshold: 230, minRunFraction: 0.14, minGapPx: 2, maxGapPx: 24, mergeGap: 1, maxTrackGapPx: 2, minOverlapRatio: 0.5 },
+          { whiteThreshold: 220, minRunFraction: 0.12, minGapPx: 2, maxGapPx: 28, mergeGap: 2, maxTrackGapPx: 2, minOverlapRatio: 0.45 },
+          { whiteThreshold: 210, minRunFraction: 0.1, minGapPx: 2, maxGapPx: 32, mergeGap: 2, maxTrackGapPx: 3, minOverlapRatio: 0.4 },
+          { whiteThreshold: 198, minRunFraction: 0.08, minGapPx: 1, maxGapPx: 40, mergeGap: 3, maxTrackGapPx: 3, minOverlapRatio: 0.35 }
         ];
         var found = [];
         for (var i = 0; i < optionPresets.length; i++) {
