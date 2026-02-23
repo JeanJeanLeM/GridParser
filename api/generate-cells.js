@@ -8,12 +8,9 @@ const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
 
 function buildSystemPrompt(cellCount) {
   return (
-    'You are a helpful assistant that generates grid cell content for an image prompt builder. ' +
-    'Given a short user idea and a grid size, you must respond with a JSON array of exactly ' +
-    cellCount +
-    ' objects. Each object has two string fields: "name" (short label for the cell, e.g. "Apple") and "description" (optional longer description, can be empty string). ' +
-    'Order: left-to-right, top-to-bottom (row 1 cell 1, row 1 cell 2, ...). ' +
-    'Respond only with valid JSON, no markdown or extra text. Example: [{"name":"Apple","description":""},{"name":"Banana","description":""},...]'
+    'Return a JSON array of exactly ' + cellCount +
+    ' objects. Each has "name" (short label) and "description" (can be ""). Order: left-to-right, top-to-bottom. ' +
+    'Only valid JSON, no markdown. Example: [{"name":"Apple","description":""},{"name":"Banana","description":""}]'
   );
 }
 
@@ -51,20 +48,12 @@ module.exports = async function handler(req, res) {
   }
 
   const systemPrompt = buildSystemPrompt(cellCount);
-  const userMessage =
-    'User idea: "' +
-    description +
-    '". Grid is ' +
-    gridSize +
-    '×' +
-    gridSize +
-    ' (' +
-    cellCount +
-    ' cells). Return a JSON array of ' +
-    cellCount +
-    ' objects with "name" and "description" for each cell in order.';
+  const userMessage = 'Idea: "' + description + '". Grid ' + gridSize + '×' + gridSize + ' (' + cellCount + ' cells). Return JSON array of ' + cellCount + ' objects with "name" and "description".';
 
   try {
+    const controller = new AbortController();
+    const timeoutMs = 8000;
+    const timeoutId = setTimeout(function () { controller.abort(); }, timeoutMs);
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -78,9 +67,11 @@ module.exports = async function handler(req, res) {
           { role: 'user', content: userMessage },
         ],
         response_format: { type: 'json_object' },
-        temperature: 0.5,
+        temperature: 0.3,
       }),
+      signal: controller.signal,
     });
+    clearTimeout(timeoutId);
 
     if (!response.ok) {
       const errText = await response.text();
@@ -139,6 +130,12 @@ module.exports = async function handler(req, res) {
 
     return res.status(200).json({ cells });
   } catch (err) {
+    if (err.name === 'AbortError') {
+      return res.status(503).json({
+        error: 'Generation timed out. Please try again — retries often succeed.',
+        details: 'On Vercel Hobby, functions are limited to 10s. Upgrading to Pro allows longer timeouts.',
+      });
+    }
     return res.status(500).json({ error: 'Server error', details: err.message });
   }
 };

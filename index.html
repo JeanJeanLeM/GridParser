@@ -9,6 +9,9 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/tesseract.js/5.1.0/tesseract.min.js"></script>
   <script src="js/gridSplit.js"></script>
   <script src="js/gridDetect.js"></script>
+  <script src="js/segmentArrangement.js"></script>
+  <script src="js/segmentDetect.js"></script>
+  <script src="js/segmentSplit.js"></script>
   <style>
     * { box-sizing: border-box; }
     body {
@@ -194,6 +197,9 @@
     .grid-editor-legend .legend-dot { width: 12px; height: 12px; border-radius: 2px; flex-shrink: 0; }
     .legend-dot--blue { background: rgba(50, 100, 220, 0.95); }
     .legend-dot--red { background: rgba(220, 50, 50, 0.9); }
+    .editor-mode-row { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem 1rem; margin-bottom: 0.75rem; font-size: 0.9rem; }
+    .editor-mode-label { font-weight: 600; color: var(--text-muted); }
+    .editor-mode-option { display: inline-flex; align-items: center; gap: 0.35rem; cursor: pointer; }
     .grid-editor-toolbar {
       display: flex;
       flex-direction: column;
@@ -433,13 +439,19 @@
       <span class="step-badge" aria-hidden="true">2</span>
       <h2 id="step2-title" class="section-title">Adjust cutting lines</h2>
     </div>
-    <p class="grid-editor-intro">Grid and outer borders are auto-detected on upload. Drag <strong style="color: rgba(50,100,220,0.95);">blue</strong> (outer) and <strong style="color: rgba(220,50,50,0.9);">red</strong> (inner) lines to set where tiles are cut. These lines are guides only—they are not drawn on your image and do not appear in the downloaded tiles.</p>
-    <div class="grid-editor-legend">
+    <p class="grid-editor-intro" id="grid-editor-intro">Grid and outer borders are auto-detected on upload. Drag <strong style="color: rgba(50,100,220,0.95);">blue</strong> (outer) and <strong style="color: rgba(220,50,50,0.9);">red</strong> (inner) lines to set where tiles are cut. These lines are guides only—they are not drawn on your image and do not appear in the downloaded tiles.</p>
+    <p class="grid-editor-intro grid-editor-intro--freeform" id="grid-editor-intro-freeform" style="display: none;">Freeform mode: segments define cell boundaries. Drag endpoints to resize; add or delete segments; exclude cells from export. Auto-detect finds white gaps.</p>
+    <div class="grid-editor-legend" id="grid-editor-legend">
       <span><span class="legend-dot legend-dot--blue" aria-hidden="true"></span> Outer border lines</span>
       <span><span class="legend-dot legend-dot--red" aria-hidden="true"></span> Inner cutting lines (where each tile is split)</span>
     </div>
+    <div class="editor-mode-row">
+      <span class="editor-mode-label">Editor:</span>
+      <label class="editor-mode-option"><input type="radio" name="editor-mode" value="uniform" checked> Uniform grid</label>
+      <label class="editor-mode-option"><input type="radio" name="editor-mode" value="freeform"> Freeform segments</label>
+    </div>
     <div class="grid-editor-toolbar">
-      <div class="grid-editor-toolbar__row grid-editor-toolbar__row--grid">
+      <div class="grid-editor-toolbar__row grid-editor-toolbar__row--grid" id="uniform-grid-toolbar">
         <div class="grid-format-picker" role="group" aria-labelledby="grid-format-picker-label">
           <span class="grid-format-picker__label" id="grid-format-picker-label">Grid</span>
           <div class="grid-format-picker__grid" id="grid-format-visual" aria-hidden="true">
@@ -465,6 +477,12 @@
             <option value="4_4" selected>4×4</option>
           </select>
         </div>
+      </div>
+      <div class="grid-editor-toolbar__row grid-editor-toolbar__row--freeform" id="freeform-toolbar" style="display: none;">
+        <button type="button" class="btn btn-secondary" id="add-segment-h">Add horizontal</button>
+        <button type="button" class="btn btn-secondary" id="add-segment-v">Add vertical</button>
+        <button type="button" class="btn btn-secondary" id="delete-segment-btn" disabled>Delete segment</button>
+        <button type="button" class="btn btn-secondary" id="exclude-cell-btn" disabled>Exclude cell</button>
       </div>
       <div class="grid-editor-toolbar__row grid-editor-toolbar__row--controls">
         <label>Zoom: <span id="zoom-value">1</span>×</label>
@@ -500,6 +518,8 @@
       <div class="grid-editor-actions">
         <button type="button" class="btn btn-secondary" id="auto-detect-btn">Auto-detect grid</button>
         <button type="button" class="btn btn-secondary" id="reset-lines">Reset lines</button>
+        <button type="button" class="btn btn-secondary" id="freeform-autodetect-btn" style="display: none;">Auto-detect cells</button>
+        <button type="button" class="btn btn-secondary" id="freeform-reset-btn" style="display: none;">Reset segments</button>
         <button type="button" class="btn btn-primary" id="cut-btn">Cut and create images</button>
       </div>
     </div>
@@ -535,9 +555,15 @@
       var tileBlobs = [];
       var objectUrl = null;
       var currentImage = null;
+      var editorMode = 'uniform';
       var xBounds = [];
       var yBounds = [];
+      var segments = [];
+      var excludedCellIds = {};
+      var selectedSegmentIndex = null;
+      var selectedCellIndex = null;
       var drag = { active: false, axis: null, index: null };
+      var freeformDrag = { active: false, segmentIndex: null, whichEnd: null };
       var gridImg = document.getElementById('grid-image');
       var gridOverlay = document.getElementById('grid-overlay');
       var gridWrapper = document.getElementById('grid-preview-wrapper');
