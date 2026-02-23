@@ -697,6 +697,18 @@
         var thickness = Math.max(1, getLineThickness());
         function dispX(px) { return MARGIN + (px / w) * baseWidth; }
         function dispY(py) { return MARGIN + (py / h) * baseHeight; }
+        if (getEditorMode() === 'freeform' && segments.length > 0) {
+          ctx.strokeStyle = 'rgba(220, 50, 50, 0.9)';
+          ctx.lineWidth = thickness;
+          ctx.beginPath();
+          for (var s = 0; s < segments.length; s++) {
+            var seg = segments[s];
+            ctx.moveTo(dispX(seg.x1), dispY(seg.y1));
+            ctx.lineTo(dispX(seg.x2), dispY(seg.y2));
+          }
+          ctx.stroke();
+          return;
+        }
         var lastX = xBounds.length - 1;
         var lastY = yBounds.length - 1;
         // Outer cut lines (blue)
@@ -776,7 +788,11 @@
           gridWrapper.style.height = totalH + 'px';
           applyZoom();
           drawOverlay();
-          runAutoDetect();
+          if (getEditorMode() === 'freeform') {
+            runFreeformAutoDetect();
+          } else {
+            runAutoDetect();
+          }
         }
         gridImg.onload = sizeOverlay;
         gridEditor.classList.add('visible');
@@ -797,6 +813,11 @@
         }
       }
 
+      function getEditorMode() {
+        var radio = document.querySelector('input[name="editor-mode"]:checked');
+        return (radio && radio.value === 'freeform') ? 'freeform' : 'uniform';
+      }
+
       function runAutoDetect() {
         if (!currentImage || typeof gridDetect === 'undefined' || !gridDetect.detectGridLines) return false;
         var fmt = getGridFormat();
@@ -813,6 +834,15 @@
         if (!result || !result.xBounds || result.xBounds.length !== wantX || !result.yBounds || result.yBounds.length !== wantY) return false;
         xBounds = result.xBounds.slice();
         yBounds = result.yBounds.slice();
+        drawOverlay();
+        return true;
+      }
+
+      function runFreeformAutoDetect() {
+        if (!currentImage || typeof segmentDetect === 'undefined' || !segmentDetect.detectWhiteGaps) return false;
+        var opts = { whiteThreshold: 220, lightFraction: 0.85, minGapPx: 3, mergeGap: 2 };
+        segments = segmentDetect.detectWhiteGaps(currentImage, opts) || [];
+        excludedCellIds = {};
         drawOverlay();
         return true;
       }
@@ -1070,6 +1100,36 @@
       }
       initGridFormatPicker();
       updateCutButtonLabel();
+      function setEditorMode(mode) {
+        editorMode = mode;
+        var uniformToolbar = document.getElementById('uniform-grid-toolbar');
+        var freeformToolbar = document.getElementById('freeform-toolbar');
+        var autoDetectBtn = document.getElementById('auto-detect-btn');
+        var resetLinesBtn = document.getElementById('reset-lines');
+        var freeformAutodetectBtn = document.getElementById('freeform-autodetect-btn');
+        var freeformResetBtn = document.getElementById('freeform-reset-btn');
+        var introFreeform = document.getElementById('grid-editor-intro-freeform');
+        var isFreeform = (mode === 'freeform');
+        if (uniformToolbar) uniformToolbar.style.display = isFreeform ? 'none' : '';
+        if (freeformToolbar) freeformToolbar.style.display = isFreeform ? '' : 'none';
+        if (autoDetectBtn) autoDetectBtn.style.display = isFreeform ? 'none' : '';
+        if (resetLinesBtn) resetLinesBtn.style.display = isFreeform ? 'none' : '';
+        if (freeformAutodetectBtn) freeformAutodetectBtn.style.display = isFreeform ? '' : 'none';
+        if (freeformResetBtn) freeformResetBtn.style.display = isFreeform ? '' : 'none';
+        if (introFreeform) introFreeform.style.display = isFreeform ? 'block' : 'none';
+        if (currentImage && isFreeform) {
+          runFreeformAutoDetect();
+        } else if (currentImage) {
+          drawOverlay();
+        }
+      }
+      var editorModeRadios = document.querySelectorAll('input[name="editor-mode"]');
+      for (var r = 0; r < editorModeRadios.length; r++) {
+        editorModeRadios[r].addEventListener('change', function () {
+          setEditorMode(getEditorMode());
+        });
+      }
+      setEditorMode(getEditorMode());
       document.getElementById('grid-format').addEventListener('change', function () {
         syncGridFormatVisual();
         updateCutButtonLabel();
@@ -1089,6 +1149,21 @@
       document.getElementById('reset-lines').addEventListener('click', function () {
         if (currentImage) {
           initBounds(currentImage.naturalWidth, currentImage.naturalHeight);
+          drawOverlay();
+        }
+      });
+      document.getElementById('freeform-autodetect-btn').addEventListener('click', function () {
+        clearError();
+        if (!currentImage) {
+          showError('Load an image first.');
+          return;
+        }
+        if (!runFreeformAutoDetect()) showError('Could not detect segments. Try adding segments manually.');
+      });
+      document.getElementById('freeform-reset-btn').addEventListener('click', function () {
+        if (currentImage) {
+          segments = [];
+          excludedCellIds = {};
           drawOverlay();
         }
       });
