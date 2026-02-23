@@ -247,6 +247,163 @@
     return out;
   }
 
+  function buildNonWhiteMask(data, w, h, nonWhiteThreshold) {
+    var out = new Uint8Array(w * h);
+    for (var y = 0; y < h; y++) {
+      for (var x = 0; x < w; x++) {
+        var i = (y * w + x) * 4;
+        var L = luminance(data[i], data[i + 1], data[i + 2]);
+        out[y * w + x] = L <= nonWhiteThreshold ? 1 : 0;
+      }
+    }
+    return out;
+  }
+
+  function mergeRects(rects, gapPx) {
+    if (!rects.length) return rects;
+    var changed = true;
+    while (changed) {
+      changed = false;
+      for (var i = 0; i < rects.length && !changed; i++) {
+        for (var j = i + 1; j < rects.length; j++) {
+          var a = rects[i];
+          var b = rects[j];
+          var overlapX = Math.min(a.x + a.w, b.x + b.w) - Math.max(a.x, b.x);
+          var overlapY = Math.min(a.y + a.h, b.y + b.h) - Math.max(a.y, b.y);
+          var closeX = overlapX >= -gapPx;
+          var closeY = overlapY >= -gapPx;
+          if (closeX && closeY) {
+            var nx = Math.min(a.x, b.x);
+            var ny = Math.min(a.y, b.y);
+            var nx2 = Math.max(a.x + a.w, b.x + b.w);
+            var ny2 = Math.max(a.y + a.h, b.y + b.h);
+            rects[i] = { x: nx, y: ny, w: nx2 - nx, h: ny2 - ny };
+            rects.splice(j, 1);
+            changed = true;
+            break;
+          }
+        }
+      }
+    }
+    return rects;
+  }
+
+  function removeContainedRects(rects) {
+    var out = [];
+    for (var i = 0; i < rects.length; i++) {
+      var a = rects[i];
+      var contained = false;
+      for (var j = 0; j < rects.length; j++) {
+        if (i === j) continue;
+        var b = rects[j];
+        if (
+          a.x >= b.x &&
+          a.y >= b.y &&
+          a.x + a.w <= b.x + b.w &&
+          a.y + a.h <= b.y + b.h &&
+          (a.w * a.h) < (b.w * b.h)
+        ) {
+          contained = true;
+          break;
+        }
+      }
+      if (!contained) out.push(a);
+    }
+    return out;
+  }
+
+  function detectPanelRects(image, options) {
+    var opts = options || {};
+    var nonWhiteThreshold = Math.min(255, Math.max(0, parseInt(opts.nonWhiteThreshold, 10) || 245));
+    var minAreaFraction = typeof opts.minAreaFraction === 'number' ? opts.minAreaFraction : 0.015;
+    var minWFrac = typeof opts.minWFrac === 'number' ? opts.minWFrac : 0.09;
+    var minHFrac = typeof opts.minHFrac === 'number' ? opts.minHFrac : 0.09;
+    var minFillRatio = typeof opts.minFillRatio === 'number' ? opts.minFillRatio : 0.2;
+    var pad = Math.max(0, parseInt(opts.padPx, 10) || 1);
+    var mergeGap = Math.max(0, parseInt(opts.mergeGapPx, 10) || 2);
+
+    var w = image.naturalWidth || image.width;
+    var h = image.naturalHeight || image.height;
+    if (!w || !h) return [];
+
+    var canvas = typeof document !== 'undefined' && document.createElement('canvas');
+    if (!canvas) return [];
+    canvas.width = w;
+    canvas.height = h;
+    var ctx = canvas.getContext('2d');
+    if (!ctx) return [];
+    ctx.drawImage(image, 0, 0);
+    var data = ctx.getImageData(0, 0, w, h).data;
+    var mask = buildNonWhiteMask(data, w, h, nonWhiteThreshold);
+    var visited = new Uint8Array(w * h);
+
+    var minArea = Math.max(20, Math.floor(w * h * minAreaFraction));
+    var minW = Math.max(8, Math.floor(w * minWFrac));
+    var minH = Math.max(8, Math.floor(h * minHFrac));
+    var rects = [];
+
+    function idx(x, y) { return y * w + x; }
+    var queue = [];
+
+    for (var y = 0; y < h; y++) {
+      for (var x = 0; x < w; x++) {
+        var start = idx(x, y);
+        if (!mask[start] || visited[start]) continue;
+        var qh = 0;
+        var qt = 0;
+        queue[qt++] = start;
+        visited[start] = 1;
+        var minX = x;
+        var minY = y;
+        var maxX = x;
+        var maxY = y;
+        var area = 0;
+        while (qh < qt) {
+          var cur = queue[qh++];
+          var cy = Math.floor(cur / w);
+          var cx = cur - cy * w;
+          area++;
+          if (cx < minX) minX = cx;
+          if (cy < minY) minY = cy;
+          if (cx > maxX) maxX = cx;
+          if (cy > maxY) maxY = cy;
+          var n;
+          if (cx > 0) {
+            n = cur - 1;
+            if (mask[n] && !visited[n]) { visited[n] = 1; queue[qt++] = n; }
+          }
+          if (cx + 1 < w) {
+            n = cur + 1;
+            if (mask[n] && !visited[n]) { visited[n] = 1; queue[qt++] = n; }
+          }
+          if (cy > 0) {
+            n = cur - w;
+            if (mask[n] && !visited[n]) { visited[n] = 1; queue[qt++] = n; }
+          }
+          if (cy + 1 < h) {
+            n = cur + w;
+            if (mask[n] && !visited[n]) { visited[n] = 1; queue[qt++] = n; }
+          }
+        }
+        var bw = maxX - minX + 1;
+        var bh = maxY - minY + 1;
+        if (bw < minW || bh < minH || area < minArea) continue;
+        var fill = area / (bw * bh);
+        if (fill < minFillRatio) continue;
+        var rx = Math.max(0, minX - pad);
+        var ry = Math.max(0, minY - pad);
+        var rx2 = Math.min(w, maxX + 1 + pad);
+        var ry2 = Math.min(h, maxY + 1 + pad);
+        rects.push({ x: rx, y: ry, w: rx2 - rx, h: ry2 - ry });
+      }
+    }
+
+    rects = mergeRects(rects, mergeGap);
+    rects = removeContainedRects(rects);
+    rects.sort(function (a, b) { return a.y !== b.y ? a.y - b.y : a.x - b.x; });
+    return rects;
+  }
+
   function detectWhiteGaps(image, options) {
     var opts = options || {};
     var whiteThreshold = Math.min(255, Math.max(0, parseInt(opts.whiteThreshold, 10) || 220));
@@ -304,5 +461,8 @@
     return removeNearDuplicates(segments, 1.5);
   }
 
-  return { detectWhiteGaps: detectWhiteGaps };
+  return {
+    detectWhiteGaps: detectWhiteGaps,
+    detectPanelRects: detectPanelRects
+  };
 });

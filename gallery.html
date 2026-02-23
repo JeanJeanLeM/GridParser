@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Grid gallery – Imagine</title>
   <link rel="stylesheet" href="css/shared.css">
+  <script src="js/gridSchema.js"></script>
   <style>
     body {
       font-family: var(--font-sans);
@@ -60,16 +61,46 @@
       transform: translateY(-2px);
       box-shadow: 0 4px 12px rgba(0,0,0,0.1);
     }
-    .gallery-card__img-wrap {
+    .gallery-card__grid-wrap {
       aspect-ratio: 1;
       overflow: hidden;
       background: var(--input-bg);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 8px;
+      box-sizing: border-box;
     }
-    .gallery-card__img {
+    .gallery-card__grid {
+      display: grid;
+      gap: 2px;
       width: 100%;
+      max-width: 140px;
       height: 100%;
-      object-fit: cover;
-      display: block;
+      max-height: 140px;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 3px;
+      background: var(--border-light);
+    }
+    .gallery-card__grid-cell {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.6rem;
+      font-weight: 700;
+      color: var(--text-secondary);
+      background: var(--card-bg);
+      border-radius: 2px;
+      min-height: 0;
+    }
+    .gallery-card__grid-cell.cell-type--text {
+      background: rgba(26, 95, 180, 0.12);
+      color: #1a5fb4;
+    }
+    .gallery-card__grid-cell.cell-type--branding {
+      background: rgba(198, 70, 0, 0.12);
+      color: #c64600;
     }
     .gallery-card__body {
       padding: 0.75rem 1rem;
@@ -329,26 +360,76 @@
       var galleryError = document.getElementById('gallery-error');
       var currentItem = null;
 
+      function getLayoutKey(item) {
+        if (item.layout) return item.layout;
+        if (item.gridPreset) return item.gridPreset;
+        if (item.size) {
+          var s = String(item.size).replace(/×/g, 'x').replace(/\s/g, '');
+          if (/^\d+x\d+$/i.test(s)) return s;
+        }
+        return '4x4';
+      }
+
+      function renderGridPreview(layoutKey) {
+        var wrap = document.createElement('div');
+        wrap.className = 'gallery-card__grid-wrap';
+        var grid = document.createElement('div');
+        grid.className = 'gallery-card__grid';
+        var spec = (typeof gridSchema !== 'undefined' && gridSchema.parseCompactGrid)
+          ? gridSchema.parseCompactGrid(layoutKey)
+          : { mode: 'uniform', rows: 4, cols: 4, cells: [] };
+        spec = (typeof gridSchema !== 'undefined' && gridSchema.normalizeSpec)
+          ? gridSchema.normalizeSpec(spec)
+          : spec;
+        var rows = spec.rows || 1;
+        var cols = spec.cols || 1;
+        grid.style.gridTemplateColumns = 'repeat(' + cols + ', 1fr)';
+        grid.style.gridTemplateRows = 'repeat(' + rows + ', 1fr)';
+        var cells = spec.cells && spec.cells.length ? spec.cells : [];
+        if (!cells.length) {
+          for (var r = 0; r < rows; r++) {
+            for (var c = 0; c < cols; c++) {
+              cells.push({ row: r, col: c, rowSpan: 1, colSpan: 1 });
+            }
+          }
+          cells.sort(function (a, b) { return a.row !== b.row ? a.row - b.row : a.col - b.col; });
+        }
+        for (var i = 0; i < cells.length; i++) {
+          var ce = cells[i];
+          var cellEl = document.createElement('div');
+          cellEl.className = 'gallery-card__grid-cell';
+          var cellType = (ce && ce.cellType) ? ce.cellType : 'image';
+          cellEl.classList.add('cell-type--' + cellType);
+          var label = cellType === 'text' ? 'TXT' : cellType === 'branding' ? 'B' : (i + 1);
+          cellEl.textContent = label;
+          if (ce.row != null && ce.col != null) {
+            cellEl.style.gridRowStart = (ce.row + 1);
+            cellEl.style.gridColumnStart = (ce.col + 1);
+            cellEl.style.gridRowEnd = 'span ' + (ce.rowSpan || 1);
+            cellEl.style.gridColumnEnd = 'span ' + (ce.colSpan || 1);
+          }
+          grid.appendChild(cellEl);
+        }
+        wrap.appendChild(grid);
+        return wrap;
+      }
+
       function renderCard(item) {
         var card = document.createElement('button');
         card.type = 'button';
         card.className = 'gallery-card';
         card.setAttribute('data-id', item.id);
         var badgeClass = item.model === 'Grok' ? 'gallery-card__badge--grok' : 'gallery-card__badge--gpt';
-        var imgSrc = (item.image && typeof item.image === 'string') ? item.image : '';
-        try {
-          imgSrc = encodeURI(imgSrc);
-        } catch (e) { imgSrc = ''; }
-        imgSrc = escapeHtml(imgSrc);
-        card.innerHTML =
-          '<div class="gallery-card__img-wrap">' +
-            '<img class="gallery-card__img" src="' + imgSrc + '" alt="" loading="lazy">' +
-          '</div>' +
-          '<div class="gallery-card__body">' +
-            '<span class="gallery-card__badge ' + badgeClass + '">' + escapeHtml(item.model) + '</span>' +
-            '<p class="gallery-card__title">' + escapeHtml(item.title) + '</p>' +
-            '<p class="gallery-card__desc">' + escapeHtml(item.description) + '</p>' +
-          '</div>';
+        var layoutKey = getLayoutKey(item);
+        var gridWrap = renderGridPreview(layoutKey);
+        card.appendChild(gridWrap);
+        var body = document.createElement('div');
+        body.className = 'gallery-card__body';
+        body.innerHTML =
+          '<span class="gallery-card__badge ' + badgeClass + '">' + escapeHtml(item.model) + '</span>' +
+          '<p class="gallery-card__title">' + escapeHtml(item.title) + '</p>' +
+          '<p class="gallery-card__desc">' + escapeHtml(item.description) + '</p>';
+        card.appendChild(body);
         card.addEventListener('click', function () { openModal(item); });
         return card;
       }
@@ -362,12 +443,17 @@
 
       function openModal(item) {
         currentItem = item;
-        try {
-          modalImg.src = item.image ? encodeURI(item.image) : '';
-        } catch (e) {
-          modalImg.src = item.image || '';
+        var hasImage = !!(item.image && String(item.image).trim());
+        var imgWrap = modalImg && modalImg.parentElement;
+        if (imgWrap) imgWrap.style.display = hasImage ? '' : 'none';
+        if (hasImage) {
+          try {
+            modalImg.src = item.image ? encodeURI(item.image) : '';
+          } catch (e) {
+            modalImg.src = item.image || '';
+          }
+          modalImg.alt = item.title;
         }
-        modalImg.alt = item.title;
         modalBadge.textContent = item.model;
         modalBadge.className = 'modal__badge modal__badge--' + (item.model === 'Grok' ? 'grok' : 'gpt');
         modalTitle.textContent = item.title;

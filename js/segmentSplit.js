@@ -10,13 +10,7 @@
   }
 })(typeof self !== 'undefined' ? self : this, function () {
   'use strict';
-  function splitBySegments(image, segments, options, adapter) {
-    var w = image.naturalWidth || image.width;
-    var h = image.naturalHeight || image.height;
-    if (typeof segmentArrangement === 'undefined' || !segmentArrangement.segmentsToCells) {
-      return Promise.reject(new Error('segmentArrangement not loaded'));
-    }
-    var cells = segmentArrangement.segmentsToCells(w, h, segments);
+  function exportCells(image, cells, options) {
     var excluded = options && options.excludedCellIds;
     var trim = Math.max(0, (options && options.trimPixels) || 0);
     var toExport = [];
@@ -54,5 +48,20 @@
     });
     return Promise.all(promises);
   }
-  return { splitBySegments: splitBySegments };
+
+  function splitByCells(image, cells, options) {
+    if (!cells || !cells.length) return Promise.resolve([]);
+    return exportCells(image, cells, options);
+  }
+
+  function splitBySegments(image, segments, options, adapter) {
+    var w = image.naturalWidth || image.width;
+    var h = image.naturalHeight || image.height;
+    if (typeof segmentArrangement === 'undefined' || !segmentArrangement.segmentsToCells) {
+      return Promise.reject(new Error('segmentArrangement not loaded'));
+    }
+    var cells = segmentArrangement.segmentsToCells(w, h, segments);
+    return exportCells(image, cells, options);
+  }
+  return { splitBySegments: splitBySegments, splitByCells: splitByCells };
 });

@@ -560,6 +560,7 @@
       var xBounds = [];
       var yBounds = [];
       var segments = [];
+      var freeformCells = [];
       var excludedCellIds = {};
       var selectedSegmentIndex = null;
       var selectedCellIndex = null;
@@ -698,7 +699,23 @@
         var thickness = Math.max(1, getLineThickness());
         function dispX(px) { return MARGIN + (px / w) * baseWidth; }
         function dispY(py) { return MARGIN + (py / h) * baseHeight; }
-        if (getEditorMode() === 'freeform' && segments.length > 0) {
+        if (getEditorMode() === 'freeform') {
+          if (freeformCells.length > 0) {
+            ctx.save();
+            ctx.strokeStyle = 'rgba(70, 170, 90, 0.95)';
+            ctx.lineWidth = Math.max(1, thickness);
+            for (var fc = 0; fc < freeformCells.length; fc++) {
+              var cell = freeformCells[fc];
+              ctx.strokeRect(
+                dispX(cell.x),
+                dispY(cell.y),
+                (cell.w / w) * baseWidth,
+                (cell.h / h) * baseHeight
+              );
+            }
+            ctx.restore();
+          }
+          if (segments.length === 0) return;
           ctx.strokeStyle = 'rgba(220, 50, 50, 0.9)';
           ctx.lineWidth = thickness;
           ctx.beginPath();
@@ -930,26 +947,62 @@
         return true;
       }
 
-      function runFreeformAutoDetect() {
-        if (!currentImage || typeof segmentDetect === 'undefined' || !segmentDetect.detectWhiteGaps) return false;
-        var optionPresets = [
-          { whiteThreshold: 230, minRunFraction: 0.14, minGapPx: 2, maxGapPx: 24, mergeGap: 1, maxTrackGapPx: 2, minOverlapRatio: 0.5 },
-          { whiteThreshold: 220, minRunFraction: 0.12, minGapPx: 2, maxGapPx: 28, mergeGap: 2, maxTrackGapPx: 2, minOverlapRatio: 0.45 },
-          { whiteThreshold: 210, minRunFraction: 0.1, minGapPx: 2, maxGapPx: 32, mergeGap: 2, maxTrackGapPx: 3, minOverlapRatio: 0.4 },
-          { whiteThreshold: 198, minRunFraction: 0.08, minGapPx: 1, maxGapPx: 40, mergeGap: 3, maxTrackGapPx: 3, minOverlapRatio: 0.35 }
-        ];
-        var found = [];
-        for (var i = 0; i < optionPresets.length; i++) {
-          found = segmentDetect.detectWhiteGaps(currentImage, optionPresets[i]) || [];
-          if (found.length) break;
+      function rectsToSegments(rects, w, h) {
+        var out = [];
+        var add = function (x1, y1, x2, y2) {
+          out.push({ x1: Math.max(0, Math.min(w, x1)), y1: Math.max(0, Math.min(h, y1)), x2: Math.max(0, Math.min(w, x2)), y2: Math.max(0, Math.min(h, y2)) });
+        };
+        for (var i = 0; i < rects.length; i++) {
+          var r = rects[i];
+          add(r.x, r.y, r.x + r.w, r.y);
+          add(r.x, r.y + r.h, r.x + r.w, r.y + r.h);
+          add(r.x, r.y, r.x, r.y + r.h);
+          add(r.x + r.w, r.y, r.x + r.w, r.y + r.h);
         }
-        segments = found;
+        return out;
+      }
+
+      function runFreeformAutoDetect() {
+        if (!currentImage || typeof segmentDetect === 'undefined') return false;
+        var w = currentImage.naturalWidth;
+        var h = currentImage.naturalHeight;
+        var cellsFound = [];
+        if (segmentDetect.detectPanelRects) {
+          var panelPresets = [
+            { nonWhiteThreshold: 246, minAreaFraction: 0.015, minWFrac: 0.1, minHFrac: 0.1, minFillRatio: 0.22, padPx: 1, mergeGapPx: 1 },
+            { nonWhiteThreshold: 242, minAreaFraction: 0.012, minWFrac: 0.08, minHFrac: 0.08, minFillRatio: 0.18, padPx: 1, mergeGapPx: 2 },
+            { nonWhiteThreshold: 238, minAreaFraction: 0.009, minWFrac: 0.07, minHFrac: 0.07, minFillRatio: 0.14, padPx: 1, mergeGapPx: 2 }
+          ];
+          for (var p = 0; p < panelPresets.length; p++) {
+            cellsFound = segmentDetect.detectPanelRects(currentImage, panelPresets[p]) || [];
+            if (cellsFound.length > 1) break;
+          }
+        }
+        freeformCells = cellsFound;
+        if (freeformCells.length) {
+          segments = rectsToSegments(freeformCells, w, h);
+        } else if (segmentDetect.detectWhiteGaps) {
+          var optionPresets = [
+            { whiteThreshold: 230, minRunFraction: 0.14, minGapPx: 2, maxGapPx: 24, mergeGap: 1, maxTrackGapPx: 2, minOverlapRatio: 0.5 },
+            { whiteThreshold: 220, minRunFraction: 0.12, minGapPx: 2, maxGapPx: 28, mergeGap: 2, maxTrackGapPx: 2, minOverlapRatio: 0.45 },
+            { whiteThreshold: 210, minRunFraction: 0.1, minGapPx: 2, maxGapPx: 32, mergeGap: 2, maxTrackGapPx: 3, minOverlapRatio: 0.4 },
+            { whiteThreshold: 198, minRunFraction: 0.08, minGapPx: 1, maxGapPx: 40, mergeGap: 3, maxTrackGapPx: 3, minOverlapRatio: 0.35 }
+          ];
+          var found = [];
+          for (var i = 0; i < optionPresets.length; i++) {
+            found = segmentDetect.detectWhiteGaps(currentImage, optionPresets[i]) || [];
+            if (found.length) break;
+          }
+          segments = found;
+        } else {
+          segments = [];
+        }
         excludedCellIds = {};
         selectedSegmentIndex = null;
         selectedCellIndex = null;
         updateFreeformButtons();
         drawOverlay();
-        return segments.length > 0;
+        return freeformCells.length > 0 || segments.length > 0;
       }
 
       function handleFile(file) {
@@ -987,14 +1040,21 @@
             showError('Freeform splitter not loaded.');
             return;
           }
-          if (!segments.length && !runFreeformAutoDetect()) {
-            showError('No freeform segments detected. Click Auto-detect cells or add segments manually.');
+          if (!freeformCells.length && !segments.length && !runFreeformAutoDetect()) {
+            showError('No freeform forms detected. Click Auto-detect cells or add segments manually.');
             return;
           }
-          splitPromise = segmentSplit.splitBySegments(currentImage, segments, {
-            trimPixels: getTrimPixels(),
-            excludedCellIds: excludedCellIds
-          });
+          if (freeformCells.length && segmentSplit.splitByCells) {
+            splitPromise = segmentSplit.splitByCells(currentImage, freeformCells, {
+              trimPixels: getTrimPixels(),
+              excludedCellIds: excludedCellIds
+            });
+          } else {
+            splitPromise = segmentSplit.splitBySegments(currentImage, segments, {
+              trimPixels: getTrimPixels(),
+              excludedCellIds: excludedCellIds
+            });
+          }
         } else {
           if (typeof gridSplit === 'undefined' || !gridSplit.splitGridCustom) {
             showError('Grid splitter not loaded.');
@@ -1116,6 +1176,7 @@
           }
           e.preventDefault();
           selectedSegmentIndex = fHit.segmentIndex;
+          freeformCells = [];
           freeformDrag.active = true;
           freeformDrag.segmentIndex = fHit.segmentIndex;
           freeformDrag.whichEnd = fHit.whichEnd;
@@ -1403,6 +1464,7 @@
       document.getElementById('freeform-reset-btn').addEventListener('click', function () {
         if (currentImage) {
           segments = [];
+          freeformCells = [];
           excludedCellIds = {};
           selectedSegmentIndex = null;
           selectedCellIndex = null;
@@ -1412,6 +1474,7 @@
       });
       document.getElementById('add-segment-h').addEventListener('click', function () {
         if (!currentImage) return;
+        freeformCells = [];
         var w = currentImage.naturalWidth;
         var h = currentImage.naturalHeight;
         var y = h / 2;
@@ -1422,6 +1485,7 @@
       });
       document.getElementById('add-segment-v').addEventListener('click', function () {
         if (!currentImage) return;
+        freeformCells = [];
         var w = currentImage.naturalWidth;
         var h = currentImage.naturalHeight;
         var x = w / 2;
@@ -1432,6 +1496,7 @@
       });
       document.getElementById('delete-segment-btn').addEventListener('click', function () {
         if (selectedSegmentIndex == null || selectedSegmentIndex < 0 || selectedSegmentIndex >= segments.length) return;
+        freeformCells = [];
         segments.splice(selectedSegmentIndex, 1);
         if (!segments.length) selectedSegmentIndex = null;
         else selectedSegmentIndex = Math.min(selectedSegmentIndex, segments.length - 1);

@@ -1,7 +1,53 @@
 [
   {
+    "id": "grid-2x2",
+    "layout": "2x2",
+    "model": "GPT",
+    "title": "2×2 Classic",
+    "description": "4 cells, symmetric. Ideal for before/after, 4 steps.",
+    "prompt": "Create a 2×2 grid with thin black borders. Four equal cells.",
+    "size": "2×2"
+  },
+  {
+    "id": "grid-2x2-b",
+    "layout": "2x2-B",
+    "model": "GPT",
+    "title": "2×2 One big + 3 small",
+    "description": "Hero image plus 3 details.",
+    "prompt": "Create an image with one large top cell and two rows below.",
+    "size": "2×2"
+  },
+  {
+    "id": "grid-3x3",
+    "layout": "3x3",
+    "model": "GPT",
+    "title": "3×3 Classic",
+    "description": "9 cells. Very popular for Instagram feed.",
+    "prompt": "Create a 3×3 grid, 9 equal cells.",
+    "size": "3×3"
+  },
+  {
+    "id": "grid-3x3-a",
+    "layout": "3x3-A",
+    "model": "GPT",
+    "title": "3×3 Text center",
+    "description": "TXT in center. Perfect for quote, CTA, branding.",
+    "prompt": "Create a 3×3 grid with text in the center cell.",
+    "size": "3×3"
+  },
+  {
+    "id": "grid-3x3-b",
+    "layout": "3x3-B",
+    "model": "GPT",
+    "title": "3×3 Text band",
+    "description": "Middle row = text. Message, timeline.",
+    "prompt": "Create a 3×3 grid with a horizontal text band in the middle row.",
+    "size": "3×3"
+  },
+  {
     "id": "grok-realistic-1",
     "image": "Examples/ChatGPT Image 21 févr. 2026, 15_05_26.png",
+    "layout": "4x4",
     "model": "Grok",
     "title": "Realistic landscape grid",
     "description": "Natural scenes in a 4×4 grid with photorealistic style.",
@@ -20,6 +66,7 @@
   {
     "id": "gpt-icons-1",
     "image": "Examples/ChatGPT Image 21 févr. 2026, 15_10_07.png",
+    "layout": "4x4",
     "model": "GPT",
     "title": "Icon set – minimalist",
     "description": "Clean icon grid for UI or app assets.",
@@ -30,6 +77,7 @@
   {
     "id": "grok-realistic-2",
     "image": "Examples/Gemini_Generated_Image_gl6qqygl6qqygl6q.png",
+    "layout": "4x4",
     "model": "Grok",
     "title": "Realistic variety grid",
     "description": "Mixed realistic subjects in grid layout.",
@@ -40,6 +88,7 @@
   {
     "id": "gpt-schema-1",
     "image": "Examples/ChatGPT Image 21 févr. 2026, 15_04_34.png",
+    "layout": "4x4",
     "model": "GPT",
     "title": "Schema / diagram style",
     "description": "Structured visual schema in grid form.",
@@ -50,11 +99,39 @@
   {
     "id": "gpt-icons-2",
     "image": "Examples/Gemini_Generated_Image_zbex2yzbex2yzbex.png",
+    "layout": "4x4",
     "model": "GPT",
     "title": "Icons – soft palette",
     "description": "Soft pastel icon grid for gentle UI.",
     "prompt": "Create an image in a 4×4 grid with thin black borders and white background. All 16 cells: soft and pastel colors, minimalist vector style, no gradients. Single centered element per cell from a chosen theme, front view, clean outlines.",
     "style": "minimalist vector",
     "palette": "soft and pastel"
+  },
+  {
+    "id": "grid-4x4-a",
+    "layout": "4x4-A",
+    "model": "GPT",
+    "title": "4×4 Center 2×2 text",
+    "description": "Middle 4 cells = TXT. Cover, hero, product.",
+    "prompt": "Create a 4×4 grid with a 2×2 text block in the center.",
+    "size": "4×4"
+  },
+  {
+    "id": "grid-4x4-b",
+    "layout": "4x4-B",
+    "model": "GPT",
+    "title": "4×4 Vertical band text",
+    "description": "Middle 2 columns = TXT. Timeline, message.",
+    "prompt": "Create a 4×4 grid with a vertical text band in the middle two columns.",
+    "size": "4×4"
+  },
+  {
+    "id": "grid-4x4-c",
+    "layout": "4x4-C",
+    "model": "GPT",
+    "title": "4×4 Frame (B + IMG)",
+    "description": "Border = branding, center = image.",
+    "prompt": "Create a 4×4 grid with branding border and image in the center 2×2.",
+    "size": "4×4"
   }
 ]
