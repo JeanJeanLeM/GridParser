@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>4×4 Grid Prompt Builder</title>
   <link rel="stylesheet" href="css/shared.css">
+  <script src="js/gridSchema.js"></script>
   <style>
     body {
       font-family: var(--font-sans);
@@ -230,6 +231,7 @@
     .cells-grid.size-2 { grid-template-columns: repeat(2, 1fr); }
     .cells-grid.size-3 { grid-template-columns: repeat(3, 1fr); }
     .cells-grid.size-4 { grid-template-columns: repeat(4, 1fr); }
+    .cells-grid.size-5 { grid-template-columns: repeat(5, 1fr); }
     .cell-box {
       aspect-ratio: 1;
       border: 1px solid var(--border-light);
@@ -473,6 +475,8 @@
     .style-preview__grid-cells.size-2 { grid-template-columns: repeat(2, 1fr); grid-template-rows: repeat(2, 1fr); }
     .style-preview__grid-cells.size-3 { grid-template-columns: repeat(3, 1fr); grid-template-rows: repeat(3, 1fr); }
     .style-preview__grid-cells.size-4 { grid-template-columns: repeat(4, 1fr); grid-template-rows: repeat(4, 1fr); }
+    .style-preview__grid-cells.size-2x4 { grid-template-columns: repeat(4, 1fr); grid-template-rows: repeat(2, 1fr); }
+    .style-preview__grid-cells.size-1x3 { grid-template-columns: repeat(3, 1fr); grid-template-rows: 1fr; }
     .style-preview__grid-cell {
       background: var(--card-bg);
       border-radius: 2px;
@@ -480,12 +484,72 @@
       align-items: center;
       justify-content: center;
       min-height: 0;
+      position: relative;
     }
     .style-preview__grid-cell img {
       width: 85%;
       height: 85%;
       object-fit: contain;
     }
+    .style-preview__grid-cell .style-preview__cell-type-label {
+      font-size: 0.5rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--text-muted);
+      position: absolute;
+      top: 2px;
+      left: 2px;
+      line-height: 1;
+    }
+    .style-preview__grid-cell.cell-type--text .style-preview__cell-type-label {
+      color: #1a5fb4;
+    }
+    .style-preview__grid-cell.cell-type--branding .style-preview__cell-type-label {
+      color: #c64600;
+    }
+    .style-preview__grid-cell.cell-type--text {
+      background: rgba(26, 95, 180, 0.08);
+    }
+    .style-preview__grid-cell.cell-type--branding {
+      background: rgba(198, 70, 0, 0.08);
+    }
+    .style-preview__grid-cell[data-cell-index] {
+      cursor: pointer;
+    }
+    .style-preview__grid-cell.selected {
+      outline: 2px solid var(--accent, #e5a152);
+      outline-offset: 1px;
+      z-index: 1;
+    }
+    .style-preview__cell-toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 0.35rem;
+      margin-top: 0.5rem;
+      font-size: var(--text-xs);
+    }
+    .style-preview__cell-toolbar-label { color: var(--text-hint); margin-right: 0.25rem; }
+    .style-preview__cell-size-btn,
+    .style-preview__cell-move-btn {
+      padding: 0.2rem 0.4rem;
+      font-size: 0.75rem;
+      border: 1px solid var(--border-input);
+      border-radius: 4px;
+      background: var(--card-bg);
+      cursor: pointer;
+    }
+    .style-preview__cell-size-btn:hover,
+    .style-preview__cell-move-btn:hover {
+      background: var(--input-bg);
+    }
+    .style-preview__cell-move-btn.active {
+      background: var(--accent, #e5a152);
+      color: #fff;
+      border-color: var(--accent, #e5a152);
+    }
+    .style-preview__cell-toolbar-sep { color: var(--text-muted); margin: 0 0.2rem; }
     .style-preview__example { margin: 0; }
     .style-preview__bg {
       border-radius: 8px;
@@ -601,6 +665,15 @@
         <div class="style-preview__grid-showcase">
           <p class="style-preview__grid-label" id="style-preview-grid-label">Grid 4×4</p>
           <div class="style-preview__grid-cells" id="style-preview-grid-cells"></div>
+          <div class="style-preview__cell-toolbar" id="style-preview-cell-toolbar" style="display: none;">
+            <span class="style-preview__cell-toolbar-label">Cell size:</span>
+            <button type="button" class="style-preview__cell-size-btn" data-type="1x" title="1×">1×</button>
+            <button type="button" class="style-preview__cell-size-btn" data-type="1.5x-wide" title="1.5× wide">1.5× W</button>
+            <button type="button" class="style-preview__cell-size-btn" data-type="1.5x-tall" title="1.5× tall">1.5× T</button>
+            <button type="button" class="style-preview__cell-size-btn" data-type="2x" title="2×">2×</button>
+            <span class="style-preview__cell-toolbar-sep">|</span>
+            <button type="button" class="style-preview__cell-move-btn" id="style-preview-move-btn" title="Click another cell to swap positions">Move</button>
+          </div>
         </div>
         <div class="style-preview__example">
           <div class="style-preview__bg" id="style-preview-bg">
@@ -640,9 +713,28 @@
           </button>
           <div class="filter-dropdown__list" role="listbox" hidden></div>
           <select id="grid-size" class="filter-dropdown__select-hidden" aria-hidden="true" tabindex="-1">
-            <option value="2">2×2</option>
-            <option value="3">3×3</option>
-            <option value="4" selected>4×4</option>
+            <optgroup label="2×2 (4 cells)">
+              <option value="2x2">A. Classic</option>
+              <option value="2x2-B">B. 1 big + 3 small</option>
+            </optgroup>
+            <optgroup label="3×3 (9 cells)">
+              <option value="3x3">Classic</option>
+              <option value="3x3-A">A. Text center</option>
+              <option value="3x3-B">B. Text band</option>
+              <option value="3x3-C">C. All image</option>
+              <option value="3x3-D">D. Diagonal text</option>
+            </optgroup>
+            <optgroup label="4×4 (16 cells)">
+              <option value="4x4" selected>Classic</option>
+              <option value="4x4-A">A. Center 2×2 text</option>
+              <option value="4x4-B">B. Vertical band text</option>
+              <option value="4x4-C">C. Frame (B + IMG)</option>
+            </optgroup>
+            <optgroup label="Other">
+              <option value="1L4S">1 large 4 smalls</option>
+              <option value="3N">3 cells</option>
+              <option value="custom">Custom</option>
+            </optgroup>
           </select>
         </div>
         <div class="filter-dropdown">
@@ -890,8 +982,13 @@
       var stylePreviewLabel = document.getElementById('style-preview-label');
       var stylePreviewGridLabel = document.getElementById('style-preview-grid-label');
       var stylePreviewGridCells = document.getElementById('style-preview-grid-cells');
+      var stylePreviewCellToolbar = document.getElementById('style-preview-cell-toolbar');
+      var stylePreviewMoveBtn = document.getElementById('style-preview-move-btn');
 
       var currentEditorCell = 0;
+      var currentGridSpec = null;
+      var selectedShowcaseCellIndex = null;
+      var moveModeForSwap = false;
 
       var backgroundColors = {
         'pure white': '#fff',
@@ -918,24 +1015,193 @@
         'other': 'Apple'
       };
 
+      function getGridSpec() {
+        var val = gridSizeSel && gridSizeSel.value ? gridSizeSel.value : '4x4';
+        if (val === 'custom' && currentGridSpec) return currentGridSpec;
+        if (typeof gridSchema !== 'undefined' && gridSchema.parseCompactGrid) {
+          currentGridSpec = gridSchema.parseCompactGrid(val);
+          return currentGridSpec;
+        }
+        currentGridSpec = { mode: 'uniform', rows: 4, cols: 4, cells: [] };
+        return currentGridSpec;
+      }
+      function setSpecToCustom(spec) {
+        currentGridSpec = spec;
+        if (gridSizeSel) {
+          gridSizeSel.value = 'custom';
+          var wrap = gridSizeSel.closest('.filter-dropdown');
+          var display = wrap ? wrap.querySelector('[data-dropdown-display]') : null;
+          if (display) display.textContent = 'Custom';
+        }
+      }
       function buildGridShowcase() {
-        var n = getGridSize();
-        var total = n * n;
-        stylePreviewGridLabel.textContent = 'Grid ' + n + '×' + n;
-        stylePreviewGridCells.className = 'style-preview__grid-cells size-' + n;
+        var spec = getGridSpec();
+        spec = typeof gridSchema !== 'undefined' && gridSchema.normalizeSpec
+          ? gridSchema.normalizeSpec(spec)
+          : spec;
+        var compact = typeof gridSchema !== 'undefined' && gridSchema.specToCompactString
+          ? gridSchema.specToCompactString(spec)
+          : '4x4';
+        var total = typeof gridSchema !== 'undefined' && gridSchema.getCellCount
+          ? gridSchema.getCellCount(spec)
+          : 16;
+        stylePreviewGridLabel.textContent = 'Grid ' + compact;
+        var rows = spec.rows || 1;
+        var cols = spec.cols || 1;
+        if (spec.mode === 'uniform') {
+          stylePreviewGridCells.className = 'style-preview__grid-cells size-' + rows;
+          stylePreviewGridCells.style.gridTemplateColumns = '';
+          stylePreviewGridCells.style.gridTemplateRows = '';
+        } else if (spec.mode === 'structured') {
+          stylePreviewGridCells.className = 'style-preview__grid-cells';
+          stylePreviewGridCells.style.gridTemplateColumns = 'repeat(' + cols + ', 1fr)';
+          stylePreviewGridCells.style.gridTemplateRows = 'repeat(' + rows + ', 1fr)';
+        } else {
+          stylePreviewGridCells.className = 'style-preview__grid-cells size-4';
+          stylePreviewGridCells.style.gridTemplateColumns = '';
+          stylePreviewGridCells.style.gridTemplateRows = '';
+        }
         stylePreviewGridCells.innerHTML = '';
         var src = stylePreviewImg.src || styleImages[styleSel.value] || styleImages['minimalist vector'];
-        for (var i = 0; i < total; i++) {
+        var cells = spec.cells && spec.cells.length ? spec.cells : (function () {
+          var out = [];
+          for (var r = 0; r < (spec.rows || 1); r++) {
+            for (var c = 0; c < (spec.cols || 1); c++) {
+              out.push({ row: r, col: c, rowSpan: 1, colSpan: 1 });
+            }
+          }
+          return out;
+        })();
+        for (var i = 0; i < cells.length; i++) {
           var cell = document.createElement('div');
-          cell.className = 'style-preview__grid-cell';
-          if (i === 0) {
+          var ce = cells[i];
+          var cellType = (ce && ce.cellType) ? ce.cellType : 'image';
+          var typeLabel = cellType === 'text' ? 'TXT' : cellType === 'branding' ? 'B' : 'IMG';
+          cell.className = 'style-preview__grid-cell cell-type--' + cellType + (selectedShowcaseCellIndex === i ? ' selected' : '');
+          cell.setAttribute('data-cell-index', i);
+          cell.setAttribute('data-cell-type', cellType);
+          if (ce.row != null && ce.col != null) {
+            cell.style.gridRowStart = (ce.row + 1);
+            cell.style.gridColumnStart = (ce.col + 1);
+            cell.style.gridRowEnd = 'span ' + (ce.rowSpan || 1);
+            cell.style.gridColumnEnd = 'span ' + (ce.colSpan || 1);
+          }
+          var labelSpan = document.createElement('span');
+          labelSpan.className = 'style-preview__cell-type-label';
+          labelSpan.setAttribute('aria-hidden', 'true');
+          labelSpan.textContent = typeLabel;
+          cell.appendChild(labelSpan);
+          if (cellType === 'image' && i === 0) {
             var img = document.createElement('img');
             img.src = src;
             img.alt = '';
             cell.appendChild(img);
           }
+          (function (idx) {
+            cell.addEventListener('click', function () {
+              if (moveModeForSwap && selectedShowcaseCellIndex != null) {
+                swapShowcaseCells(selectedShowcaseCellIndex, idx);
+                moveModeForSwap = false;
+                if (stylePreviewMoveBtn) stylePreviewMoveBtn.classList.remove('active');
+              } else {
+                selectedShowcaseCellIndex = idx;
+                stylePreviewGridCells.querySelectorAll('.style-preview__grid-cell').forEach(function (el) {
+                  el.classList.toggle('selected', parseInt(el.getAttribute('data-cell-index'), 10) === idx);
+                });
+                if (stylePreviewCellToolbar) stylePreviewCellToolbar.style.display = 'flex';
+              }
+            });
+          })(i);
           stylePreviewGridCells.appendChild(cell);
         }
+      }
+      function setCellType(cellIndex, type) {
+        var spec = getGridSpec();
+        spec = gridSchema && gridSchema.normalizeSpec ? gridSchema.normalizeSpec(JSON.parse(JSON.stringify(spec))) : spec;
+        var rows = spec.rows || 1;
+        var cols = spec.cols || 1;
+        var cells = spec.cells && spec.cells.length ? spec.cells.slice() : [];
+        if (!cells.length) {
+          for (var r = 0; r < rows; r++) {
+            for (var c = 0; c < cols; c++) cells.push({ row: r, col: c, rowSpan: 1, colSpan: 1 });
+          }
+          cells.sort(function (a, b) { return a.row !== b.row ? a.row - b.row : a.col - b.col; });
+        }
+        if (cellIndex < 0 || cellIndex >= cells.length) return;
+        var ce = cells[cellIndex];
+        var r0 = ce.row || 0;
+        var c0 = ce.col || 0;
+        var rs = 1;
+        var cs = 1;
+        if (type === '2x') { rs = 2; cs = 2; }
+        else if (type === '1.5x-wide') { cs = 2; }
+        else if (type === '1.5x-tall') { rs = 2; }
+        var covered = {};
+        for (var ri = 0; ri < rs; ri++) {
+          for (var ci = 0; ci < cs; ci++) {
+            covered[(r0 + ri) + ',' + (c0 + ci)] = true;
+          }
+        }
+        var pairs = [];
+        for (var j = 0; j < cells.length; j++) {
+          var cell = cells[j];
+          var r = cell.row != null ? cell.row : 0;
+          var c = cell.col != null ? cell.col : 0;
+          if (j === cellIndex) {
+            pairs.push({ cell: { row: r0, col: c0, rowSpan: rs, colSpan: cs }, oldIndex: j });
+            continue;
+          }
+          if (covered[r + ',' + c]) continue;
+          pairs.push({ cell: cell, oldIndex: j });
+        }
+        pairs.sort(function (a, b) {
+          var ca = a.cell;
+          var cb = b.cell;
+          return (ca.row !== cb.row) ? ca.row - cb.row : ca.col - cb.col;
+        });
+        var newCells = pairs.map(function (p) { return p.cell; });
+        var keptOldIndices = pairs.map(function (p) { return p.oldIndex; });
+        var oldTotal = cells.length;
+        var saved = [];
+        for (var k = 1; k <= oldTotal; k++) {
+          saved[k] = { name: getElementValue('elem-' + k), desc: getElementValue('desc-' + k) };
+        }
+        setSpecToCustom({ mode: 'structured', rows: rows, cols: cols, cells: newCells });
+        selectedShowcaseCellIndex = null;
+        if (stylePreviewCellToolbar) stylePreviewCellToolbar.style.display = 'none';
+        buildGridShowcase();
+        buildCellsGrid();
+        for (var ni = 0; ni < keptOldIndices.length; ni++) {
+          var oldI = keptOldIndices[ni];
+          var nameEl = document.getElementById('elem-' + (ni + 1));
+          var descEl = document.getElementById('desc-' + (ni + 1));
+          if (nameEl && saved[oldI + 1]) nameEl.value = saved[oldI + 1].name || '';
+          if (descEl && saved[oldI + 1]) descEl.value = saved[oldI + 1].desc || '';
+        }
+        updatePrompt();
+      }
+      function swapShowcaseCells(i, j) {
+        if (i === j) return;
+        var spec = getGridSpec();
+        spec = gridSchema && gridSchema.normalizeSpec ? gridSchema.normalizeSpec(JSON.parse(JSON.stringify(spec))) : spec;
+        var cells = spec.cells && spec.cells.length ? spec.cells.slice() : [];
+        if (!spec.cells || spec.cells.length === 0) {
+          var rows = spec.rows || 1;
+          var cols = spec.cols || 1;
+          for (var r = 0; r < rows; r++) {
+            for (var c = 0; c < cols; c++) cells.push({ row: r, col: c, rowSpan: 1, colSpan: 1 });
+          }
+          cells.sort(function (a, b) { return a.row !== b.row ? a.row - b.row : a.col - b.col; });
+        }
+        if (i < 0 || i >= cells.length || j < 0 || j >= cells.length) return;
+        var tmp = { row: cells[i].row, col: cells[i].col, rowSpan: cells[i].rowSpan, colSpan: cells[i].colSpan };
+        cells[i] = { row: cells[j].row, col: cells[j].col, rowSpan: cells[j].rowSpan || 1, colSpan: cells[j].colSpan || 1 };
+        cells[j] = { row: tmp.row, col: tmp.col, rowSpan: tmp.rowSpan || 1, colSpan: tmp.colSpan || 1 };
+        setSpecToCustom({ mode: spec.mode || 'structured', rows: spec.rows, cols: spec.cols, cells: cells });
+        selectedShowcaseCellIndex = null;
+        if (stylePreviewCellToolbar) stylePreviewCellToolbar.style.display = 'none';
+        buildGridShowcase();
+        updatePrompt();
       }
 
       function updatePreview() {
@@ -962,8 +1228,12 @@
         }
       }
 
-      function getGridSize() { return Math.max(2, Math.min(4, parseInt(gridSizeSel.value, 10) || 4)); }
-      function getTotalCells() { var n = getGridSize(); return n * n; }
+      function getTotalCells() {
+        var spec = getGridSpec();
+        return typeof gridSchema !== 'undefined' && gridSchema.getCellCount
+          ? gridSchema.getCellCount(spec)
+          : 16;
+      }
 
       function syncEditorToCell() {
         if (currentEditorCell < 1) return;
@@ -1104,9 +1374,8 @@
       }
 
       function buildCellsGrid() {
-        var n = getGridSize();
         var total = getTotalCells();
-        cellsGrid.className = 'cells-grid size-' + n;
+        cellsGrid.className = 'cells-grid size-' + total;
         cellsGrid.innerHTML = '';
         for (var i = 1; i <= total; i++) {
           var box = document.createElement('div');
@@ -1157,8 +1426,12 @@
       }
 
       function buildPrompt() {
-        var n = getGridSize();
+        var spec = getGridSpec();
         var total = getTotalCells();
+        var compact = typeof gridSchema !== 'undefined' && gridSchema.specToCompactString
+          ? gridSchema.specToCompactString(spec)
+          : '4x4';
+        var gridDesc = compact;
         var themeVal = (theme.value || '').trim() || 'fruits';
         var styleVal = styleSel.value || 'minimalist vector';
         var bgVal = background.value || 'pure white';
@@ -1192,22 +1465,16 @@
           parts.push('No text, numbers, or letters in the grid.');
         }
         parts.push('');
-        parts.push('Exact layout of the ' + total + ' elements (name and description per cell):');
-        var idx = 1;
-        for (var row = 1; row <= n; row++) {
-          var rowParts = [];
-          for (var col = 0; col < n; col++) {
-            var nameVal = getElementValue('elem-' + idx);
-            var descVal = getElementValue('desc-' + idx);
-            var part = idx + '. [' + nameVal + ']';
-            if (descVal) part += ' — ' + descVal;
-            rowParts.push(part);
-            idx++;
-          }
-          parts.push('Row ' + row + ': ' + rowParts.join('  '));
+        parts.push('Exact layout of the ' + total + ' elements (name and description per cell, order left-to-right top-to-bottom):');
+        for (var idx = 1; idx <= total; idx++) {
+          var nameVal = getElementValue('elem-' + idx);
+          var descVal = getElementValue('desc-' + idx);
+          var part = idx + '. [' + nameVal + ']';
+          if (descVal) part += ' — ' + descVal;
+          parts.push(part);
         }
         parts.push('');
-        parts.push('Perfectly square grid, strictly equal cell sizes, single grid lines only (no double lines), high resolution, sharp details. No element may extend outside its cell.');
+        parts.push('Grid layout: ' + gridDesc + '. Single grid lines only (no double lines), high resolution, sharp details. No element may extend outside its cell.');
 
         return parts.join('\n');
       }
@@ -1217,8 +1484,27 @@
       }
 
       gridSizeSel.addEventListener('change', function () {
+        getGridSpec();
+        buildGridShowcase();
         buildCellsGrid();
       });
+
+      if (stylePreviewCellToolbar) {
+        stylePreviewCellToolbar.querySelectorAll('.style-preview__cell-size-btn').forEach(function (btn) {
+          btn.addEventListener('click', function () {
+            if (selectedShowcaseCellIndex == null) return;
+            var type = btn.getAttribute('data-type');
+            if (type) setCellType(selectedShowcaseCellIndex, type);
+          });
+        });
+        if (stylePreviewMoveBtn) {
+          stylePreviewMoveBtn.addEventListener('click', function () {
+            moveModeForSwap = !moveModeForSwap;
+            stylePreviewMoveBtn.classList.toggle('active', moveModeForSwap);
+          });
+        }
+      }
+      currentGridSpec = getGridSpec();
 
       initFilterDropdowns();
 
@@ -1264,13 +1550,19 @@
         quickIdeaFeedback.textContent = 'Generating…';
         quickIdeaFeedback.className = 'quick-idea__feedback';
         generateCellsBtn.disabled = true;
-        var gridSize = getGridSize();
+        var spec = getGridSpec();
+        var compact = typeof gridSchema !== 'undefined' && gridSchema.specToCompactString
+          ? gridSchema.specToCompactString(spec)
+          : '4x4';
+        var cellCount = getTotalCells();
         fetch('/api/generate-cells', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             description: description,
-            gridSize: gridSize,
+            gridSize: compact.indexOf('x') !== -1 && compact.length <= 3 ? parseInt(compact.split('x')[0], 10) : undefined,
+            layout: compact,
+            cellCount: cellCount,
           }),
         })
           .then(function (res) {

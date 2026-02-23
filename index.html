@@ -9,6 +9,7 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/tesseract.js/5.1.0/tesseract.min.js"></script>
   <script src="js/gridSplit.js"></script>
   <script src="js/gridDetect.js"></script>
+  <script src="js/gridSchema.js"></script>
   <script src="js/segmentArrangement.js"></script>
   <script src="js/segmentDetect.js"></script>
   <script src="js/segmentSplit.js"></script>
@@ -707,6 +708,31 @@
             ctx.lineTo(dispX(seg.x2), dispY(seg.y2));
           }
           ctx.stroke();
+          for (var hs = 0; hs < segments.length; hs++) {
+            var hseg = segments[hs];
+            var selected = hs === selectedSegmentIndex;
+            var hx1 = dispX(hseg.x1);
+            var hy1 = dispY(hseg.y1);
+            var hx2 = dispX(hseg.x2);
+            var hy2 = dispY(hseg.y2);
+            if (selected) {
+              ctx.save();
+              ctx.strokeStyle = 'rgba(255, 210, 60, 0.95)';
+              ctx.lineWidth = Math.max(2, thickness + 1);
+              ctx.beginPath();
+              ctx.moveTo(hx1, hy1);
+              ctx.lineTo(hx2, hy2);
+              ctx.stroke();
+              ctx.restore();
+            }
+            ctx.save();
+            ctx.fillStyle = selected ? 'rgba(255, 210, 60, 0.95)' : 'rgba(220, 50, 50, 0.95)';
+            ctx.beginPath();
+            ctx.arc(hx1, hy1, 4, 0, Math.PI * 2);
+            ctx.arc(hx2, hy2, 4, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.restore();
+          }
           return;
         }
         var lastX = xBounds.length - 1;
@@ -750,6 +776,72 @@
           if (Math.abs(imgY - yBounds[j]) <= hitPx) return { axis: 'h', index: j };
         }
         return null;
+      }
+
+      function updateFreeformButtons() {
+        var delBtn = document.getElementById('delete-segment-btn');
+        var excludeBtn = document.getElementById('exclude-cell-btn');
+        if (delBtn) delBtn.disabled = selectedSegmentIndex == null;
+        if (excludeBtn) excludeBtn.disabled = true;
+      }
+
+      function clamp01(v, lo, hi) {
+        return Math.max(lo, Math.min(hi, v));
+      }
+
+      function getImagePointFromMouseEvent(e) {
+        if (!currentImage) return null;
+        var rect = gridOverlay.getBoundingClientRect();
+        var w = currentImage.naturalWidth;
+        var h = currentImage.naturalHeight;
+        var x = (e.clientX - rect.left - MARGIN) / (baseWidth || 1) * w;
+        var y = (e.clientY - rect.top - MARGIN) / (baseHeight || 1) * h;
+        return { x: x, y: y };
+      }
+
+      function isHorizontalSegment(seg) {
+        return Math.abs(seg.y2 - seg.y1) <= Math.abs(seg.x2 - seg.x1);
+      }
+
+      function hitFreeformSegment(imgX, imgY) {
+        if (!currentImage || !segments.length) return null;
+        var w = currentImage.naturalWidth;
+        var hitPx = Math.max(8, w / 80);
+        var best = null;
+        var bestDist = Infinity;
+        function consider(dist, info) {
+          if (dist <= hitPx && dist < bestDist) {
+            best = info;
+            bestDist = dist;
+          }
+        }
+        for (var i = 0; i < segments.length; i++) {
+          var seg = segments[i];
+          var d1 = Math.hypot(imgX - seg.x1, imgY - seg.y1);
+          var d2 = Math.hypot(imgX - seg.x2, imgY - seg.y2);
+          consider(d1, { segmentIndex: i, whichEnd: 'start' });
+          consider(d2, { segmentIndex: i, whichEnd: 'end' });
+        }
+        if (best) return best;
+        for (var j = 0; j < segments.length; j++) {
+          var s = segments[j];
+          if (isHorizontalSegment(s)) {
+            var minX = Math.min(s.x1, s.x2) - hitPx;
+            var maxX = Math.max(s.x1, s.x2) + hitPx;
+            if (imgX >= minX && imgX <= maxX) {
+              var dy = Math.abs(imgY - s.y1);
+              consider(dy, { segmentIndex: j, whichEnd: 'body' });
+            }
+          } else {
+            var minY = Math.min(s.y1, s.y2) - hitPx;
+            var maxY = Math.max(s.y1, s.y2) + hitPx;
+            if (imgY >= minY && imgY <= maxY) {
+              var dx = Math.abs(imgX - s.x1);
+              consider(dx, { segmentIndex: j, whichEnd: 'body' });
+            }
+          }
+        }
+        return best;
       }
 
       function setupGridEditor(img) {
@@ -840,11 +932,24 @@
 
       function runFreeformAutoDetect() {
         if (!currentImage || typeof segmentDetect === 'undefined' || !segmentDetect.detectWhiteGaps) return false;
-        var opts = { whiteThreshold: 220, lightFraction: 0.85, minGapPx: 3, mergeGap: 2 };
-        segments = segmentDetect.detectWhiteGaps(currentImage, opts) || [];
+        var optionPresets = [
+          { whiteThreshold: 220, lightFraction: 0.85, minGapPx: 3, mergeGap: 2 },
+          { whiteThreshold: 210, lightFraction: 0.78, minGapPx: 2, mergeGap: 2 },
+          { whiteThreshold: 200, lightFraction: 0.7, minGapPx: 2, mergeGap: 3 },
+          { whiteThreshold: 190, lightFraction: 0.62, minGapPx: 2, mergeGap: 4 }
+        ];
+        var found = [];
+        for (var i = 0; i < optionPresets.length; i++) {
+          found = segmentDetect.detectWhiteGaps(currentImage, optionPresets[i]) || [];
+          if (found.length) break;
+        }
+        segments = found;
         excludedCellIds = {};
+        selectedSegmentIndex = null;
+        selectedCellIndex = null;
+        updateFreeformButtons();
         drawOverlay();
-        return true;
+        return segments.length > 0;
       }
 
       function handleFile(file) {
@@ -867,107 +972,161 @@
       }
 
       function runCut() {
-        if (!currentImage || typeof gridSplit === 'undefined' || !gridSplit.splitGridCustom) {
-          showError('Grid splitter not loaded.');
+        if (!currentImage) {
+          showError('Load an image first.');
           return;
         }
         clearError();
+        var mode = getEditorMode();
         var fmt = getGridFormat();
         var expectedCount = fmt.rows * fmt.cols;
-        var w = currentImage.naturalWidth;
-        var h = currentImage.naturalHeight;
-        var clamp = function (v, lo, hi) { return Math.max(lo, Math.min(hi, v)); };
-        var xClamped = xBounds.map(function (v) { return clamp(v, 0, w); });
-        var yClamped = yBounds.map(function (v) { return clamp(v, 0, h); });
-        gridSplit.splitGridCustom(currentImage, xClamped, yClamped, { trimPixels: getTrimPixels() })
-          .then(function (blobs) {
-            if (blobs.length !== expectedCount) {
-              showError('Expected ' + expectedCount + ' tiles, got ' + blobs.length);
-              return;
-            }
-            tileBlobs = blobs;
-            previewGrid.innerHTML = '';
-            previewGrid.style.gridTemplateColumns = 'repeat(' + fmt.cols + ', 1fr)';
-            blobs.forEach(function (blob, index) {
-              var r = Math.floor(index / fmt.cols);
-              var c = index % fmt.cols;
-              var defaultName = 'tile_' + r + '_' + c + '.png';
-              var wrap = document.createElement('div');
-              wrap.className = 'preview-tile';
-              var imgWrap = document.createElement('div');
-              imgWrap.className = 'tile-img-wrap';
-              var thumb = document.createElement('img');
-              thumb.src = URL.createObjectURL(blob);
-              thumb.alt = 'Tile ' + (index + 1);
-              imgWrap.appendChild(thumb);
-              var input = document.createElement('input');
-              input.type = 'text';
-              input.className = 'tile-name';
-              input.value = defaultName;
-              input.setAttribute('data-index', index);
-              input.placeholder = 'filename.png';
-              input.title = 'Rename before download';
-              wrap.appendChild(imgWrap);
-              wrap.appendChild(input);
-              previewGrid.appendChild(wrap);
-            });
-            outputEl.classList.add('visible');
-            downloadBtn.disabled = false;
+        var splitPromise;
 
-            var autoNameCheckbox = document.getElementById('auto-name-from-labels');
-            var detectingEl = document.getElementById('detecting-labels');
-            if (autoNameCheckbox && autoNameCheckbox.checked && typeof Tesseract !== 'undefined' && Tesseract.recognize) {
-              detectingEl.style.display = 'block';
-              var thumbs = previewGrid.querySelectorAll('.tile-img-wrap img');
-              var inputs = previewGrid.querySelectorAll('.tile-name');
-              var labelPct = getLabelRegionPct();
-              var indices = [];
-              for (var k = 0; k < expectedCount; k++) indices.push(k);
-              Promise.all(indices.map(function (index) {
-                var r = Math.floor(index / fmt.cols);
-                var c = index % fmt.cols;
-                var defaultBase = 'tile_' + r + '_' + c;
-                return getLabelRegionCanvas(thumbs[index].src, labelPct).then(function (labelCanvas) {
-                  return Tesseract.recognize(labelCanvas, 'eng').then(function (result) {
-                    var words = extractWordsFromOcrResult(result);
-                    var base = wordsToBaseName(words);
-                    return base ? base : defaultBase;
-                  });
-                }).catch(function () { return defaultBase; });
-              })).then(function (baseNames) {
-                var used = {};
-                var finalNames = [];
-                for (var i = 0; i < expectedCount; i++) {
-                  var base = baseNames[i];
-                  var name = base + '.png';
-                  if (used[name]) {
-                    var n = 1;
-                    while (used[base + '_' + n + '.png']) n++;
-                    name = base + '_' + n + '.png';
-                  }
-                  used[name] = true;
-                  finalNames.push(name);
-                }
-                for (var j = 0; j < expectedCount; j++) {
-                  if (inputs[j]) inputs[j].value = finalNames[j];
-                }
-                detectingEl.style.display = 'none';
-              }).catch(function () {
-                detectingEl.style.display = 'none';
-              });
-            }
-          })
-          .catch(function (err) {
-            showError(err && err.message ? err.message : 'Failed to create tiles.');
+        if (mode === 'freeform') {
+          if (typeof segmentSplit === 'undefined' || !segmentSplit.splitBySegments) {
+            showError('Freeform splitter not loaded.');
+            return;
+          }
+          if (!segments.length && !runFreeformAutoDetect()) {
+            showError('No freeform segments detected. Click Auto-detect cells or add segments manually.');
+            return;
+          }
+          splitPromise = segmentSplit.splitBySegments(currentImage, segments, {
+            trimPixels: getTrimPixels(),
+            excludedCellIds: excludedCellIds
           });
+        } else {
+          if (typeof gridSplit === 'undefined' || !gridSplit.splitGridCustom) {
+            showError('Grid splitter not loaded.');
+            return;
+          }
+          var w = currentImage.naturalWidth;
+          var h = currentImage.naturalHeight;
+          var clamp = function (v, lo, hi) { return Math.max(lo, Math.min(hi, v)); };
+          var xClamped = xBounds.map(function (v) { return clamp(v, 0, w); });
+          var yClamped = yBounds.map(function (v) { return clamp(v, 0, h); });
+          splitPromise = gridSplit.splitGridCustom(currentImage, xClamped, yClamped, { trimPixels: getTrimPixels() });
+        }
+
+        splitPromise.then(function (blobs) {
+          if (mode !== 'freeform' && blobs.length !== expectedCount) {
+            showError('Expected ' + expectedCount + ' tiles, got ' + blobs.length);
+            return;
+          }
+          if (!blobs.length) {
+            showError('No tiles were produced. Check segments/exclusions and try again.');
+            return;
+          }
+          tileBlobs = blobs;
+          previewGrid.innerHTML = '';
+          var previewCols = mode === 'freeform'
+            ? Math.max(1, Math.ceil(Math.sqrt(blobs.length)))
+            : fmt.cols;
+          previewGrid.style.gridTemplateColumns = 'repeat(' + previewCols + ', 1fr)';
+          function defaultBaseName(index) {
+            if (mode === 'freeform') return 'tile_' + (index + 1);
+            var r = Math.floor(index / fmt.cols);
+            var c = index % fmt.cols;
+            return 'tile_' + r + '_' + c;
+          }
+          blobs.forEach(function (blob, index) {
+            var defaultName = defaultBaseName(index) + '.png';
+            var wrap = document.createElement('div');
+            wrap.className = 'preview-tile';
+            var imgWrap = document.createElement('div');
+            imgWrap.className = 'tile-img-wrap';
+            var thumb = document.createElement('img');
+            thumb.src = URL.createObjectURL(blob);
+            thumb.alt = 'Tile ' + (index + 1);
+            imgWrap.appendChild(thumb);
+            var input = document.createElement('input');
+            input.type = 'text';
+            input.className = 'tile-name';
+            input.value = defaultName;
+            input.setAttribute('data-index', index);
+            input.placeholder = 'filename.png';
+            input.title = 'Rename before download';
+            wrap.appendChild(imgWrap);
+            wrap.appendChild(input);
+            previewGrid.appendChild(wrap);
+          });
+          outputEl.classList.add('visible');
+          downloadBtn.disabled = false;
+
+          var autoNameCheckbox = document.getElementById('auto-name-from-labels');
+          var detectingEl = document.getElementById('detecting-labels');
+          if (autoNameCheckbox && autoNameCheckbox.checked && typeof Tesseract !== 'undefined' && Tesseract.recognize) {
+            detectingEl.style.display = 'block';
+            var thumbs = previewGrid.querySelectorAll('.tile-img-wrap img');
+            var inputs = previewGrid.querySelectorAll('.tile-name');
+            var labelPct = getLabelRegionPct();
+            var indices = [];
+            for (var k = 0; k < blobs.length; k++) indices.push(k);
+            Promise.all(indices.map(function (index) {
+              var defaultBase = defaultBaseName(index);
+              return getLabelRegionCanvas(thumbs[index].src, labelPct).then(function (labelCanvas) {
+                return Tesseract.recognize(labelCanvas, 'eng').then(function (result) {
+                  var words = extractWordsFromOcrResult(result);
+                  var base = wordsToBaseName(words);
+                  return base ? base : defaultBase;
+                });
+              }).catch(function () { return defaultBase; });
+            })).then(function (baseNames) {
+              var used = {};
+              var finalNames = [];
+              for (var i = 0; i < blobs.length; i++) {
+                var base = baseNames[i];
+                var name = base + '.png';
+                if (used[name]) {
+                  var n = 1;
+                  while (used[base + '_' + n + '.png']) n++;
+                  name = base + '_' + n + '.png';
+                }
+                used[name] = true;
+                finalNames.push(name);
+              }
+              for (var j = 0; j < blobs.length; j++) {
+                if (inputs[j]) inputs[j].value = finalNames[j];
+              }
+              detectingEl.style.display = 'none';
+            }).catch(function () {
+              detectingEl.style.display = 'none';
+            });
+          }
+        }).catch(function (err) {
+          showError(err && err.message ? err.message : 'Failed to create tiles.');
+        });
       }
 
       gridOverlay.addEventListener('mousedown', function (e) {
-        var rect = gridOverlay.getBoundingClientRect();
+        if (!currentImage) return;
+        var pt = getImagePointFromMouseEvent(e);
+        if (!pt) return;
         var w = currentImage.naturalWidth;
         var h = currentImage.naturalHeight;
-        var imgX = (e.clientX - rect.left - MARGIN) / (baseWidth || 1) * w;
-        var imgY = (e.clientY - rect.top - MARGIN) / (baseHeight || 1) * h;
+        var imgX = clamp01(pt.x, 0, w);
+        var imgY = clamp01(pt.y, 0, h);
+        if (getEditorMode() === 'freeform') {
+          var fHit = hitFreeformSegment(imgX, imgY);
+          if (!fHit) {
+            selectedSegmentIndex = null;
+            updateFreeformButtons();
+            drawOverlay();
+            return;
+          }
+          e.preventDefault();
+          selectedSegmentIndex = fHit.segmentIndex;
+          freeformDrag.active = true;
+          freeformDrag.segmentIndex = fHit.segmentIndex;
+          freeformDrag.whichEnd = fHit.whichEnd;
+          freeformDrag.startX = imgX;
+          freeformDrag.startY = imgY;
+          var seg0 = segments[fHit.segmentIndex];
+          freeformDrag.orig = { x1: seg0.x1, y1: seg0.y1, x2: seg0.x2, y2: seg0.y2 };
+          updateFreeformButtons();
+          drawOverlay();
+          return;
+        }
         var hit = hitLine(imgX, imgY);
         if (hit) {
           e.preventDefault();
@@ -977,6 +1136,79 @@
         }
       });
       document.addEventListener('mousemove', function (e) {
+        if (freeformDrag.active && currentImage && getEditorMode() === 'freeform') {
+          var ptF = getImagePointFromMouseEvent(e);
+          if (!ptF) return;
+          var wF = currentImage.naturalWidth;
+          var hF = currentImage.naturalHeight;
+          var fx = clamp01(ptF.x, 0, wF);
+          var fy = clamp01(ptF.y, 0, hF);
+          var idx = freeformDrag.segmentIndex;
+          if (idx == null || !segments[idx]) return;
+          var seg = segments[idx];
+          var horizontal = isHorizontalSegment(seg);
+          if (freeformDrag.whichEnd === 'start') {
+            if (horizontal) {
+              seg.x1 = fx;
+              seg.y1 = seg.y2;
+            } else {
+              seg.y1 = fy;
+              seg.x1 = seg.x2;
+            }
+          } else if (freeformDrag.whichEnd === 'end') {
+            if (horizontal) {
+              seg.x2 = fx;
+              seg.y2 = seg.y1;
+            } else {
+              seg.y2 = fy;
+              seg.x2 = seg.x1;
+            }
+          } else if (freeformDrag.whichEnd === 'body' && freeformDrag.orig) {
+            var dxF = fx - freeformDrag.startX;
+            var dyF = fy - freeformDrag.startY;
+            if (horizontal) {
+              var oy = freeformDrag.orig.y1 + dyF;
+              var ox1 = freeformDrag.orig.x1 + dxF;
+              var ox2 = freeformDrag.orig.x2 + dxF;
+              var minX = Math.min(ox1, ox2);
+              var maxX = Math.max(ox1, ox2);
+              if (minX < 0) {
+                ox1 -= minX;
+                ox2 -= minX;
+              }
+              if (maxX > wF) {
+                var shiftX = maxX - wF;
+                ox1 -= shiftX;
+                ox2 -= shiftX;
+              }
+              seg.x1 = ox1;
+              seg.x2 = ox2;
+              seg.y1 = clamp01(oy, 0, hF);
+              seg.y2 = seg.y1;
+            } else {
+              var ox = freeformDrag.orig.x1 + dxF;
+              var oy1 = freeformDrag.orig.y1 + dyF;
+              var oy2 = freeformDrag.orig.y2 + dyF;
+              var minY = Math.min(oy1, oy2);
+              var maxY = Math.max(oy1, oy2);
+              if (minY < 0) {
+                oy1 -= minY;
+                oy2 -= minY;
+              }
+              if (maxY > hF) {
+                var shiftY = maxY - hF;
+                oy1 -= shiftY;
+                oy2 -= shiftY;
+              }
+              seg.y1 = oy1;
+              seg.y2 = oy2;
+              seg.x1 = clamp01(ox, 0, wF);
+              seg.x2 = seg.x1;
+            }
+          }
+          drawOverlay();
+          return;
+        }
         if (!drag.active || !currentImage) return;
         var rect = gridOverlay.getBoundingClientRect();
         var w = currentImage.naturalWidth;
@@ -1004,6 +1236,12 @@
         drag.active = false;
         drag.axis = null;
         drag.index = null;
+        freeformDrag.active = false;
+        freeformDrag.segmentIndex = null;
+        freeformDrag.whichEnd = null;
+        freeformDrag.startX = null;
+        freeformDrag.startY = null;
+        freeformDrag.orig = null;
       });
 
       document.getElementById('loupe-btn').addEventListener('click', function () {
@@ -1117,6 +1355,8 @@
         if (freeformAutodetectBtn) freeformAutodetectBtn.style.display = isFreeform ? '' : 'none';
         if (freeformResetBtn) freeformResetBtn.style.display = isFreeform ? '' : 'none';
         if (introFreeform) introFreeform.style.display = isFreeform ? 'block' : 'none';
+        if (!isFreeform) selectedSegmentIndex = null;
+        updateFreeformButtons();
         if (currentImage && isFreeform) {
           runFreeformAutoDetect();
         } else if (currentImage) {
@@ -1164,8 +1404,39 @@
         if (currentImage) {
           segments = [];
           excludedCellIds = {};
+          selectedSegmentIndex = null;
+          selectedCellIndex = null;
+          updateFreeformButtons();
           drawOverlay();
         }
+      });
+      document.getElementById('add-segment-h').addEventListener('click', function () {
+        if (!currentImage) return;
+        var w = currentImage.naturalWidth;
+        var h = currentImage.naturalHeight;
+        var y = h / 2;
+        segments.push({ x1: w * 0.1, y1: y, x2: w * 0.9, y2: y });
+        selectedSegmentIndex = segments.length - 1;
+        updateFreeformButtons();
+        drawOverlay();
+      });
+      document.getElementById('add-segment-v').addEventListener('click', function () {
+        if (!currentImage) return;
+        var w = currentImage.naturalWidth;
+        var h = currentImage.naturalHeight;
+        var x = w / 2;
+        segments.push({ x1: x, y1: h * 0.1, x2: x, y2: h * 0.9 });
+        selectedSegmentIndex = segments.length - 1;
+        updateFreeformButtons();
+        drawOverlay();
+      });
+      document.getElementById('delete-segment-btn').addEventListener('click', function () {
+        if (selectedSegmentIndex == null || selectedSegmentIndex < 0 || selectedSegmentIndex >= segments.length) return;
+        segments.splice(selectedSegmentIndex, 1);
+        if (!segments.length) selectedSegmentIndex = null;
+        else selectedSegmentIndex = Math.min(selectedSegmentIndex, segments.length - 1);
+        updateFreeformButtons();
+        drawOverlay();
       });
       document.getElementById('cut-btn').addEventListener('click', runCut);
       var trimMain = document.getElementById('trim-pixels');

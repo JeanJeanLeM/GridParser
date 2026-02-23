@@ -40,15 +40,23 @@ module.exports = async function handler(req, res) {
   }
 
   const description = (body.description || '').trim();
-  const gridSize = Math.min(4, Math.max(2, parseInt(body.gridSize, 10) || 4));
-  const cellCount = gridSize * gridSize;
+  let cellCount;
+  let layoutLabel;
+  if (body.cellCount != null && Number.isInteger(body.cellCount) && body.cellCount >= 1 && body.cellCount <= 100) {
+    cellCount = body.cellCount;
+    layoutLabel = (body.layout && typeof body.layout === 'string') ? body.layout : (cellCount + ' cells');
+  } else {
+    const gridSize = Math.min(4, Math.max(2, parseInt(body.gridSize, 10) || 4));
+    cellCount = gridSize * gridSize;
+    layoutLabel = gridSize + '×' + gridSize;
+  }
 
   if (!description) {
     return res.status(400).json({ error: 'Missing or empty description' });
   }
 
   const systemPrompt = buildSystemPrompt(cellCount);
-  const userMessage = 'Idea: "' + description + '". Grid ' + gridSize + '×' + gridSize + ' (' + cellCount + ' cells). Return JSON array of ' + cellCount + ' objects with "name" and "description".';
+  const userMessage = 'Idea: "' + description + '". Grid layout: ' + layoutLabel + ' (' + cellCount + ' cells). Return JSON array of exactly ' + cellCount + ' objects with "name" and "description", in order left-to-right top-to-bottom.';
 
   try {
     const controller = new AbortController();
