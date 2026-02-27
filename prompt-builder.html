@@ -6,6 +6,7 @@
   <title>4×4 Grid Prompt Builder</title>
   <link rel="stylesheet" href="css/shared.css">
   <script src="js/gridSchema.js"></script>
+  <script src="js/promptComposer.js"></script>
   <style>
     body {
       font-family: var(--font-sans);
@@ -236,7 +237,6 @@
       grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
     }
     .cell-box {
-      aspect-ratio: 1;
       border: 1px solid var(--border-light);
       border-radius: 8px;
       padding: 0.5rem;
@@ -245,6 +245,13 @@
       transition: border-color 0.15s, background 0.15s;
       display: flex;
       flex-direction: column;
+      min-height: 0;
+    }
+    .cells-grid.cells-grid--uniform .cell-box {
+      aspect-ratio: 1;
+    }
+    .cells-grid.cells-grid--structured .cell-box {
+      aspect-ratio: auto;
       min-height: 0;
     }
     .cell-box:hover {
@@ -289,6 +296,17 @@
       border-color: var(--text-secondary);
       box-shadow: 0 0 0 2px rgba(229, 161, 82, 0.2);
     }
+    .card--prompt-first {
+      display: flex;
+      flex-direction: column;
+    }
+    .card--prompt-first .prompt-output { order: 1; }
+    .card--prompt-first .options-filters {
+      order: 2;
+      margin-top: 0.5rem;
+    }
+    .card--prompt-first .copy-row { order: 3; }
+    .card--prompt-first .generated-image-area { order: 4; }
     .copy-row {
       margin-top: 0.75rem;
       display: flex;
@@ -599,6 +617,79 @@
     .style-preview__label.visible {
       display: block;
     }
+    .grid-layout-carousel {
+      display: grid;
+      grid-auto-flow: column;
+      grid-auto-columns: minmax(160px, 1fr);
+      gap: 0.75rem;
+      overflow-x: auto;
+      padding-bottom: 0.25rem;
+    }
+    .grid-layout-card {
+      border: 1px solid var(--border-input);
+      border-radius: 10px;
+      background: var(--card-bg);
+      padding: 0.6rem;
+      text-align: left;
+      cursor: pointer;
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+    .grid-layout-card.is-selected {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 1px var(--accent);
+    }
+    .grid-layout-card__title {
+      font-size: var(--text-sm);
+      font-weight: 700;
+      color: var(--text-secondary);
+      line-height: 1.25;
+    }
+    .grid-layout-card__preview {
+      display: grid;
+      gap: 2px;
+      width: 100%;
+      aspect-ratio: 1;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      background: var(--border-light);
+      padding: 2px;
+      box-sizing: border-box;
+    }
+    .grid-layout-card__cell {
+      background: var(--card-bg);
+      border-radius: 2px;
+      min-height: 0;
+      position: relative;
+    }
+    .grid-layout-card__cell--image {
+      background: #ffffff;
+    }
+    .grid-layout-card__cell--text {
+      background: rgba(26, 95, 180, 0.15);
+    }
+    .grid-layout-card__cell--branding {
+      background: rgba(198, 70, 0, 0.15);
+    }
+    .grid-layout-card__cell-label {
+      position: absolute;
+      top: 2px;
+      left: 2px;
+      font-size: 0.45rem;
+      font-weight: 700;
+      line-height: 1;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      pointer-events: none;
+    }
+    .grid-layout-card__cell--text .grid-layout-card__cell-label {
+      color: #1a5fb4;
+    }
+    .grid-layout-card__cell--branding .grid-layout-card__cell-label {
+      color: #c64600;
+    }
     @media (max-width: 900px) {
       .prompt-and-preview {
         grid-template-columns: 1fr;
@@ -642,104 +733,40 @@
       <p class="intro">Configure style, theme and cell content – get a ready-to-use English prompt for ChatGPT or any AI image generator.</p>
     </div>
 
+  <section class="card card--grid-layouts" aria-label="Grid layouts">
+    <h2>Grid layouts</h2>
+    <select id="grid-size" class="filter-dropdown__select-hidden" aria-hidden="true" tabindex="-1">
+      <optgroup label="2×2 (4 cells)">
+        <option value="2x2">A. Classic</option>
+        <option value="2x2-B">B. 1 big + 3 small</option>
+      </optgroup>
+      <optgroup label="3×3 (9 cells)">
+        <option value="3x3">Classic</option>
+        <option value="3x3-A">A. Text center</option>
+        <option value="3x3-B">B. Text band</option>
+        <option value="3x3-C">C. All image</option>
+        <option value="3x3-D">D. Diagonal text</option>
+      </optgroup>
+      <optgroup label="4×4 (16 cells)">
+        <option value="4x4" selected>Classic</option>
+        <option value="4x4-A">A. Center 2×2 text</option>
+        <option value="4x4-B">B. Vertical band text</option>
+        <option value="4x4-C">C. Frame (B + IMG)</option>
+      </optgroup>
+      <optgroup label="Other">
+        <option value="1L4S">1 large 4 smalls</option>
+        <option value="3N">3 cells</option>
+        <option value="custom">Custom</option>
+      </optgroup>
+    </select>
+    <div id="grid-layout-carousel" class="grid-layout-carousel" role="listbox" aria-label="Grid layout presets"></div>
+  </section>
+
   <section class="card card--prompt-first">
     <h2>Generated prompt (English)</h2>
-    <div class="prompt-and-preview">
-      <div class="prompt-and-preview__main">
-        <textarea class="prompt-output" id="prompt-output" aria-label="Generated prompt (editable)"></textarea>
-        <div class="copy-row">
-          <button type="button" class="btn btn-primary" id="copy-btn">Copy to clipboard</button>
-          <button type="button" class="btn" id="generate-image-btn">Generate image</button>
-          <span class="copy-feedback" id="copy-feedback" aria-live="polite"></span>
-        </div>
-        <div id="generated-image-area" class="generated-image-area" style="display:none;" aria-live="polite">
-          <img id="generated-image-img" src="" alt="Generated grid image" class="generated-image-area__img">
-          <div id="generated-image-actions" class="generated-image-area__actions" style="display:none;">
-            <a id="generated-image-download" href="#" download="grid-image.png" class="btn btn-outline">Download</a>
-            <a id="generated-image-open-grid2icons" href="index.html" class="btn">Open in Grid2Icons</a>
-          </div>
-          <p id="generated-image-error" class="generated-image-area__error" style="display:none;"></p>
-        </div>
-        <p class="prompt-helper">You can edit the prompt above. Changing options will regenerate it. Paste into ChatGPT (DALL·E), Midjourney, or any image AI, then bring the resulting grid image back to <a href="index.html">Grid2Icons</a> to cut it into individual tiles.</p>
-      </div>
-      <aside class="style-preview" aria-label="Style preview example">
-        <h2 class="style-preview__title">Style preview</h2>
-        <p class="style-preview__hint">This example reflects your current grid size, style, background, palette, outlines and label settings.</p>
-        <div class="style-preview__grid-showcase">
-          <p class="style-preview__grid-label" id="style-preview-grid-label">Grid 4×4</p>
-          <div class="style-preview__grid-cells" id="style-preview-grid-cells"></div>
-          <div class="style-preview__cell-toolbar" id="style-preview-cell-toolbar" style="display: none;">
-            <span class="style-preview__cell-toolbar-label">Cell size:</span>
-            <button type="button" class="style-preview__cell-size-btn" data-type="1x" title="1×">1×</button>
-            <button type="button" class="style-preview__cell-size-btn" data-type="1.5x-wide" title="1.5× wide">1.5× W</button>
-            <button type="button" class="style-preview__cell-size-btn" data-type="1.5x-tall" title="1.5× tall">1.5× T</button>
-            <button type="button" class="style-preview__cell-size-btn" data-type="2x" title="2×">2×</button>
-            <span class="style-preview__cell-toolbar-sep">|</span>
-            <button type="button" class="style-preview__cell-move-btn" id="style-preview-move-btn" title="Click another cell to swap positions">Move</button>
-          </div>
-        </div>
-        <div class="style-preview__example">
-          <div class="style-preview__bg" id="style-preview-bg">
-            <div class="style-preview__img-wrap" id="style-preview-img-wrap">
-              <img class="style-preview__img" id="style-preview-img" src="assets/preview/apple-minimalist-vector.svg" alt="Example apple icon in selected style">
-            </div>
-            <span class="style-preview__label" id="style-preview-label" aria-hidden="true">Apple</span>
-          </div>
-        </div>
-      </aside>
-    </div>
-  </section>
-
-  <section class="card card--quick-idea" aria-label="Quick idea">
-    <h2>Quick idea</h2>
-    <p class="quick-idea__hint">Describe what you want in one sentence; an AI will fill the grid cells for you.</p>
-    <div class="quick-idea__row">
-      <input type="text" id="quick-idea-input" class="quick-idea__input" placeholder="e.g. I want a set of icons for Fruits" aria-label="Quick idea description">
-      <button type="button" class="btn btn-primary" id="generate-cells-btn">Generate cells</button>
-    </div>
-    <p id="quick-idea-feedback" class="quick-idea__feedback" aria-live="polite"></p>
-  </section>
-
-  <section class="card card--options" aria-label="Global options">
-    <h2>Options</h2>
+    <input type="hidden" id="theme" value="fruits">
     <div class="options-filters">
       <div class="options-filters__row">
-        <label class="filter-pill" for="theme">
-          <span class="filter-pill__label">Theme</span>
-          <input type="text" id="theme" class="filter-pill__input" placeholder="e.g. fruits" value="fruits" aria-label="Theme">
-        </label>
-        <div class="filter-dropdown">
-          <button type="button" class="filter-dropdown__trigger" aria-haspopup="listbox" aria-expanded="false" aria-label="Grid size">
-            <span class="filter-pill__label">Size</span>
-            <span class="filter-pill__value" data-dropdown-display>4×4</span>
-            <span class="filter-pill__chevron" aria-hidden="true">▾</span>
-          </button>
-          <div class="filter-dropdown__list" role="listbox" hidden></div>
-          <select id="grid-size" class="filter-dropdown__select-hidden" aria-hidden="true" tabindex="-1">
-            <optgroup label="2×2 (4 cells)">
-              <option value="2x2">A. Classic</option>
-              <option value="2x2-B">B. 1 big + 3 small</option>
-            </optgroup>
-            <optgroup label="3×3 (9 cells)">
-              <option value="3x3">Classic</option>
-              <option value="3x3-A">A. Text center</option>
-              <option value="3x3-B">B. Text band</option>
-              <option value="3x3-C">C. All image</option>
-              <option value="3x3-D">D. Diagonal text</option>
-            </optgroup>
-            <optgroup label="4×4 (16 cells)">
-              <option value="4x4" selected>Classic</option>
-              <option value="4x4-A">A. Center 2×2 text</option>
-              <option value="4x4-B">B. Vertical band text</option>
-              <option value="4x4-C">C. Frame (B + IMG)</option>
-            </optgroup>
-            <optgroup label="Other">
-              <option value="1L4S">1 large 4 smalls</option>
-              <option value="3N">3 cells</option>
-              <option value="custom">Custom</option>
-            </optgroup>
-          </select>
-        </div>
         <div class="filter-dropdown">
           <button type="button" class="filter-dropdown__trigger" aria-haspopup="listbox" aria-expanded="false" aria-label="Style">
             <span class="filter-pill__label">Style</span>
@@ -909,6 +936,31 @@
         </div>
       </div>
     </div>
+    <textarea class="prompt-output" id="prompt-output" aria-label="Generated prompt (editable)"></textarea>
+    <p class="prompt-helper"><strong>Best practice for easy cutting:</strong> ask for pure black continuous full grid lines (including outer border), high contrast, and a fully opaque image (no transparency / alpha).</p>
+    <div class="copy-row">
+      <button type="button" class="btn btn-primary" id="copy-btn">Copy to clipboard</button>
+      <button type="button" class="btn" id="generate-image-btn">Generate image</button>
+      <span class="copy-feedback" id="copy-feedback" aria-live="polite"></span>
+    </div>
+    <div id="generated-image-area" class="generated-image-area" style="display:none;" aria-live="polite">
+      <img id="generated-image-img" src="" alt="Generated grid image" class="generated-image-area__img">
+      <div id="generated-image-actions" class="generated-image-area__actions" style="display:none;">
+        <a id="generated-image-download" href="#" download="grid-image.png" class="btn btn-outline">Download</a>
+        <a id="generated-image-open-grid2icons" href="index.html" class="btn">Open in Grid2Icons</a>
+      </div>
+      <p id="generated-image-error" class="generated-image-area__error" style="display:none;"></p>
+    </div>
+  </section>
+
+  <section class="card card--quick-idea" aria-label="Quick idea">
+    <h2>Quick idea</h2>
+    <p class="quick-idea__hint">Describe what you want in one sentence; an AI will fill the grid cells for you.</p>
+    <div class="quick-idea__row">
+      <input type="text" id="quick-idea-input" class="quick-idea__input" placeholder="e.g. I want a set of icons for Fruits" aria-label="Quick idea description">
+      <button type="button" class="btn btn-primary" id="generate-cells-btn">Generate cells</button>
+    </div>
+    <p id="quick-idea-feedback" class="quick-idea__feedback" aria-live="polite"></p>
   </section>
 
   <section class="card">
@@ -950,6 +1002,7 @@
       var lighting = document.getElementById('lighting');
       var mood = document.getElementById('mood');
       var maxColors = document.getElementById('max-colors');
+      var gridLayoutCarousel = document.getElementById('grid-layout-carousel');
       var cellsGrid = document.getElementById('cells-grid');
       var cellsHeading = document.getElementById('cells-heading');
       var cellsLegend = document.getElementById('cells-legend');
@@ -961,12 +1014,50 @@
       var cellEditorNext = document.getElementById('cell-editor-next');
       var cellEditorClear = document.getElementById('cell-editor-clear');
       var promptOutput = document.getElementById('prompt-output');
-      var galleryPrompt = null;
-      try { galleryPrompt = sessionStorage.getItem('galleryPrompt'); } catch (e) {}
-      if (galleryPrompt) {
-        promptOutput.value = galleryPrompt;
-        try { sessionStorage.removeItem('galleryPrompt'); } catch (e) {}
+
+      function applyGalleryPayload(payload) {
+        if (!payload) return;
+        var layout = (payload.layout || '').replace(/\s/g, '').replace(/×/g, 'x');
+        if (layout && gridSizeSel) {
+          if (gridSizeSel.querySelector('option[value="' + layout + '"]')) {
+            gridSizeSel.value = layout;
+          } else if (layout.length <= 4 && /^\d+x\d+$/i.test(layout)) {
+            gridSizeSel.value = layout;
+          }
+        }
+        if (payload.theme && theme) theme.value = payload.theme;
+        if (payload.style && styleSel) styleSel.value = payload.style;
+        if (payload.background && background) background.value = payload.background;
+        if (payload.palette && palette) palette.value = payload.palette;
+        if (payload.outlines && outlines) outlines.value = payload.outlines;
+        if (payload.labels && labels) labels.value = payload.labels;
+        if (payload.anthropomorphism && anthropomorphism) anthropomorphism.value = payload.anthropomorphism;
+        if (payload.mood && mood) mood.value = payload.mood || '—';
+        if (payload.maxColors != null && maxColors) maxColors.value = payload.maxColors === '' || payload.maxColors == null ? '—' : String(payload.maxColors);
+        document.querySelectorAll('.filter-dropdown').forEach(function (wrap) {
+          var sel = wrap.querySelector('select');
+          var display = wrap.querySelector('[data-dropdown-display]');
+          if (display && sel && sel.options[sel.selectedIndex]) display.textContent = sel.options[sel.selectedIndex].textContent;
+        });
+        currentGridSpec = getGridSpec();
+        buildGridShowcase();
+        buildCellsGrid();
+        var cells = Array.isArray(payload.cells) ? payload.cells : [];
+        var total = getTotalCells();
+        for (var i = 1; i <= total; i++) {
+          var c = cells[i - 1];
+          var nameEl = document.getElementById('elem-' + i);
+          var descEl = document.getElementById('desc-' + i);
+          if (nameEl) nameEl.value = (c && (c.name != null ? String(c.name) : c.title || '')) || '';
+          if (descEl) descEl.value = (c && (c.description != null ? String(c.description) : '')) || '';
+        }
+        updatePrompt();
+        updatePreview();
       }
+
+      var galleryStored = null;
+      try { galleryStored = sessionStorage.getItem('galleryPrompt'); } catch (e) {}
+
       var copyBtn = document.getElementById('copy-btn');
       var copyFeedback = document.getElementById('copy-feedback');
       var quickIdeaInput = document.getElementById('quick-idea-input');
@@ -990,6 +1081,7 @@
 
       var currentEditorCell = 0;
       var currentGridSpec = null;
+      var currentCellsGridSizing = { rows: 4, cols: 4, isUniform: true };
       var selectedShowcaseCellIndex = null;
       var moveModeForSwap = false;
 
@@ -1032,12 +1124,94 @@
         currentGridSpec = spec;
         if (gridSizeSel) {
           gridSizeSel.value = 'custom';
-          var wrap = gridSizeSel.closest('.filter-dropdown');
-          var display = wrap ? wrap.querySelector('[data-dropdown-display]') : null;
-          if (display) display.textContent = 'Custom';
+          updateLayoutCarouselSelection();
         }
       }
+      function updateLayoutCarouselSelection() {
+        if (!gridLayoutCarousel) return;
+        gridLayoutCarousel.querySelectorAll('.grid-layout-card').forEach(function (card) {
+          var selected = card.getAttribute('data-value') === gridSizeSel.value;
+          card.classList.toggle('is-selected', selected);
+          card.setAttribute('aria-selected', selected ? 'true' : 'false');
+        });
+      }
+      function buildGridLayoutCarousel() {
+        if (!gridLayoutCarousel || !gridSizeSel) return;
+        gridLayoutCarousel.innerHTML = '';
+        var layoutTitles = {
+          '2x2': '2x2-1 Classic',
+          '2x2-B': '2x2-2 1 big + 3 small',
+          '3x3': '3x3-1 Classic',
+          '3x3-A': '3x3-2 TXT center',
+          '3x3-B': '3x3-3 TXT band',
+          '3x3-C': '3x3-4 All image',
+          '3x3-D': '3x3-5 TXT diagonal',
+          '4x4': '4x4-1 Classic',
+          '4x4-A': '4x4-2 TXT center block',
+          '4x4-B': '4x4-3 TXT vertical band',
+          '4x4-C': '4x4-4 Branding frame',
+          '1L4S': '1L4S-1 Hero + 4 small',
+          '3N': '3N-1 Three cells'
+        };
+        var options = Array.prototype.slice.call(gridSizeSel.querySelectorAll('option')).filter(function (opt) {
+          return opt.value !== 'custom';
+        });
+        for (var i = 0; i < options.length; i++) {
+          (function (opt) {
+            var card = document.createElement('button');
+            card.type = 'button';
+            card.className = 'grid-layout-card';
+            card.setAttribute('role', 'option');
+            card.setAttribute('data-value', opt.value);
+            var title = document.createElement('span');
+            title.className = 'grid-layout-card__title';
+            title.textContent = layoutTitles[opt.value] || opt.textContent;
+            var preview = document.createElement('div');
+            preview.className = 'grid-layout-card__preview';
+            var spec = (typeof gridSchema !== 'undefined' && gridSchema.parseCompactGrid)
+              ? gridSchema.parseCompactGrid(opt.value)
+              : { mode: 'uniform', rows: 4, cols: 4, cells: [] };
+            spec = (typeof gridSchema !== 'undefined' && gridSchema.normalizeSpec) ? gridSchema.normalizeSpec(spec) : spec;
+            var rows = spec.rows || 1;
+            var cols = spec.cols || 1;
+            preview.style.gridTemplateColumns = 'repeat(' + cols + ', 1fr)';
+            preview.style.gridTemplateRows = 'repeat(' + rows + ', 1fr)';
+            var cells = spec.cells && spec.cells.length ? spec.cells : (function () {
+              var out = [];
+              for (var r = 0; r < rows; r++) for (var c = 0; c < cols; c++) out.push({ row: r, col: c, rowSpan: 1, colSpan: 1 });
+              return out;
+            })();
+            for (var k = 0; k < cells.length; k++) {
+              var ce = cells[k];
+              var cell = document.createElement('span');
+              var cellType = (ce && ce.cellType) ? ce.cellType : 'image';
+              cell.className = 'grid-layout-card__cell grid-layout-card__cell--' + cellType;
+              var label = document.createElement('span');
+              label.className = 'grid-layout-card__cell-label';
+              label.textContent = cellType === 'text' ? 'TXT' : (cellType === 'branding' ? 'BRD' : 'IMG');
+              cell.appendChild(label);
+              if (ce.row != null && ce.col != null) {
+                cell.style.gridRowStart = (ce.row + 1);
+                cell.style.gridColumnStart = (ce.col + 1);
+                cell.style.gridRowEnd = 'span ' + (ce.rowSpan || 1);
+                cell.style.gridColumnEnd = 'span ' + (ce.colSpan || 1);
+              }
+              preview.appendChild(cell);
+            }
+            card.appendChild(title);
+            card.appendChild(preview);
+            card.addEventListener('click', function () {
+              gridSizeSel.value = opt.value;
+              gridSizeSel.dispatchEvent(new Event('change', { bubbles: true }));
+              updatePrompt();
+            });
+            gridLayoutCarousel.appendChild(card);
+          })(options[i]);
+        }
+        updateLayoutCarouselSelection();
+      }
       function buildGridShowcase() {
+        if (!stylePreviewGridCells || !stylePreviewGridLabel) return;
         var spec = getGridSpec();
         spec = typeof gridSchema !== 'undefined' && gridSchema.normalizeSpec
           ? gridSchema.normalizeSpec(spec)
@@ -1208,6 +1382,7 @@
       }
 
       function updatePreview() {
+        if (!stylePreviewBg || !stylePreviewImgWrap || !stylePreviewImg || !stylePreviewLabel) return;
         var bgVal = background.value || 'pure white';
         var styleVal = styleSel.value || 'minimalist vector';
         var paletteVal = palette.value || 'flat and vivid';
@@ -1236,6 +1411,20 @@
         return typeof gridSchema !== 'undefined' && gridSchema.getCellCount
           ? gridSchema.getCellCount(spec)
           : 16;
+      }
+
+      function getCellTypesForCurrentLayout(total) {
+        var spec = getGridSpec();
+        spec = (typeof gridSchema !== 'undefined' && gridSchema.normalizeSpec) ? gridSchema.normalizeSpec(spec) : spec;
+        var out = [];
+        var cells = spec && spec.cells && spec.cells.length ? spec.cells : [];
+        for (var i = 0; i < total; i++) {
+          var ce = cells[i];
+          var t = (ce && ce.cellType) ? String(ce.cellType).toLowerCase() : 'image';
+          if (t !== 'text' && t !== 'branding') t = 'image';
+          out.push(t);
+        }
+        return out;
       }
 
       function syncEditorToCell() {
@@ -1343,6 +1532,9 @@
                 list.hidden = true;
                 trigger.setAttribute('aria-expanded', 'false');
                 sel.dispatchEvent(new Event('change', { bubbles: true }));
+                // Ensure prompt/preview react even with custom dropdown UI.
+                updatePrompt();
+                updatePreview();
               });
               list.appendChild(div);
             }
@@ -1376,10 +1568,43 @@
         });
       }
 
+      function applyCellsGridSizing() {
+        if (!cellsGrid) return;
+        var rows = currentCellsGridSizing.rows || 1;
+        var cols = currentCellsGridSizing.cols || 1;
+        var isUniform = !!currentCellsGridSizing.isUniform;
+        cellsGrid.style.gridTemplateColumns = 'repeat(' + cols + ', 1fr)';
+        if (isUniform) {
+          cellsGrid.style.gridTemplateRows = 'repeat(' + rows + ', 1fr)';
+          return;
+        }
+        // Keep structured layouts bounded by a square limit:
+        // spanning cells can be wider, but rows stay at a controlled height.
+        var gridWidth = cellsGrid.clientWidth || (cellsGrid.parentElement ? cellsGrid.parentElement.clientWidth : 0) || 640;
+        var baseTrack = Math.floor(gridWidth / Math.max(rows, cols));
+        var trackPx = Math.max(78, Math.min(112, baseTrack));
+        cellsGrid.style.gridTemplateRows = 'repeat(' + rows + ', ' + trackPx + 'px)';
+      }
+
       function buildCellsGrid() {
+        var spec = getGridSpec();
+        spec = (typeof gridSchema !== 'undefined' && gridSchema.normalizeSpec) ? gridSchema.normalizeSpec(spec) : spec;
         var total = getTotalCells();
-        var sizeClass = (total >= 2 && total <= 5) ? 'size-' + total : 'size-auto';
-        cellsGrid.className = 'cells-grid ' + sizeClass;
+        var rows = spec.rows != null ? spec.rows : Math.ceil(total / (spec.cols || 4));
+        var cols = spec.cols != null ? spec.cols : 4;
+        var cells = spec.cells && spec.cells.length ? spec.cells : [];
+        if (!cells.length && rows && cols) {
+          for (var r = 0; r < rows; r++) {
+            for (var c = 0; c < cols; c++) {
+              cells.push({ row: r, col: c, rowSpan: 1, colSpan: 1 });
+            }
+          }
+          cells.sort(function (a, b) { return a.row !== b.row ? a.row - b.row : a.col - b.col; });
+        }
+        var isUniform = spec.mode === 'uniform';
+        cellsGrid.className = 'cells-grid ' + (isUniform ? 'cells-grid--uniform' : 'cells-grid--structured');
+        currentCellsGridSizing = { rows: rows, cols: cols, isUniform: isUniform };
+        applyCellsGridSizing();
         cellsGrid.innerHTML = '';
         for (var i = 1; i <= total; i++) {
           var box = document.createElement('div');
@@ -1389,6 +1614,13 @@
           box.setAttribute('role', 'button');
           box.setAttribute('tabindex', '0');
           box.setAttribute('aria-label', 'Edit cell ' + i + '. Click to open name and description.');
+          var ce = cells[i - 1];
+          if (ce && ce.row != null && ce.col != null) {
+            box.style.gridRowStart = (ce.row + 1);
+            box.style.gridColumnStart = (ce.col + 1);
+            box.style.gridRowEnd = 'span ' + (ce.rowSpan || 1);
+            box.style.gridColumnEnd = 'span ' + (ce.colSpan || 1);
+          }
           box.innerHTML =
             '<span class="cell-num">CELL ' + i + '</span>' +
             '<input type="text" id="elem-' + i + '" placeholder="Element name" aria-label="Element ' + i + ' name">' +
@@ -1412,6 +1644,7 @@
         cellsHeading.textContent = 'Grid cells 1–' + total;
         cellsLegend.textContent = 'Name and optional description for each of the ' + total + ' cells. Click a cell to edit.';
         attachCellListeners(total);
+        requestAnimationFrame(applyCellsGridSizing);
         updatePrompt();
       }
 
@@ -1430,57 +1663,38 @@
       }
 
       function buildPrompt() {
+        if (typeof promptComposer === 'undefined' || !promptComposer.buildPrompt) {
+          return 'Configure options and cells, then the prompt will appear here.';
+        }
         var spec = getGridSpec();
         var total = getTotalCells();
         var compact = typeof gridSchema !== 'undefined' && gridSchema.specToCompactString
           ? gridSchema.specToCompactString(spec)
           : '4x4';
-        var gridDesc = compact;
-        var themeVal = (theme.value || '').trim() || 'fruits';
-        var styleVal = styleSel.value || 'minimalist vector';
-        var bgVal = background.value || 'pure white';
-        var paletteVal = palette.value || 'flat and vivid';
-        var outlineVal = outlines.value || 'bold black';
-        var labelsVal = labels.value || 'NO';
-        var langVal = labelsVal === 'NO' ? 'English' : labelsVal;
-        var lightingVal = lighting && lighting.value ? lighting.value : 'natural light';
-        var moodVal = mood && mood.value && mood.value !== '—' ? mood.value : '';
-        var maxColorsVal = maxColors && maxColors.value && maxColors.value !== '—' ? maxColors.value : '';
-
-        var gridDesc = n + '×' + n;
-        var parts = [];
-        parts.push('Create an image in a perfectly aligned ' + gridDesc + ' grid on a ' + bgVal + ' background. Use a single thin black line between adjacent cells only—one shared line per edge, no double lines, no extra borders. The grid is like a simple table: only these single lines separate the cells. Do not draw an outline or frame around each illustration.');
-        parts.push('');
-        var styleLine = 'Uniform style for all ' + total + ' illustrations: ' + styleVal + ', clean and precise lines, ' + paletteVal + ' colors' + (outlineVal !== 'none' ? ', ' + outlineVal + ' outlines on the illustrated elements' : '; no outlines or frames around each illustration') + '. Flat, no shadows, no shading, no gradients, no 3D, no pixelation, no complex texture.';
-        if (moodVal) styleLine += ' Mood: ' + moodVal + '.';
-        if (maxColorsVal) styleLine += ' Maximum ' + maxColorsVal + ' colors per cell.';
-        parts.push(styleLine);
-        parts.push('');
-        var anthropoVal = (document.getElementById('anthropomorphism') && document.getElementById('anthropomorphism').value) || 'Off';
-        if (anthropoVal === 'Off') {
-          parts.push('No anthropomorphism: no eyes, no face, no mouth, no arms, no human features on the illustrated elements.');
-          parts.push('');
-        }
-        parts.push('In each cell, place a single centered element from the category ' + themeVal + ', front view, clearly recognizable shape, occupying about 80% of the cell, centered with equal margins on all sides.');
-        parts.push('');
-        if (labelsVal !== 'NO') {
-          parts.push('Below each illustration, write the name in ' + labelsVal + ', simple black sans-serif font, uniform and readable size.');
-        } else {
-          parts.push('No text, numbers, or letters in the grid.');
-        }
-        parts.push('');
-        parts.push('Exact layout of the ' + total + ' elements (name and description per cell, order left-to-right top-to-bottom):');
+        var cellTypes = getCellTypesForCurrentLayout(total);
+        var cells = [];
         for (var idx = 1; idx <= total; idx++) {
-          var nameVal = getElementValue('elem-' + idx);
-          var descVal = getElementValue('desc-' + idx);
-          var part = idx + '. [' + nameVal + ']';
-          if (descVal) part += ' — ' + descVal;
-          parts.push(part);
+          cells.push({
+            name: getElementValue('elem-' + idx),
+            description: getElementValue('desc-' + idx),
+            cellType: cellTypes[idx - 1] || 'image'
+          });
         }
-        parts.push('');
-        parts.push('Grid layout: ' + gridDesc + '. Single grid lines only (no double lines), high resolution, sharp details. No element may extend outside its cell.');
-
-        return parts.join('\n');
+        var anthropoEl = document.getElementById('anthropomorphism');
+        return promptComposer.buildPrompt({
+          layoutCompact: compact,
+          cellCount: total,
+          theme: theme.value,
+          style: styleSel.value,
+          background: background.value,
+          palette: palette.value,
+          outlines: outlines.value,
+          labels: labels.value,
+          anthropomorphism: anthropoEl ? anthropoEl.value : 'Off',
+          mood: mood && mood.value && mood.value !== '—' ? mood.value : '',
+          maxColors: maxColors && maxColors.value && maxColors.value !== '—' ? maxColors.value : '',
+          cells: cells
+        });
       }
 
       function updatePrompt() {
@@ -1491,6 +1705,7 @@
         getGridSpec();
         buildGridShowcase();
         buildCellsGrid();
+        updateLayoutCarouselSelection();
       });
 
       if (stylePreviewCellToolbar) {
@@ -1511,6 +1726,7 @@
       currentGridSpec = getGridSpec();
 
       initFilterDropdowns();
+      buildGridLayoutCarousel();
 
       cellEditorPrev.addEventListener('click', goPrevCell);
       cellEditorNext.addEventListener('click', goNextCell);
@@ -1537,10 +1753,25 @@
         el.addEventListener('change', updatePreview);
         el.addEventListener('input', updatePreview);
       });
+      window.addEventListener('resize', applyCellsGridSizing);
 
       buildCellsGrid();
       updatePrompt();
       updatePreview();
+
+      if (galleryStored) {
+        try {
+          if (galleryStored.trim().charAt(0) === '{') {
+            var payload = JSON.parse(galleryStored);
+            applyGalleryPayload(payload);
+          } else {
+            promptOutput.value = galleryStored;
+          }
+        } catch (err) {
+          promptOutput.value = galleryStored;
+        }
+        try { sessionStorage.removeItem('galleryPrompt'); } catch (e) {}
+      }
 
       var GENERATED_IMAGE_KEY = 'generatedGridImage';
 
@@ -1559,6 +1790,11 @@
           ? gridSchema.specToCompactString(spec)
           : '4x4';
         var cellCount = getTotalCells();
+        var cellTypes = getCellTypesForCurrentLayout(cellCount);
+        var textCellIndices = [];
+        for (var ti = 0; ti < cellTypes.length; ti++) {
+          if (cellTypes[ti] === 'text') textCellIndices.push(ti + 1);
+        }
         fetch('/api/generate-cells', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -1567,6 +1803,8 @@
             gridSize: compact.indexOf('x') !== -1 && compact.length <= 3 ? parseInt(compact.split('x')[0], 10) : undefined,
             layout: compact,
             cellCount: cellCount,
+            cellTypes: cellTypes,
+            textCellIndices: textCellIndices,
           }),
         })
           .then(function (res) {
@@ -1589,14 +1827,21 @@
               var c = cells[i - 1] || { name: '', description: '' };
               var elemEl = document.getElementById('elem-' + i);
               var descEl = document.getElementById('desc-' + i);
-              if (elemEl) elemEl.value = c.name || '';
-              if (descEl) descEl.value = c.description || '';
+              var isTextCell = cellTypes[i - 1] === 'text';
+              var finalName = (c.name || '').trim();
+              var finalDesc = (c.description || '').trim();
+              if (isTextCell && !finalDesc) finalDesc = 'TXT cell: short wording/label only.';
+              if (elemEl) elemEl.value = finalName;
+              if (descEl) descEl.value = finalDesc;
             }
             updatePrompt();
             if (currentEditorCell >= 1 && currentEditorCell <= total) {
               syncCellToEditor(currentEditorCell);
             }
-            quickIdeaFeedback.textContent = 'Cells filled. You can edit them below.';
+            var warn = data.warning ? (' ' + data.warning) : '';
+            var runIdInfo = data.runId ? (' (runId: ' + data.runId + ')') : '';
+            quickIdeaFeedback.textContent = 'Cells filled. You can edit them below.' + warn;
+            if (runIdInfo) quickIdeaFeedback.textContent += runIdInfo;
             quickIdeaFeedback.className = 'quick-idea__feedback success';
           })
           .catch(function (err) {

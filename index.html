@@ -3,10 +3,16 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>4×4 Grid Image Splitter</title>
+  <title>Grid Parser</title>
   <link rel="stylesheet" href="css/shared.css">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/tesseract.js/5.1.0/tesseract.min.js"></script>
+  <script src="lib/tesseract.min.js"></script>
+  <script>
+    window.TESSERACT_OPTIONS = {
+      workerPath: 'lib/tesseract-worker.min.js',
+      corePath: 'lib/tesseract-core'
+    };
+  </script>
   <script src="js/gridSplit.js"></script>
   <script src="js/gridDetect.js"></script>
   <script src="js/gridSchema.js"></script>
@@ -139,6 +145,10 @@
       background: var(--input-bg);
       border-radius: 4px;
       overflow: hidden;
+      cursor: pointer;
+    }
+    .preview-tile .tile-img-wrap:hover {
+      box-shadow: 0 0 0 2px var(--accent);
     }
     .preview-tile .tile-img-wrap img {
       position: absolute;
@@ -165,6 +175,187 @@
       outline: none;
       box-shadow: 0 0 0 2px rgba(229, 161, 82, 0.25);
     }
+    .preview-tile .tile-actions {
+      display: flex;
+      gap: 4px;
+      align-items: stretch;
+    }
+    .preview-tile .tile-name--in-row {
+      flex: 1;
+      min-width: 0;
+    }
+    .preview-tile .tile-dl-btn {
+      flex-shrink: 0;
+      width: 2.25rem;
+      height: auto;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      background: var(--input-bg);
+      cursor: pointer;
+      color: var(--text-muted);
+      transition: background 0.15s, color 0.15s;
+      padding: 0;
+    }
+    .preview-tile .tile-dl-btn:hover {
+      background: var(--btn-primary-bg);
+      color: #fff;
+    }
+    .preview-tile .tile-dl-btn svg {
+      width: 14px;
+      height: 14px;
+    }
+
+    /* Tile detail modal */
+    .tile-modal-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 9999;
+      background: rgba(0, 0, 0, 0.82);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      opacity: 0;
+      visibility: hidden;
+      transition: opacity 0.2s, visibility 0.2s;
+    }
+    .tile-modal-overlay.open {
+      opacity: 1;
+      visibility: visible;
+    }
+    .tile-modal {
+      position: relative;
+      background: var(--card-bg);
+      border-radius: var(--radius-card);
+      max-width: 94vw;
+      max-height: 94vh;
+      width: 860px;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+    }
+    .tile-modal__header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0.6rem 1rem;
+      border-bottom: 1px solid var(--border-light);
+      gap: 0.5rem;
+    }
+    .tile-modal__title {
+      font-size: var(--text-sm);
+      font-weight: 600;
+      color: var(--text-secondary);
+      margin: 0;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .tile-modal__nav {
+      display: flex;
+      gap: 0.25rem;
+      flex-shrink: 0;
+    }
+    .tile-modal__nav-btn {
+      width: 28px;
+      height: 28px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border: 1px solid var(--border);
+      background: var(--input-bg);
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 1rem;
+      color: var(--text-muted);
+      transition: background 0.15s;
+      padding: 0;
+    }
+    .tile-modal__nav-btn:hover { background: #e0e0e0; }
+    .tile-modal__nav-btn:disabled { opacity: 0.35; cursor: not-allowed; }
+    .tile-modal__close {
+      width: 28px;
+      height: 28px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border: none;
+      background: none;
+      cursor: pointer;
+      font-size: 1.15rem;
+      color: var(--text-muted);
+      border-radius: 4px;
+      transition: background 0.15s;
+      flex-shrink: 0;
+      padding: 0;
+    }
+    .tile-modal__close:hover { background: var(--input-bg); }
+    .tile-modal__body {
+      flex: 1;
+      overflow: auto;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 1rem;
+      gap: 0.75rem;
+    }
+    .tile-modal__canvas-wrap {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 180px;
+      max-height: 62vh;
+      width: 100%;
+    }
+    .tile-modal__canvas-wrap canvas {
+      max-width: 100%;
+      max-height: 62vh;
+      border-radius: 4px;
+      background: repeating-conic-gradient(#e0e0e0 0% 25%, #fff 0% 50%) 50% / 16px 16px;
+    }
+    .tile-modal__trim-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.4rem 1rem;
+      align-items: center;
+      justify-content: center;
+      font-size: var(--text-xs);
+      color: var(--text-muted);
+    }
+    .tile-modal__trim-row label {
+      display: flex;
+      align-items: center;
+      gap: 0.3rem;
+    }
+    .tile-modal__trim-row input[type="number"] {
+      width: 4em;
+      padding: 0.2rem 0.3rem;
+      border: 1px solid var(--border-input);
+      border-radius: var(--radius-input);
+      font-size: var(--text-xs);
+      text-align: center;
+    }
+    .tile-modal__trim-hint {
+      width: 100%;
+      text-align: center;
+      font-size: 0.75rem;
+      color: var(--text-subtle);
+    }
+    .tile-modal__footer {
+      display: flex;
+      gap: 0.5rem;
+      padding: 0.6rem 1rem;
+      border-top: 1px solid var(--border-light);
+      justify-content: flex-end;
+    }
+    .tile-modal__footer .btn {
+      font-size: var(--text-sm);
+      padding: 0.45rem 1rem;
+    }
     .btn {
       display: inline-block;
       padding: var(--btn-padding);
@@ -185,22 +376,103 @@
     }
     .grid-editor.visible { display: block; }
     .grid-editor .section-title-row { margin-bottom: 0.5rem; }
-    .grid-editor .grid-editor-intro { margin-bottom: 0.75rem; font-size: var(--text-sm); color: var(--text-muted); }
-    .grid-editor-legend {
+    .grid-editor .grid-editor-intro,
+    .grid-editor-legend,
+    .grid-editor-toolbar__row--controls,
+    .grid-editor-actions,
+    #add-form-btn, #increase-form-btn, #decrease-form-btn,
+    #delete-form-btn, #exclude-cell-btn,
+    .loupe-container { display: none !important; }
+    /* Top row: grid + dimensions left, editor mode right */
+    .grid-editor-top-row {
       display: flex;
       flex-wrap: wrap;
-      gap: 1rem 1.5rem;
+      align-items: flex-start;
+      gap: 1rem;
       margin-bottom: 1rem;
-      font-size: var(--text-xs);
-      color: var(--text-hint);
     }
-    .grid-editor-legend span { display: inline-flex; align-items: center; gap: 0.35rem; }
-    .grid-editor-legend .legend-dot { width: 12px; height: 12px; border-radius: 2px; flex-shrink: 0; }
-    .legend-dot--blue { background: rgba(50, 100, 220, 0.95); }
-    .legend-dot--red { background: rgba(220, 50, 50, 0.9); }
-    .editor-mode-row { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem 1rem; margin-bottom: 0.75rem; font-size: 0.9rem; }
-    .editor-mode-label { font-weight: 600; color: var(--text-muted); }
-    .editor-mode-option { display: inline-flex; align-items: center; gap: 0.35rem; cursor: pointer; }
+    .grid-and-dimensions {
+      display: flex;
+      align-items: center;
+      flex: 0 0 auto;
+    }
+    .grid-format-dimensions {
+      display: flex;
+      align-items: center;
+      gap: 0.35rem;
+      margin-left: 0.5rem;
+    }
+    .grid-format-dimensions__label {
+      font-size: var(--text-xs);
+      font-weight: 600;
+      color: var(--text-muted);
+      margin: 0;
+    }
+    .grid-format-dimensions__input {
+      width: 2.75em;
+      padding: 0.35rem 0.4rem;
+      font-size: 0.95rem;
+      font-weight: 600;
+      text-align: center;
+      border: 1px solid var(--border-light);
+      border-radius: var(--radius-sm);
+      background: var(--input-bg);
+      color: var(--text-primary);
+    }
+    .grid-format-dimensions__input:focus {
+      outline: none;
+      border-color: var(--accent);
+      box-shadow: 0 0 0 2px rgba(229, 161, 82, 0.2);
+    }
+    .grid-format-dimensions__times {
+      font-size: 1rem;
+      font-weight: 700;
+      color: var(--text-muted);
+      margin: 0 0.1rem;
+    }
+    /* Capsule mode selector */
+    .editor-mode-row {
+      display: inline-flex;
+      align-items: center;
+      gap: 0;
+      background: var(--input-bg);
+      border-radius: 999px;
+      padding: 3px;
+      border: 1px solid var(--border-light);
+      margin-bottom: 0;
+      overflow-x: auto;
+    }
+    .editor-mode-label { display: none; }
+    .editor-mode-option {
+      display: inline-flex;
+      align-items: center;
+      padding: 0.4rem 0.75rem;
+      border-radius: 999px;
+      font-size: var(--text-xs);
+      font-weight: 500;
+      color: var(--text-muted);
+      cursor: pointer;
+      transition: background 0.15s, color 0.15s, box-shadow 0.15s;
+      white-space: nowrap;
+      user-select: none;
+      gap: 0;
+    }
+    .editor-mode-option input[type="radio"] {
+      position: absolute;
+      opacity: 0;
+      width: 0;
+      height: 0;
+      pointer-events: none;
+    }
+    .editor-mode-option:has(input:checked) {
+      background: var(--card-bg);
+      color: var(--text-primary);
+      box-shadow: 0 1px 3px rgba(0,0,0,0.12);
+      font-weight: 600;
+    }
+    .editor-mode-option:hover:not(:has(input:checked)) {
+      color: var(--text-secondary);
+    }
     .grid-editor-toolbar {
       display: flex;
       flex-direction: column;
@@ -216,7 +488,7 @@
     .grid-editor-toolbar__row--controls label { font-size: 0.9rem; }
     .grid-editor-toolbar__row--controls input[type="range"] { vertical-align: middle; }
 
-    /* Grid format picker: visual 4×4 selector */
+    /* Grid format picker: visual 10×10 selector */
     .grid-format-picker {
       display: inline-flex;
       align-items: center;
@@ -242,16 +514,16 @@
     }
     .grid-format-picker__grid {
       display: grid;
-      grid-template-columns: repeat(4, 1fr);
-      grid-template-rows: repeat(4, 1fr);
-      gap: 2px;
-      width: 56px;
-      height: 56px;
+      grid-template-columns: repeat(10, 1fr);
+      grid-template-rows: repeat(10, 1fr);
+      gap: 1px;
+      width: 140px;
+      height: 140px;
       border-radius: 6px;
       padding: 0;
     }
     .grid-format-picker__cell {
-      border-radius: 3px;
+      border-radius: 2px;
       cursor: pointer;
       transition: background 0.15s, transform 0.1s;
       background: var(--card-bg);
@@ -280,6 +552,39 @@
     .grid-format-picker__cell:focus-visible {
       outline: 2px solid var(--accent);
       outline-offset: 1px;
+    }
+    .cells-preview {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.6rem;
+      padding: 0.5rem 0.75rem;
+      background: linear-gradient(180deg, #fff 0%, var(--input-bg) 100%);
+      border: 1px solid var(--border-light);
+      border-radius: var(--radius-card);
+      margin-right: 0.25rem;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+    }
+    .cells-preview__label {
+      font-size: var(--text-xs);
+      font-weight: 600;
+      color: var(--text-muted);
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+    .cells-preview__visual {
+      width: 80px;
+      height: 56px;
+      border-radius: 6px;
+      background: var(--card-bg);
+      border: 1px solid rgba(0,0,0,0.08);
+      display: block;
+    }
+    .cells-preview__value {
+      font-family: var(--font-serif);
+      font-size: 1.05rem;
+      font-weight: 700;
+      color: var(--text-primary);
+      min-width: 3.2em;
     }
     .grid-format-picker__value {
       font-family: var(--font-serif);
@@ -358,30 +663,164 @@
       cursor: crosshair;
       pointer-events: auto;
     }
-    .grid-editor-buttons { margin-top: 1rem; }
-    .grid-editor-labelisation { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem; }
-    .grid-editor-actions {
+    .grid-editor-buttons { margin-top: 0.75rem; }
+    .grid-editor-labelisation {
       display: flex;
       flex-wrap: wrap;
       align-items: center;
-      gap: 0.5rem;
-      margin-top: 0.75rem;
-      padding-top: 0.75rem;
-      border-top: 1px solid var(--border-light);
+      gap: 0.75rem 1.25rem;
+      padding: 0.65rem 0.9rem;
+      background: var(--input-bg);
+      border: 1px solid var(--border-light);
+      border-radius: 10px;
     }
-    .grid-editor-actions .btn { margin-right: 0; }
-    .trim-inline { display: inline-flex; align-items: center; gap: 0.35rem; font-size: 0.9rem; }
-    .trim-inline input { padding: 0.25rem 0.35rem; border: 1px solid var(--border-input); border-radius: var(--radius-input); font-size: var(--text-sm); }
-    .trim-inline input:focus { outline: none; border-color: var(--text-secondary); box-shadow: 0 0 0 2px rgba(229, 161, 82, 0.2); }
-    input[type="range"]:focus { outline: none; }
-    input[type="range"]:focus-visible { box-shadow: 0 0 0 2px var(--focus-ring); }
-    .auto-name-label { display: inline-flex; align-items: center; gap: 0.35rem; font-size: 0.9rem; cursor: pointer; }
+    .trim-inline {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      font-size: var(--text-sm);
+      color: var(--text-muted);
+    }
+    .trim-inline label { font-weight: 500; }
+    .trim-inline input {
+      padding: 0.25rem 0.35rem;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-input);
+      font-size: var(--text-sm);
+      background: var(--card-bg);
+    }
+    .trim-inline input:focus {
+      outline: none;
+      border-color: var(--accent);
+      box-shadow: 0 0 0 2px rgba(229, 161, 82, 0.2);
+    }
+    .auto-name-label {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-size: var(--text-sm);
+      font-weight: 500;
+      color: var(--text-muted);
+      cursor: pointer;
+    }
+    .auto-name-label input[type="checkbox"] {
+      position: relative;
+      -webkit-appearance: none;
+      appearance: none;
+      width: 34px;
+      height: 18px;
+      background: #ccc;
+      border-radius: 999px;
+      cursor: pointer;
+      transition: background 0.2s;
+      flex-shrink: 0;
+      border: none;
+      outline: none;
+    }
+    .auto-name-label input[type="checkbox"]::after {
+      content: '';
+      position: absolute;
+      top: 2px;
+      left: 2px;
+      width: 14px;
+      height: 14px;
+      background: #fff;
+      border-radius: 50%;
+      transition: transform 0.2s;
+      box-shadow: 0 1px 2px rgba(0,0,0,0.15);
+    }
+    .auto-name-label input[type="checkbox"]:checked {
+      background: var(--accent);
+    }
+    .auto-name-label input[type="checkbox"]:checked::after {
+      transform: translateX(16px);
+    }
     .detecting-labels { font-size: var(--text-sm); color: var(--text-hint); margin: 0.25rem 0 0.5rem 0; }
     .btn-secondary {
       background: #666;
       color: #fff;
     }
     .btn-secondary:hover { background: var(--btn-primary-hover); }
+    .batch-count { font-size: var(--text-sm); color: var(--text-muted); margin-top: 0.5rem; }
+    .batch-navigator {
+      margin: var(--section-gap) 0;
+      padding: var(--card-padding);
+      background: var(--card-bg);
+      border-radius: var(--radius-card);
+      border: 1px solid var(--border);
+    }
+    .batch-navigator__strip {
+      display: flex;
+      flex-wrap: nowrap;
+      gap: 0.5rem;
+      overflow-x: auto;
+      padding-bottom: 0.25rem;
+      margin-bottom: 0.75rem;
+    }
+    .batch-navigator__strip::-webkit-scrollbar { height: 6px; }
+    .batch-navigator__strip::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+    .batch-thumb {
+      flex-shrink: 0;
+      width: 60px;
+      height: 60px;
+      border-radius: var(--radius-input);
+      border: 2px solid transparent;
+      overflow: hidden;
+      cursor: pointer;
+      position: relative;
+      background: var(--page-bg);
+    }
+    .batch-thumb:hover { border-color: var(--text-muted); }
+    .batch-thumb.active { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
+    .batch-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+    .batch-thumb__badge {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      font-size: 9px;
+      line-height: 1.2;
+      padding: 1px 3px;
+      background: rgba(0,0,0,0.7);
+      color: #fff;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .batch-thumb__remove {
+      position: absolute;
+      top: 2px;
+      right: 2px;
+      width: 18px;
+      height: 18px;
+      padding: 0;
+      border: none;
+      border-radius: 50%;
+      background: rgba(0,0,0,0.6);
+      color: #fff;
+      font-size: 12px;
+      line-height: 1;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .batch-thumb__remove:hover { background: rgba(180,50,50,0.9); }
+    .batch-navigator__add { margin-top: 0; }
+    .preview-batch-group { margin-bottom: var(--section-gap); }
+    .preview-batch-group__title { font-size: var(--text-base); font-weight: 600; margin: 0 0 0.5rem 0; color: var(--text); }
+    .preview-batch-group__grid { margin-top: 0.25rem; }
+    .batch-preview-pagination {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 1rem;
+      margin-top: 1rem;
+      padding-top: 0.75rem;
+      border-top: 1px solid var(--border-light);
+      flex-wrap: wrap;
+    }
+    .batch-preview-page-label { font-size: var(--text-sm); color: var(--text-muted); }
   </style>
 </head>
 <body>
@@ -416,22 +855,27 @@
   <main class="main-content">
     <div class="hero">
       <p class="hero__label" aria-hidden="true">IMAGE UTILITY</p>
-      <h1>Grid Image Splitter</h1>
-      <p class="intro">Upload a single 4×4 grid image (e.g. from ChatGPT). Split it into 16 clean tiles — no borders — then download as a ZIP.</p>
+      <h1>Grid Parser</h1>
+      <p class="intro">Upload one or more grid images. This grid parser splits them into clean tiles — no borders — then download as a single ZIP.</p>
     </div>
 
   <section class="drop-section" aria-labelledby="step1-title">
     <div class="section-title-row">
       <span class="step-badge" aria-hidden="true">1</span>
-      <h2 id="step1-title" class="section-title">Upload your grid image</h2>
+      <h2 id="step1-title" class="section-title">Upload your image</h2>
     </div>
     <div class="drop-zone" id="drop-zone">
-      <p class="drop-title">Drop your 4×4 grid image here</p>
+      <p class="drop-title">Drop your image(s) here</p>
       <p class="drop-hint">or click to browse your files</p>
       <button type="button" class="browse-btn" id="browse-btn">Browse files…</button>
-      <p class="format-hint">Supports PNG, JPG, WebP.</p>
+      <p class="format-hint">Supports PNG, JPG, WebP. Upload one or many for batch processing.</p>
     </div>
-    <input type="file" id="file-input" accept="image/png,image/jpeg,image/jpg,image/webp" aria-label="Choose 4×4 grid image">
+    <p class="batch-count" id="batch-count" aria-live="polite" style="display: none;"></p>
+    <input type="file" id="file-input" accept="image/png,image/jpeg,image/jpg,image/webp" multiple aria-label="Choose image(s)">
+  </section>
+  <section class="batch-navigator" id="batch-navigator" aria-label="Batch image navigator" style="display: none;">
+    <div class="batch-navigator__strip" id="batch-strip"></div>
+    <button type="button" class="btn btn-secondary batch-navigator__add" id="batch-add-more">Add more images</button>
   </section>
   <p class="error" id="error" aria-live="polite"></p>
 
@@ -441,46 +885,56 @@
       <h2 id="step2-title" class="section-title">Adjust cutting lines</h2>
     </div>
     <p class="grid-editor-intro" id="grid-editor-intro">Grid and outer borders are auto-detected on upload. Drag <strong style="color: rgba(50,100,220,0.95);">blue</strong> (outer) and <strong style="color: rgba(220,50,50,0.9);">red</strong> (inner) lines to set where tiles are cut. These lines are guides only—they are not drawn on your image and do not appear in the downloaded tiles.</p>
-    <p class="grid-editor-intro grid-editor-intro--freeform" id="grid-editor-intro-freeform" style="display: none;">Freeform mode: auto-detect finds forms (black-line grid or panel shapes). Click a form to select it; add or delete forms; exclude cells from export.</p>
+    <p class="grid-editor-intro grid-editor-intro--freeform" id="grid-editor-intro-freeform" style="display: none;">Freeform mode: auto-detect prioritizes uncommon form layouts first (panel/segment forms), then falls back to black-line grid only if needed. Click a form to select it; drag inside to move; drag corners/sides to resize; add or delete forms; exclude cells from export.</p>
+    <p class="grid-editor-intro grid-editor-intro--freeform" id="grid-editor-intro-lineform" style="display: none;">Straight-line mode: detect forms from black border segments (panel borders) first, even when lines are not perfectly continuous. Falls back to classic black-line grid only when border-shape detection is weak.</p>
+    <p class="grid-editor-intro grid-editor-intro--freeform" id="grid-editor-intro-adjacent" style="display: none;">Adjacent tiles: for images with tiles directly next to each other separated by thin black lines or on a black background. Use when tiles touch with minimal or black separators.</p>
+    <p class="grid-editor-intro grid-editor-intro--freeform" id="grid-editor-intro-blackbg" style="display: none;">Black BG shapes: for dark-background images. Long thin black lines are removed; tiles are the isolated content shapes. Use when adjacent or grid modes underperform.</p>
+    <p class="grid-editor-intro" id="grid-editor-intro-geometrical" style="display: none;">Simple geometrical mode: select grid format and fine-tune the image corners. The image is split into equal-sized cells within the defined rectangle. Drag corners and outer lines to set the shape, and drag inner red cutlines if the generated grid is not perfectly symmetrical.</p>
     <div class="grid-editor-legend" id="grid-editor-legend">
       <span><span class="legend-dot legend-dot--blue" aria-hidden="true"></span> Outer border lines</span>
       <span><span class="legend-dot legend-dot--red" aria-hidden="true"></span> Inner cutting lines (where each tile is split)</span>
+      <span class="parser-status" id="parser-status" aria-live="polite" style="margin-left: auto; font-size: 0.85em; color: var(--text-subtle, #666);"></span>
     </div>
-    <div class="editor-mode-row">
-      <span class="editor-mode-label">Editor:</span>
-      <label class="editor-mode-option"><input type="radio" name="editor-mode" value="uniform" checked> Uniform grid</label>
-      <label class="editor-mode-option"><input type="radio" name="editor-mode" value="freeform"> Freeform forms</label>
-    </div>
-    <div class="grid-editor-toolbar">
-      <div class="grid-editor-toolbar__row grid-editor-toolbar__row--grid" id="uniform-grid-toolbar">
+    <div class="grid-editor-top-row">
+      <div class="grid-and-dimensions">
         <div class="grid-format-picker" role="group" aria-labelledby="grid-format-picker-label">
           <span class="grid-format-picker__label" id="grid-format-picker-label">Grid</span>
           <div class="grid-format-picker__grid" id="grid-format-visual" aria-hidden="true">
-            <!-- 4×4 cells: row 0..3, col 0..3. Cell (r,c) = format (r+1)×(c+1). Filled by JS. -->
+            <!-- 10×10 cells filled by initGridFormatPicker -->
           </div>
-          <span class="grid-format-picker__value" id="grid-format-value" aria-live="polite">4×4</span>
+          <div class="grid-format-dimensions">
+            <label for="grid-format-rows" class="grid-format-dimensions__label">Rows</label>
+            <input type="number" id="grid-format-rows" min="1" max="10" value="4" aria-label="Grid rows" class="grid-format-dimensions__input">
+            <span class="grid-format-dimensions__times" aria-hidden="true">×</span>
+            <label for="grid-format-cols" class="grid-format-dimensions__label">Cols</label>
+            <input type="number" id="grid-format-cols" min="1" max="10" value="4" aria-label="Grid columns" class="grid-format-dimensions__input">
+          </div>
           <select id="grid-format" aria-label="Grid format (rows × columns)" class="visually-hidden">
-            <option value="1_1">1×1</option>
-            <option value="1_2">1×2</option>
-            <option value="2_1">2×1</option>
-            <option value="2_2">2×2</option>
-            <option value="1_3">1×3</option>
-            <option value="3_1">3×1</option>
-            <option value="2_3">2×3</option>
-            <option value="3_2">3×2</option>
-            <option value="1_4">1×4</option>
-            <option value="4_1">4×1</option>
-            <option value="2_4">2×4</option>
-            <option value="4_2">4×2</option>
-            <option value="3_3">3×3</option>
-            <option value="3_4">3×4</option>
-            <option value="4_3">4×3</option>
             <option value="4_4" selected>4×4</option>
           </select>
         </div>
       </div>
+      <div class="editor-mode-row">
+        <span class="editor-mode-label">Editor:</span>
+        <label class="editor-mode-option"><input type="radio" name="editor-mode" value="uniform" checked>Grid</label>
+        <label class="editor-mode-option"><input type="radio" name="editor-mode" value="freeform">Freeform</label>
+        <label class="editor-mode-option"><input type="radio" name="editor-mode" value="lineform">Lines</label>
+        <label class="editor-mode-option"><input type="radio" name="editor-mode" value="adjacent">Adjacent</label>
+        <label class="editor-mode-option"><input type="radio" name="editor-mode" value="blackbg">Black BG</label>
+        <label class="editor-mode-option"><input type="radio" name="editor-mode" value="geometrical">Simple Grid</label>
+      </div>
+    </div>
+    <div class="grid-editor-toolbar">
+      <div class="grid-editor-toolbar__row grid-editor-toolbar__row--grid" id="uniform-grid-toolbar">
       <div class="grid-editor-toolbar__row grid-editor-toolbar__row--freeform" id="freeform-toolbar" style="display: none;">
+        <div class="cells-preview" role="group" aria-label="Detected cells">
+          <span class="cells-preview__label" id="cells-preview-label">Cells</span>
+          <canvas class="cells-preview__visual" id="freeform-cells-visual" width="80" height="56" aria-hidden="true"></canvas>
+          <span class="cells-preview__value" id="freeform-cells-value" aria-live="polite">0 forms</span>
+        </div>
         <button type="button" class="btn btn-secondary" id="add-form-btn">Add form</button>
+        <button type="button" class="btn btn-secondary" id="increase-form-btn" disabled title="Expand selected form">Increase form</button>
+        <button type="button" class="btn btn-secondary" id="decrease-form-btn" disabled title="Shrink selected form">Decrease form</button>
         <button type="button" class="btn btn-secondary" id="delete-form-btn" disabled>Delete form</button>
         <button type="button" class="btn btn-secondary" id="exclude-cell-btn" disabled>Exclude cell</button>
       </div>
@@ -506,18 +960,22 @@
           <label for="trim-pixels-inline">Trim:</label>
           <input type="number" id="trim-pixels-inline" min="0" max="20" value="4" step="1" style="width: 3.5em;" title="Pixels to remove from each side of every tile">
         </span>
-        <span class="trim-inline">
-          <label for="label-region-pct">Label region %:</label>
-          <input type="number" id="label-region-pct" min="10" max="50" value="30" step="5" style="width: 3.5em;" title="Bottom % of tile used for label detection">
+        <span class="trim-inline" id="geo-inset-controls" style="display: none;" title="Simple Grid shape insets from image edges">
+          <label for="geo-inset-left">Shape:</label>
+          <label for="geo-inset-left">L</label>
+          <input type="number" id="geo-inset-left" min="0" step="1" value="0" style="width: 3.5em;" title="Inset from left edge">
+          <label for="geo-inset-top">T</label>
+          <input type="number" id="geo-inset-top" min="0" step="1" value="0" style="width: 3.5em;" title="Inset from top edge">
+          <label for="geo-inset-right">R</label>
+          <input type="number" id="geo-inset-right" min="0" step="1" value="0" style="width: 3.5em;" title="Inset from right edge">
+          <label for="geo-inset-bottom">B</label>
+          <input type="number" id="geo-inset-bottom" min="0" step="1" value="0" style="width: 3.5em;" title="Inset from bottom edge">
         </span>
-        <label class="auto-name-label">
-          Auto-name
-          <input type="checkbox" id="auto-name-from-labels" checked>
-        </label>
       </div>
       <div class="grid-editor-actions">
         <button type="button" class="btn btn-secondary" id="auto-detect-btn">Auto-detect grid</button>
         <button type="button" class="btn btn-secondary" id="reset-lines">Reset lines</button>
+        <button type="button" class="btn btn-secondary" id="reset-corners-btn" style="display: none;" title="Reset content rectangle to full image">Reset corners</button>
         <button type="button" class="btn btn-secondary" id="freeform-autodetect-btn" style="display: none;">Auto-detect cells</button>
         <button type="button" class="btn btn-secondary" id="freeform-reset-btn" style="display: none;">Reset forms</button>
         <button type="button" class="btn btn-primary" id="cut-btn">Cut and create images</button>
@@ -534,12 +992,48 @@
       <span class="step-badge" aria-hidden="true">3</span>
       <h2 id="step3-title" class="section-title">Preview &amp; download tiles</h2>
     </div>
-    <p class="output-hint">Rename each file if you like, then download them all as a single ZIP.</p>
+    <p class="output-hint">Rename each file if you like, run auto-name when you want, then download them all as a single ZIP.</p>
+    <div class="grid-editor-labelisation">
+      <span class="trim-inline">
+        <label for="label-region-pct">Label region %:</label>
+        <input type="number" id="label-region-pct" min="10" max="50" value="30" step="5" style="width: 3.5em;" title="Bottom % of tile used for label detection">
+      </span>
+      <button type="button" class="btn btn-secondary" id="run-auto-name-btn" disabled>Run auto-name</button>
+    </div>
     <p class="detecting-labels" id="detecting-labels" aria-live="polite" style="display: none;">Detecting labels…</p>
     <div class="preview-grid" id="preview-grid"></div>
     <button type="button" class="btn btn-primary" id="download-zip">Download all as ZIP</button>
     <p class="download-hint">If Windows blocks the file, right-click it → Properties → Unblock → OK. Downloaded tiles contain only your image—no overlay or guide lines.</p>
   </section>
+
+  <!-- Tile detail modal -->
+  <div class="tile-modal-overlay" id="tile-modal-overlay">
+    <div class="tile-modal" role="dialog" aria-label="Tile detail">
+      <div class="tile-modal__header">
+        <span class="tile-modal__title" id="tile-modal-title">Tile 1</span>
+        <div class="tile-modal__nav">
+          <button type="button" class="tile-modal__nav-btn" id="tile-modal-prev" title="Previous tile">&#8249;</button>
+          <button type="button" class="tile-modal__nav-btn" id="tile-modal-next" title="Next tile">&#8250;</button>
+        </div>
+        <button type="button" class="tile-modal__close" id="tile-modal-close" title="Close">&times;</button>
+      </div>
+      <div class="tile-modal__body">
+        <div class="tile-modal__canvas-wrap">
+          <canvas id="tile-modal-canvas"></canvas>
+        </div>
+        <div class="tile-modal__trim-row">
+          <label>Top <input type="number" id="tile-trim-top" min="0" step="1" value="0"></label>
+          <label>Right <input type="number" id="tile-trim-right" min="0" step="1" value="0"></label>
+          <label>Bottom <input type="number" id="tile-trim-bottom" min="0" step="1" value="0"></label>
+          <label>Left <input type="number" id="tile-trim-left" min="0" step="1" value="0"></label>
+        </div>
+        <p class="tile-modal__trim-hint">Adjust per-side trim to fine-tune this tile's cropping.</p>
+      </div>
+      <div class="tile-modal__footer">
+        <button type="button" class="btn" id="tile-modal-download">Download this tile</button>
+      </div>
+    </div>
+  </div>
 
   </main>
 
@@ -551,17 +1045,32 @@
       var outputEl = document.getElementById('output');
       var previewGrid = document.getElementById('preview-grid');
       var downloadBtn = document.getElementById('download-zip');
+      var runAutoNameBtn = document.getElementById('run-auto-name-btn');
 
       var tileBlobs = [];
+      var tileCropInfos = [];
+      var tileSrcImage = null;
       var objectUrl = null;
       var currentImage = null;
       var editorMode = 'uniform';
       var xBounds = [];
       var yBounds = [];
+      var xTrim = [];
+      var yTrim = [];
       var freeformCells = [];
       var excludedCellIds = {};
+      var batchImages = [];
+      var currentBatchIndex = 0;
+      var batchIdCounter = 0;
+      var addMoreMode = false;
+      var batchPreviewTiles = [];
+      var batchPreviewPage = 0;
+      var BATCH_PREVIEW_PAGE_SIZE = 16;
       var selectedCellIndex = null;
       var drag = { active: false, axis: null, index: null };
+      var formDrag = { active: false, mode: null, handle: null, cellIndex: null, startX: 0, startY: 0, origX: 0, origY: 0, origW: 0, origH: 0 };
+      var geoCorners = { topLeft: { x: 0, y: 0 }, topRight: { x: 0, y: 0 }, bottomLeft: { x: 0, y: 0 }, bottomRight: { x: 0, y: 0 } };
+      var geoDrag = { active: false, corner: null };
       var gridImg = document.getElementById('grid-image');
       var gridOverlay = document.getElementById('grid-overlay');
       var gridWrapper = document.getElementById('grid-preview-wrapper');
@@ -575,10 +1084,107 @@
       var LOUPE_SIZE = 120;
       var LOUPE_ZOOM = 4;
       var MARGIN = 10;
-
+      var workerErrorLogCount = 0;
+      var ocrCatchLogCount = 0;
+      var autoNameCancelLogCount = 0;
+      var autoNameRunId = 0;
+      function hasOcrSupport() {
+        return typeof Tesseract !== 'undefined' && !!Tesseract.recognize && !!Tesseract.createWorker;
+      }
+      function sendAgentDebugLog(hypothesisId, location, message, data, runId) {
+        fetch('http://127.0.0.1:7259/ingest/4e86ec95-c090-4163-bab8-8321b4a7442a',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'ef7076'},body:JSON.stringify({sessionId:'ef7076',runId:runId || 'pre-fix',hypothesisId:hypothesisId,location:location,message:message,data:data || {},timestamp:Date.now()})}).catch(function () {});
+      }
+      function logAutoName(message, data) {
+        if (typeof console === 'undefined' || !console.log) return;
+        if (typeof data === 'undefined') console.log('[Auto-name] ' + message);
+        else console.log('[Auto-name] ' + message, data);
+      }
+      function setDetectingLabelsMessage(message, isError) {
+        var detectingEl = document.getElementById('detecting-labels');
+        if (!detectingEl) return;
+        if (!message) {
+          detectingEl.style.display = 'none';
+          detectingEl.textContent = 'Detecting labels…';
+          detectingEl.style.color = '';
+          return;
+        }
+        detectingEl.style.display = 'block';
+        detectingEl.textContent = message;
+        detectingEl.style.color = isError ? 'var(--error)' : 'var(--text-hint)';
+      }
+      function setRunAutoNameButtonEnabled(enabled) {
+        if (!runAutoNameBtn) return;
+        runAutoNameBtn.disabled = !enabled;
+      }
+      function clearDetectingLabelsMessage(delayMs) {
+        var wait = Math.max(0, parseInt(delayMs, 10) || 0);
+        setTimeout(function () { setDetectingLabelsMessage(''); }, wait);
+      }
+      if (!hasOcrSupport()) {
+        logAutoName('OCR library is not available. Auto-name will fall back to default tile names.');
+      }
+      document.addEventListener('securitypolicyviolation', function (e) {
+        if (workerErrorLogCount >= 30) return;
+        workerErrorLogCount++;
+        logAutoName('CSP violation detected', {
+          effectiveDirective: e.effectiveDirective || null,
+          blockedURI: e.blockedURI || null
+        });
+      });
+      window.addEventListener('error', function (e) {
+        var msg = (e && e.message) ? String(e.message) : '';
+        if (!msg) return;
+        if (msg.indexOf('importScripts') === -1 && msg.indexOf('Content Security Policy') === -1 && msg.indexOf('tesseract') === -1 && msg.indexOf('WorkerGlobalScope') === -1) return;
+        if (workerErrorLogCount >= 30) return;
+        workerErrorLogCount++;
+        logAutoName('Browser error detected', {
+          message: msg,
+          filename: e.filename || null,
+          line: e.lineno || null
+        });
+      });
+      window.addEventListener('unhandledrejection', function (e) {
+        var reason = e && e.reason;
+        var msg = reason && reason.message ? String(reason.message) : String(reason || '');
+        if (msg.indexOf('importScripts') === -1 && msg.indexOf('Content Security Policy') === -1 && msg.indexOf('tesseract') === -1 && msg.indexOf('WorkerGlobalScope') === -1) return;
+        if (workerErrorLogCount >= 30) return;
+        workerErrorLogCount++;
+        logAutoName('Unhandled rejection detected', { reason: msg });
+      });
       function getTrimPixels() {
         var el = document.getElementById('trim-pixels-inline') || document.getElementById('trim-pixels');
         return el ? Math.max(0, parseInt(el.value, 10) || 0) : 0;
+      }
+
+      var autoCutTimer = null;
+      function scheduleAutoCut() {
+        var scheduleCaller = 'unknown';
+        try {
+          var stack = new Error().stack || '';
+          var stackLines = stack.split('\n');
+          scheduleCaller = stackLines.length > 2 ? String(stackLines[2]).trim() : (stackLines[1] ? String(stackLines[1]).trim() : 'unknown');
+        } catch (e) {}
+        // #region agent log
+        sendAgentDebugLog('H3', 'index.html:scheduleAutoCut', 'scheduleAutoCut invoked', {
+          hasTimer: !!autoCutTimer,
+          hasCurrentImage: !!currentImage,
+          batchSize: batchImages.length,
+          currentBatchIndex: currentBatchIndex,
+          caller: scheduleCaller
+        }, 'pre-fix');
+        // #endregion
+        if (autoCutTimer) clearTimeout(autoCutTimer);
+        autoCutTimer = setTimeout(function () {
+          autoCutTimer = null;
+          // #region agent log
+          sendAgentDebugLog('H3', 'index.html:scheduleAutoCut:timer', 'autoCut timer fired', {
+            hasCurrentImage: !!currentImage,
+            batchSize: batchImages.length,
+            currentBatchIndex: currentBatchIndex
+          }, 'pre-fix');
+          // #endregion
+          if (currentImage) runCut(true);
+        }, 350);
       }
       function getLabelRegionPct() {
         var el = document.getElementById('label-region-pct');
@@ -597,8 +1203,8 @@
         var sel = document.getElementById('grid-format');
         if (!sel || !sel.value) return { rows: 4, cols: 4 };
         var parts = sel.value.split('_');
-        var rows = Math.max(1, Math.min(4, parseInt(parts[0], 10) || 4));
-        var cols = Math.max(1, Math.min(4, parseInt(parts[1], 10) || 4));
+        var rows = Math.max(1, Math.min(10, parseInt(parts[0], 10) || 4));
+        var cols = Math.max(1, Math.min(10, parseInt(parts[1], 10) || 4));
         return { rows: rows, cols: cols };
       }
 
@@ -617,6 +1223,150 @@
         for (var c = 0; c <= cols; c++) xBounds.push((c * w) / cols);
         yBounds = [];
         for (var r = 0; r <= rows; r++) yBounds.push((r * h) / rows);
+        xTrim = [];
+        yTrim = [];
+      }
+
+      function initGeoCorners(w, h) {
+        geoCorners.topLeft = { x: 0, y: 0 };
+        geoCorners.topRight = { x: w, y: 0 };
+        geoCorners.bottomLeft = { x: 0, y: h };
+        geoCorners.bottomRight = { x: w, y: h };
+      }
+
+      function geoCornersToBounds() {
+        geoAlignBoundsToCorners(false);
+      }
+
+      function geoAlignBoundsToCorners(preserveInnerLines) {
+        var xMin = Math.min(geoCorners.topLeft.x, geoCorners.bottomLeft.x);
+        var xMax = Math.max(geoCorners.topRight.x, geoCorners.bottomRight.x);
+        var yMin = Math.min(geoCorners.topLeft.y, geoCorners.topRight.y);
+        var yMax = Math.max(geoCorners.bottomLeft.y, geoCorners.bottomRight.y);
+        // Keep a normalized axis-aligned rectangle so corner/line edits stay in sync.
+        geoCorners.topLeft = { x: xMin, y: yMin };
+        geoCorners.topRight = { x: xMax, y: yMin };
+        geoCorners.bottomLeft = { x: xMin, y: yMax };
+        geoCorners.bottomRight = { x: xMax, y: yMax };
+        var fmt = getGridFormat();
+        var cols = fmt.cols;
+        var rows = fmt.rows;
+        var wantX = cols + 1;
+        var wantY = rows + 1;
+        var oldX = xBounds.slice();
+        var oldY = yBounds.slice();
+        var canPreserve = preserveInnerLines && oldX.length === wantX && oldY.length === wantY;
+        xBounds = [];
+        if (canPreserve) {
+          var ox0 = oldX[0];
+          var ox1 = oldX[oldX.length - 1];
+          var spanX = Math.max(1, ox1 - ox0);
+          xBounds.push(xMin);
+          for (var c = 1; c < cols; c++) {
+            var rx = (oldX[c] - ox0) / spanX;
+            rx = Math.max(0, Math.min(1, rx));
+            xBounds.push(xMin + rx * (xMax - xMin));
+          }
+          xBounds.push(xMax);
+        } else {
+          for (var c = 0; c <= cols; c++) xBounds.push(xMin + (c * (xMax - xMin)) / cols);
+        }
+        yBounds = [];
+        if (canPreserve) {
+          var oy0 = oldY[0];
+          var oy1 = oldY[oldY.length - 1];
+          var spanY = Math.max(1, oy1 - oy0);
+          yBounds.push(yMin);
+          for (var r = 1; r < rows; r++) {
+            var ry = (oldY[r] - oy0) / spanY;
+            ry = Math.max(0, Math.min(1, ry));
+            yBounds.push(yMin + ry * (yMax - yMin));
+          }
+          yBounds.push(yMax);
+        } else {
+          for (var r = 0; r <= rows; r++) yBounds.push(yMin + (r * (yMax - yMin)) / rows);
+        }
+        xTrim = [];
+        yTrim = [];
+        updateGeoInsetInputs();
+      }
+
+      function setGeoRectFromInsets(left, top, right, bottom) {
+        if (!currentImage) return;
+        var w = currentImage.naturalWidth;
+        var h = currentImage.naturalHeight;
+        var minSide = Math.max(8, Math.round(Math.min(w, h) * 0.05));
+        var maxH = Math.max(0, w - minSide);
+        var maxV = Math.max(0, h - minSide);
+        left = clamp01(left, 0, maxH);
+        right = clamp01(right, 0, maxH);
+        top = clamp01(top, 0, maxV);
+        bottom = clamp01(bottom, 0, maxV);
+        if (left + right > maxH) right = Math.max(0, maxH - left);
+        if (top + bottom > maxV) bottom = Math.max(0, maxV - top);
+        var x0 = left;
+        var x1 = Math.max(x0 + minSide, w - right);
+        var y0 = top;
+        var y1 = Math.max(y0 + minSide, h - bottom);
+        geoCorners.topLeft = { x: x0, y: y0 };
+        geoCorners.topRight = { x: x1, y: y0 };
+        geoCorners.bottomLeft = { x: x0, y: y1 };
+        geoCorners.bottomRight = { x: x1, y: y1 };
+      }
+
+      function updateGeoInsetInputs() {
+        if (!currentImage || !xBounds.length || !yBounds.length) return;
+        var leftEl = document.getElementById('geo-inset-left');
+        var topEl = document.getElementById('geo-inset-top');
+        var rightEl = document.getElementById('geo-inset-right');
+        var bottomEl = document.getElementById('geo-inset-bottom');
+        if (!leftEl || !topEl || !rightEl || !bottomEl) return;
+        var w = currentImage.naturalWidth;
+        var h = currentImage.naturalHeight;
+        var lastX = xBounds.length - 1;
+        var lastY = yBounds.length - 1;
+        leftEl.value = String(Math.max(0, Math.round(xBounds[0])));
+        topEl.value = String(Math.max(0, Math.round(yBounds[0])));
+        rightEl.value = String(Math.max(0, Math.round(w - xBounds[lastX])));
+        bottomEl.value = String(Math.max(0, Math.round(h - yBounds[lastY])));
+        leftEl.max = String(w);
+        rightEl.max = String(w);
+        topEl.max = String(h);
+        bottomEl.max = String(h);
+      }
+
+      function applyGeoInsetsFromInputs(changedEdge) {
+        if (!currentImage || getEditorMode() !== 'geometrical') return;
+        var leftEl = document.getElementById('geo-inset-left');
+        var topEl = document.getElementById('geo-inset-top');
+        var rightEl = document.getElementById('geo-inset-right');
+        var bottomEl = document.getElementById('geo-inset-bottom');
+        if (!leftEl || !topEl || !rightEl || !bottomEl) return;
+        var w = currentImage.naturalWidth;
+        var h = currentImage.naturalHeight;
+        var minSide = Math.max(8, Math.round(Math.min(w, h) * 0.05));
+        var maxH = Math.max(0, w - minSide);
+        var maxV = Math.max(0, h - minSide);
+        var left = Math.max(0, parseInt(leftEl.value, 10) || 0);
+        var top = Math.max(0, parseInt(topEl.value, 10) || 0);
+        var right = Math.max(0, parseInt(rightEl.value, 10) || 0);
+        var bottom = Math.max(0, parseInt(bottomEl.value, 10) || 0);
+        left = clamp01(left, 0, maxH);
+        right = clamp01(right, 0, maxH);
+        top = clamp01(top, 0, maxV);
+        bottom = clamp01(bottom, 0, maxV);
+        if (left + right > maxH) {
+          if (changedEdge === 'left') right = Math.max(0, maxH - left);
+          else left = Math.max(0, maxH - right);
+        }
+        if (top + bottom > maxV) {
+          if (changedEdge === 'top') bottom = Math.max(0, maxV - top);
+          else top = Math.max(0, maxV - bottom);
+        }
+        setGeoRectFromInsets(left, top, right, bottom);
+        geoAlignBoundsToCorners(true);
+        drawOverlay();
+        scheduleAutoCut();
       }
 
       function updateLoupe(clientX, clientY) {
@@ -695,7 +1445,7 @@
         var thickness = Math.max(1, getLineThickness());
         function dispX(px) { return MARGIN + (px / w) * baseWidth; }
         function dispY(py) { return MARGIN + (py / h) * baseHeight; }
-        if (getEditorMode() === 'freeform') {
+        if (isFormsMode()) {
           for (var fc = 0; fc < freeformCells.length; fc++) {
             var cell = freeformCells[fc];
             var selected = fc === selectedCellIndex;
@@ -710,8 +1460,28 @@
               (cell.w / w) * baseWidth,
               (cell.h / h) * baseHeight
             );
+            if (selected) {
+              var x1 = dispX(cell.x);
+              var y1 = dispY(cell.y);
+              var x2 = dispX(cell.x + cell.w);
+              var y2 = dispY(cell.y + cell.h);
+              var xm = (x1 + x2) / 2;
+              var ym = (y1 + y2) / 2;
+              var hs = 4;
+              ctx.fillStyle = 'rgba(255, 200, 60, 0.95)';
+              ctx.setLineDash([]);
+              ctx.fillRect(x1 - hs, y1 - hs, hs * 2, hs * 2);
+              ctx.fillRect(x2 - hs, y1 - hs, hs * 2, hs * 2);
+              ctx.fillRect(x1 - hs, y2 - hs, hs * 2, hs * 2);
+              ctx.fillRect(x2 - hs, y2 - hs, hs * 2, hs * 2);
+              ctx.fillRect(xm - hs, y1 - hs, hs * 2, hs * 2);
+              ctx.fillRect(xm - hs, y2 - hs, hs * 2, hs * 2);
+              ctx.fillRect(x1 - hs, ym - hs, hs * 2, hs * 2);
+              ctx.fillRect(x2 - hs, ym - hs, hs * 2, hs * 2);
+            }
             ctx.restore();
           }
+          updateFreeformCellsVisual();
           return;
         }
         var lastX = xBounds.length - 1;
@@ -742,6 +1512,24 @@
           ctx.lineTo(cw, dispY(yBounds[j]));
         }
         ctx.stroke();
+        if (getEditorMode() === 'geometrical') {
+          var hs = 6;
+          ctx.fillStyle = 'rgba(50, 100, 220, 0.95)';
+          ctx.strokeStyle = 'rgba(255, 255, 255, 0.9)';
+          ctx.lineWidth = 1.5;
+          var corners = [
+            [xBounds[0], yBounds[0]],
+            [xBounds[lastX], yBounds[0]],
+            [xBounds[0], yBounds[lastY]],
+            [xBounds[lastX], yBounds[lastY]]
+          ];
+          for (var k = 0; k < corners.length; k++) {
+            var cx = dispX(corners[k][0]);
+            var cy = dispY(corners[k][1]);
+            ctx.fillRect(cx - hs, cy - hs, hs * 2, hs * 2);
+            ctx.strokeRect(cx - hs, cy - hs, hs * 2, hs * 2);
+          }
+        }
       }
 
       function hitLine(imgX, imgY) {
@@ -757,11 +1545,81 @@
         return null;
       }
 
+      function hitGeoCorner(imgX, imgY) {
+        var w = currentImage.naturalWidth;
+        var h = currentImage.naturalHeight;
+        var hitPx = Math.max(14, Math.min(w, h) / 35);
+        var keys = ['topLeft', 'topRight', 'bottomLeft', 'bottomRight'];
+        for (var i = 0; i < keys.length; i++) {
+          var c = geoCorners[keys[i]];
+          if (Math.abs(imgX - c.x) <= hitPx && Math.abs(imgY - c.y) <= hitPx) return keys[i];
+        }
+        return null;
+      }
+
       function updateFreeformButtons() {
         var delBtn = document.getElementById('delete-form-btn');
         var excludeBtn = document.getElementById('exclude-cell-btn');
-        if (delBtn) delBtn.disabled = selectedCellIndex == null;
-        if (excludeBtn) excludeBtn.disabled = selectedCellIndex == null;
+        var incBtn = document.getElementById('increase-form-btn');
+        var decBtn = document.getElementById('decrease-form-btn');
+        var hasSelection = selectedCellIndex != null && selectedCellIndex >= 0 && selectedCellIndex < freeformCells.length;
+        if (delBtn) delBtn.disabled = !hasSelection;
+        if (excludeBtn) excludeBtn.disabled = !hasSelection;
+        if (incBtn) incBtn.disabled = !hasSelection;
+        if (decBtn) decBtn.disabled = !hasSelection;
+      }
+
+      function updateFreeformCellsVisual() {
+        var canvas = document.getElementById('freeform-cells-visual');
+        var valueEl = document.getElementById('freeform-cells-value');
+        if (!canvas || !valueEl) return;
+        var ctx = canvas.getContext('2d');
+        var cw = canvas.width;
+        var ch = canvas.height;
+        ctx.clearRect(0, 0, cw, ch);
+        if (!currentImage || !freeformCells.length) {
+          valueEl.textContent = '0 forms';
+          return;
+        }
+        var iw = currentImage.naturalWidth;
+        var ih = currentImage.naturalHeight;
+        var scale = Math.min(cw / iw, ch / ih);
+        var dx = (cw - iw * scale) / 2;
+        var dy = (ch - ih * scale) / 2;
+        ctx.strokeStyle = 'rgba(70, 170, 90, 0.9)';
+        ctx.lineWidth = 1;
+        for (var i = 0; i < freeformCells.length; i++) {
+          var c = freeformCells[i];
+          if (excludedCellIds[i]) {
+            ctx.setLineDash([3, 2]);
+            ctx.strokeStyle = 'rgba(120, 120, 120, 0.8)';
+          } else {
+            ctx.setLineDash([]);
+            ctx.strokeStyle = i === selectedCellIndex ? 'rgba(255, 200, 60, 0.95)' : 'rgba(70, 170, 90, 0.9)';
+          }
+          ctx.strokeRect(dx + c.x * scale, dy + c.y * scale, c.w * scale, c.h * scale);
+        }
+        var n = freeformCells.length;
+        valueEl.textContent = n + ' form' + (n !== 1 ? 's' : '');
+      }
+
+      function resizeSelectedForm(deltaPx) {
+        if (selectedCellIndex == null || selectedCellIndex < 0 || selectedCellIndex >= freeformCells.length) return;
+        var w = currentImage.naturalWidth;
+        var h = currentImage.naturalHeight;
+        var c = freeformCells[selectedCellIndex];
+        var step = Math.max(4, Math.round(Math.min(w, h) * 0.02));
+        var d = deltaPx > 0 ? step : -step;
+        var nx = Math.max(0, c.x - d);
+        var ny = Math.max(0, c.y - d);
+        var nx2 = Math.min(w, c.x + c.w + d);
+        var ny2 = Math.min(h, c.y + c.h + d);
+        if (nx2 - nx < 8 || ny2 - ny < 8) return;
+        c.x = nx;
+        c.y = ny;
+        c.w = nx2 - nx;
+        c.h = ny2 - ny;
+        drawOverlay();
       }
 
       function clamp01(v, lo, hi) {
@@ -784,6 +1642,30 @@
           var c = freeformCells[i];
           if (imgX >= c.x && imgX <= c.x + c.w && imgY >= c.y && imgY <= c.y + c.h) return i;
         }
+        return null;
+      }
+
+      function hitFreeformHandle(cell, imgX, imgY) {
+        if (!currentImage || !cell) return null;
+        var w = currentImage.naturalWidth;
+        var hit = Math.max(8, w / 80);
+        var left = cell.x;
+        var right = cell.x + cell.w;
+        var top = cell.y;
+        var bottom = cell.y + cell.h;
+        var midX = (left + right) / 2;
+        var midY = (top + bottom) / 2;
+        function near(x, y) {
+          return Math.abs(imgX - x) <= hit && Math.abs(imgY - y) <= hit;
+        }
+        if (near(left, top)) return 'nw';
+        if (near(right, top)) return 'ne';
+        if (near(left, bottom)) return 'sw';
+        if (near(right, bottom)) return 'se';
+        if (near(midX, top)) return 'n';
+        if (near(midX, bottom)) return 's';
+        if (near(left, midY)) return 'w';
+        if (near(right, midY)) return 'e';
         return null;
       }
 
@@ -823,15 +1705,25 @@
           gridWrapper.style.height = totalH + 'px';
           applyZoom();
           drawOverlay();
-          if (getEditorMode() === 'freeform') {
-            runFreeformAutoDetect();
-          } else {
+          var mode = getEditorMode();
+          if (mode === 'uniform') {
             runAutoDetect();
+          } else if (mode === 'geometrical') {
+            initGeoCorners(w, h);
+            geoCornersToBounds();
+          } else if (mode === 'lineform') {
+            runLineFormAutoDetect();
+          } else if (mode === 'adjacent') {
+            runAdjacentAutoDetect();
+          } else if (mode === 'blackbg') {
+            runBlackBgAutoDetect();
+          } else {
+            runFreeformAutoDetect();
           }
+          scheduleAutoCut();
         }
         gridImg.onload = sizeOverlay;
         gridEditor.classList.add('visible');
-        outputEl.classList.remove('visible');
         if (gridImg.complete) setTimeout(sizeOverlay, 0);
       }
 
@@ -850,26 +1742,24 @@
 
       function getEditorMode() {
         var radio = document.querySelector('input[name="editor-mode"]:checked');
-        return (radio && radio.value === 'freeform') ? 'freeform' : 'uniform';
+        if (!radio) return 'uniform';
+        if (radio.value === 'geometrical') return 'geometrical';
+        if (['freeform', 'lineform', 'adjacent', 'blackbg'].indexOf(radio.value) !== -1) return radio.value;
+        return 'uniform';
+      }
+
+      function isFormsMode(mode) {
+        var m = mode || getEditorMode();
+        return m === 'freeform' || m === 'lineform' || m === 'adjacent' || m === 'blackbg';
       }
 
       function runAutoDetect() {
-        if (!currentImage || typeof gridDetect === 'undefined' || !gridDetect.detectGridLines) return false;
-        var fmt = getGridFormat();
-        var result = gridDetect.detectGridLines(currentImage, {
-          blackThreshold: 100,
-          darknessThreshold: 0.12,
-          minLinePx: 1,
-          minGap: 6,
-          gridCols: fmt.cols,
-          gridRows: fmt.rows
-        });
-        var wantX = fmt.cols + 1;
-        var wantY = fmt.rows + 1;
-        if (!result || !result.xBounds || result.xBounds.length !== wantX || !result.yBounds || result.yBounds.length !== wantY) return false;
-        xBounds = result.xBounds.slice();
-        yBounds = result.yBounds.slice();
-        drawOverlay();
+        if (!currentImage) return false;
+        var w = currentImage.naturalWidth;
+        var h = currentImage.naturalHeight;
+        var cand = getUniformCandidate(w, h, false);
+        if (!cand) return false;
+        applyCandidateResult(cand);
         return true;
       }
 
@@ -895,7 +1785,8 @@
           blackThreshold: 100,
           darknessThreshold: 0.12,
           minLinePx: 1,
-          minGap: 6
+          minGap: 6,
+          useActualLinePositions: true
         };
         for (var L = 0; L < layouts.length; L++) {
           var cols = layouts[L][0];
@@ -912,175 +1803,1483 @@
         return [];
       }
 
+      function trySegmentCells(w, h) {
+        if (typeof segmentDetect === 'undefined' || !segmentDetect.detectWhiteGaps) return [];
+        if (typeof segmentArrangement === 'undefined' || !segmentArrangement.segmentsToCells) return [];
+        var optionPresets = [
+          { whiteThreshold: 230, minRunFraction: 0.14, minGapPx: 2, maxGapPx: 24, mergeGap: 1, maxTrackGapPx: 2, minOverlapRatio: 0.5 },
+          { whiteThreshold: 220, minRunFraction: 0.12, minGapPx: 2, maxGapPx: 28, mergeGap: 2, maxTrackGapPx: 2, minOverlapRatio: 0.45 },
+          { whiteThreshold: 210, minRunFraction: 0.1, minGapPx: 2, maxGapPx: 32, mergeGap: 2, maxTrackGapPx: 3, minOverlapRatio: 0.4 },
+          { whiteThreshold: 198, minRunFraction: 0.08, minGapPx: 1, maxGapPx: 40, mergeGap: 3, maxTrackGapPx: 3, minOverlapRatio: 0.35 }
+        ];
+        for (var i = 0; i < optionPresets.length; i++) {
+          var segs = segmentDetect.detectWhiteGaps(currentImage, optionPresets[i]) || [];
+          if (!segs.length) continue;
+          var cells = segmentArrangement.segmentsToCells(w, h, segs) || [];
+          var filtered = cells.filter(function (c) { return c.w > 6 && c.h > 6; });
+          if (filtered.length > 1 && filtered.length <= 64) return filtered;
+        }
+        return [];
+      }
+
+      function scoreLineModeCells(cells, w, h) {
+        if (!cells || !cells.length) return -1000000;
+        var imgArea = Math.max(1, w * h);
+        var n = cells.length;
+        var maxArea = 0;
+        var thinPenalty = 0;
+        var areas = [];
+        for (var i = 0; i < cells.length; i++) {
+          var c = cells[i];
+          var area = Math.max(1, c.w * c.h);
+          areas.push(area);
+          if (area > maxArea) maxArea = area;
+          var minSide = Math.min(c.w, c.h);
+          var aspect = Math.max(c.w, c.h) / Math.max(1, minSide);
+          if (minSide < Math.min(w, h) * 0.07) thinPenalty += 1;
+          if (aspect > 7) thinPenalty += 1;
+        }
+        areas.sort(function (a, b) { return a - b; });
+        var medianArea = areas[Math.floor(areas.length / 2)] || 1;
+        var tinyPenalty = 0;
+        for (var t = 0; t < areas.length; t++) {
+          if (areas[t] < medianArea * 0.28) tinyPenalty += 1;
+        }
+        var score = Math.min(28, n) * 14;
+        var dominance = maxArea / imgArea;
+        if (dominance > 0.45) score -= (dominance - 0.45) * 240;
+        score -= thinPenalty * 40;
+        score -= tinyPenalty * 28;
+        return score;
+      }
+
+      function filterJunctionSegments(segments, w, h) {
+        if (!segments || segments.length < 4) return segments || [];
+        var axisEps = Math.max(1, Math.round(Math.min(w, h) * 0.004));
+        var edgeTol = Math.max(3, Math.round(Math.min(w, h) * 0.03));
+        var horizontals = [];
+        var verticals = [];
+        for (var i = 0; i < segments.length; i++) {
+          var s = segments[i];
+          if (Math.abs(s.y1 - s.y2) <= axisEps) horizontals.push(s);
+          else if (Math.abs(s.x1 - s.x2) <= axisEps) verticals.push(s);
+        }
+        if (!horizontals.length || !verticals.length) return segments;
+        function verticalHitCount(hs) {
+          var y = (hs.y1 + hs.y2) / 2;
+          var x1 = Math.min(hs.x1, hs.x2) - axisEps;
+          var x2 = Math.max(hs.x1, hs.x2) + axisEps;
+          var c = 0;
+          for (var v = 0; v < verticals.length; v++) {
+            var vs = verticals[v];
+            var x = (vs.x1 + vs.x2) / 2;
+            var vy1 = Math.min(vs.y1, vs.y2) - axisEps;
+            var vy2 = Math.max(vs.y1, vs.y2) + axisEps;
+            if (x >= x1 && x <= x2 && y >= vy1 && y <= vy2) c++;
+          }
+          return c;
+        }
+        function horizontalHitCount(vs) {
+          var x = (vs.x1 + vs.x2) / 2;
+          var y1 = Math.min(vs.y1, vs.y2) - axisEps;
+          var y2 = Math.max(vs.y1, vs.y2) + axisEps;
+          var c = 0;
+          for (var hh = 0; hh < horizontals.length; hh++) {
+            var hs = horizontals[hh];
+            var y = (hs.y1 + hs.y2) / 2;
+            var hx1 = Math.min(hs.x1, hs.x2) - axisEps;
+            var hx2 = Math.max(hs.x1, hs.x2) + axisEps;
+            if (y >= y1 && y <= y2 && x >= hx1 && x <= hx2) c++;
+          }
+          return c;
+        }
+        var kept = [];
+        for (var hIdx = 0; hIdx < horizontals.length; hIdx++) {
+          var hs = horizontals[hIdx];
+          var hitsH = verticalHitCount(hs);
+          var hy = (hs.y1 + hs.y2) / 2;
+          var nearHEdge = hy <= edgeTol || hy >= (h - edgeTol);
+          if (hitsH >= 2 || (nearHEdge && hitsH >= 1)) kept.push(hs);
+        }
+        for (var vIdx = 0; vIdx < verticals.length; vIdx++) {
+          var vs = verticals[vIdx];
+          var hitsV = horizontalHitCount(vs);
+          var vx = (vs.x1 + vs.x2) / 2;
+          var nearVEdge = vx <= edgeTol || vx >= (w - edgeTol);
+          if (hitsV >= 2 || (nearVEdge && hitsV >= 1)) kept.push(vs);
+        }
+        return kept.length >= 4 ? kept : segments;
+      }
+
+      function filterLineModeCells(cells, w, h) {
+        if (!cells || !cells.length) return [];
+        var minW = Math.max(10, Math.floor(w * 0.09));
+        var minH = Math.max(10, Math.floor(h * 0.09));
+        var minArea = Math.max(120, Math.floor(w * h * 0.012));
+        var filtered = cells.filter(function (c) {
+          return c.w >= minW && c.h >= minH && (c.w * c.h) >= minArea;
+        });
+        if (filtered.length > 1) return filtered;
+        return cells.filter(function (c) { return c.w > 8 && c.h > 8; });
+      }
+
+      function getAxisSegments(segments, w, h) {
+        var axisEps = Math.max(1, Math.round(Math.min(w, h) * 0.004));
+        var horizontals = [];
+        var verticals = [];
+        for (var i = 0; i < (segments || []).length; i++) {
+          var s = segments[i];
+          if (Math.abs(s.y1 - s.y2) <= axisEps) {
+            horizontals.push({
+              y: (s.y1 + s.y2) / 2,
+              x1: Math.min(s.x1, s.x2),
+              x2: Math.max(s.x1, s.x2)
+            });
+          } else if (Math.abs(s.x1 - s.x2) <= axisEps) {
+            verticals.push({
+              x: (s.x1 + s.x2) / 2,
+              y1: Math.min(s.y1, s.y2),
+              y2: Math.max(s.y1, s.y2)
+            });
+          }
+        }
+        return { horizontals: horizontals, verticals: verticals, axisEps: axisEps };
+      }
+
+      function mergeIntervals(intervals) {
+        if (!intervals.length) return [];
+        intervals.sort(function (a, b) { return a[0] - b[0]; });
+        var out = [intervals[0].slice()];
+        for (var i = 1; i < intervals.length; i++) {
+          var cur = intervals[i];
+          var prev = out[out.length - 1];
+          if (cur[0] <= prev[1]) prev[1] = Math.max(prev[1], cur[1]);
+          else out.push(cur.slice());
+        }
+        return out;
+      }
+
+      function intervalCoverage(intervals, start, end) {
+        var merged = mergeIntervals(intervals);
+        var covered = 0;
+        for (var i = 0; i < merged.length; i++) covered += Math.max(0, merged[i][1] - merged[i][0]);
+        return covered / Math.max(1, end - start);
+      }
+
+      function borderCoverageForCell(cell, axisSegs, w, h) {
+        if (!axisSegs || (!axisSegs.horizontals.length && !axisSegs.verticals.length)) return null;
+        var tol = Math.max(2, Math.round(Math.min(w, h) * 0.008));
+        var x1 = cell.x;
+        var x2 = cell.x + cell.w;
+        var y1 = cell.y;
+        var y2 = cell.y + cell.h;
+        var topIntervals = [];
+        var bottomIntervals = [];
+        var leftIntervals = [];
+        var rightIntervals = [];
+
+        for (var i = 0; i < axisSegs.horizontals.length; i++) {
+          var hs = axisSegs.horizontals[i];
+          var ov1 = Math.max(x1, hs.x1);
+          var ov2 = Math.min(x2, hs.x2);
+          if (ov2 <= ov1) continue;
+          if (Math.abs(hs.y - y1) <= tol) topIntervals.push([ov1, ov2]);
+          if (Math.abs(hs.y - y2) <= tol) bottomIntervals.push([ov1, ov2]);
+        }
+        for (var j = 0; j < axisSegs.verticals.length; j++) {
+          var vs = axisSegs.verticals[j];
+          var vv1 = Math.max(y1, vs.y1);
+          var vv2 = Math.min(y2, vs.y2);
+          if (vv2 <= vv1) continue;
+          if (Math.abs(vs.x - x1) <= tol) leftIntervals.push([vv1, vv2]);
+          if (Math.abs(vs.x - x2) <= tol) rightIntervals.push([vv1, vv2]);
+        }
+        var topCov = intervalCoverage(topIntervals, x1, x2);
+        var bottomCov = intervalCoverage(bottomIntervals, x1, x2);
+        var leftCov = intervalCoverage(leftIntervals, y1, y2);
+        var rightCov = intervalCoverage(rightIntervals, y1, y2);
+        return { top: topCov, bottom: bottomCov, left: leftCov, right: rightCov };
+      }
+
+      function keepCellsWithBorderSupport(cells, segments, w, h) {
+        if (!cells || !cells.length || !segments || !segments.length) return cells || [];
+        var axisSegs = getAxisSegments(segments, w, h);
+        if (!axisSegs.horizontals.length || !axisSegs.verticals.length) return cells;
+        var strict = [];
+        for (var i = 0; i < cells.length; i++) {
+          var cov = borderCoverageForCell(cells[i], axisSegs, w, h);
+          if (!cov) continue;
+          var sidesStrong = (cov.top >= 0.55 ? 1 : 0) + (cov.bottom >= 0.55 ? 1 : 0) + (cov.left >= 0.55 ? 1 : 0) + (cov.right >= 0.55 ? 1 : 0);
+          var minSide = Math.min(cov.top, cov.bottom, cov.left, cov.right);
+          var avg = (cov.top + cov.bottom + cov.left + cov.right) / 4;
+          if (sidesStrong >= 3 && minSide >= 0.35 && avg >= 0.58) strict.push(cells[i]);
+        }
+        return strict.length > 1 ? strict : cells;
+      }
+
+      function tryAdjacentSeparatorCells(w, h) {
+        if (typeof segmentDetect === 'undefined' || !segmentDetect.detectAdjacentDarkSeparators) return [];
+        if (typeof segmentArrangement === 'undefined' || !segmentArrangement.segmentsToCells) return [];
+        var presets = [
+          { darkThreshold: 100, minSpanFraction: 0.6, maxThicknessPx: 5, darknessFraction: 0.55, mergeGapPx: 2, minFlankLuminance: 40, flankSamplePx: 4 },
+          { darkThreshold: 100, minSpanFraction: 0.45, maxThicknessPx: 5, darknessFraction: 0.55, mergeGapPx: 2, minFlankLuminance: 40, flankSamplePx: 4 },
+          { darkThreshold: 120, minSpanFraction: 0.4, maxThicknessPx: 6, darknessFraction: 0.5, mergeGapPx: 2, minFlankLuminance: 35, flankSamplePx: 4 },
+          { darkThreshold: 140, minSpanFraction: 0.35, maxThicknessPx: 8, darknessFraction: 0.45, mergeGapPx: 3 }
+        ];
+        for (var i = 0; i < presets.length; i++) {
+          var segs = segmentDetect.detectAdjacentDarkSeparators(currentImage, presets[i]) || [];
+          if (!segs.length) continue;
+          var cells = segmentArrangement.segmentsToCells(w, h, segs) || [];
+          var filtered = cells.filter(function (c) { return c.w > 8 && c.h > 8; });
+          if (filtered.length > 1 && filtered.length <= 64) return filtered;
+        }
+        return [];
+      }
+
+      function tryAdjacentForegroundCells(w, h) {
+        if (typeof segmentDetect === 'undefined' || !segmentDetect.detectForegroundRectsOnDarkBg) return [];
+        var presets = [
+          { darkBgThreshold: 70, minAreaFraction: 0.008, minWFrac: 0.05, minHFrac: 0.05, padPx: 0, mergeGapPx: 2 },
+          { darkBgThreshold: 90, minAreaFraction: 0.01, minWFrac: 0.06, minHFrac: 0.06, padPx: 1, mergeGapPx: 3 }
+        ];
+        for (var i = 0; i < presets.length; i++) {
+          var rects = segmentDetect.detectForegroundRectsOnDarkBg(currentImage, presets[i]) || [];
+          var filtered = rects.filter(function (c) { return c.w > 8 && c.h > 8; });
+          if (filtered.length > 1 && filtered.length <= 64) return filtered;
+        }
+        return [];
+      }
+
+      function filterAdjacentCells(cells, w, h) {
+        if (!cells || !cells.length) return [];
+        var minW = Math.max(8, Math.floor(w * 0.06));
+        var minH = Math.max(8, Math.floor(h * 0.06));
+        var minArea = Math.max(80, Math.floor(w * h * 0.008));
+        var filtered = cells.filter(function (c) {
+          return c.w >= minW && c.h >= minH && (c.w * c.h) >= minArea;
+        });
+        if (filtered.length > 1) return filtered;
+        return cells.filter(function (c) { return c.w > 6 && c.h > 6; });
+      }
+
+      function scoreAdjacentCells(cells, w, h) {
+        if (!cells || !cells.length) return -1000000;
+        var imgArea = Math.max(1, w * h);
+        var n = cells.length;
+        var maxArea = 0;
+        var stripPenalty = 0;
+        var areas = [];
+        for (var i = 0; i < cells.length; i++) {
+          var c = cells[i];
+          var area = c.w * c.h;
+          areas.push(area);
+          if (area > maxArea) maxArea = area;
+          var minSide = Math.min(c.w, c.h);
+          var aspect = Math.max(c.w, c.h) / Math.max(1, minSide);
+          if (minSide < Math.min(w, h) * 0.05) stripPenalty += 2;
+          if (aspect > 6) stripPenalty += 1;
+        }
+        areas.sort(function (a, b) { return a - b; });
+        var medianArea = areas[Math.floor(areas.length / 2)] || 1;
+        var tinyPenalty = 0;
+        for (var t = 0; t < areas.length; t++) {
+          if (areas[t] < medianArea * 0.2) tinyPenalty += 1;
+        }
+        var score = Math.min(32, n) * 12;
+        var dominance = maxArea / imgArea;
+        if (dominance > 0.5) score -= (dominance - 0.5) * 200;
+        score -= stripPenalty * 35;
+        score -= tinyPenalty * 25;
+        return score;
+      }
+
+      function tryDarkLineCells(w, h) {
+        if (typeof segmentDetect === 'undefined' || !segmentDetect.detectDarkLines) return [];
+        if (typeof segmentArrangement === 'undefined' || !segmentArrangement.segmentsToCells) return [];
+        var optionPresets = [
+          { darkThreshold: 135, minRunFraction: 0.20, minLinePx: 1, maxLinePx: 12, mergeGap: 1, maxTrackGapPx: 1, minOverlapRatio: 0.6 },
+          { darkThreshold: 150, minRunFraction: 0.16, minLinePx: 1, maxLinePx: 14, mergeGap: 1, maxTrackGapPx: 2, minOverlapRatio: 0.56 },
+          { darkThreshold: 170, minRunFraction: 0.12, minLinePx: 1, maxLinePx: 18, mergeGap: 1, maxTrackGapPx: 2, minOverlapRatio: 0.5 }
+        ];
+        var bestCells = [];
+        var bestScore = -1000000;
+        for (var i = 0; i < optionPresets.length; i++) {
+          var rawSegs = segmentDetect.detectDarkLines(currentImage, optionPresets[i]) || [];
+          if (!rawSegs.length) continue;
+          var segVariants = [rawSegs, filterJunctionSegments(rawSegs, w, h)];
+          for (var v = 0; v < segVariants.length; v++) {
+            var segs = segVariants[v];
+            if (!segs || !segs.length) continue;
+            var cells = segmentArrangement.segmentsToCells(w, h, segs) || [];
+            var supported = keepCellsWithBorderSupport(cells, segs, w, h);
+            var filtered = filterLineModeCells(supported, w, h);
+            if (filtered.length < 2 || filtered.length > 64) continue;
+            var score = scoreLineModeCells(filtered, w, h);
+            if (score > bestScore) {
+              bestScore = score;
+              bestCells = filtered;
+            }
+          }
+        }
+        return bestCells;
+      }
+
       function runFreeformAutoDetect() {
         if (!currentImage) return false;
         var w = currentImage.naturalWidth;
         var h = currentImage.naturalHeight;
-        var cellsFound = tryBlackLineGrid(w, h);
-        if (cellsFound.length === 0 && typeof segmentDetect !== 'undefined' && segmentDetect.detectPanelRects) {
-          var panelPresets = [
-            { nonWhiteThreshold: 246, minAreaFraction: 0.015, minWFrac: 0.1, minHFrac: 0.1, minFillRatio: 0.22, padPx: 1, mergeGapPx: 1 },
-            { nonWhiteThreshold: 242, minAreaFraction: 0.012, minWFrac: 0.08, minHFrac: 0.08, minFillRatio: 0.18, padPx: 1, mergeGapPx: 2 },
-            { nonWhiteThreshold: 238, minAreaFraction: 0.009, minWFrac: 0.07, minHFrac: 0.07, minFillRatio: 0.14, padPx: 1, mergeGapPx: 2 }
-          ];
-          for (var p = 0; p < panelPresets.length; p++) {
-            cellsFound = segmentDetect.detectPanelRects(currentImage, panelPresets[p]) || [];
-            if (cellsFound.length > 1) break;
-          }
-        }
-        freeformCells = cellsFound;
-        excludedCellIds = {};
-        selectedCellIndex = null;
-        updateFreeformButtons();
-        updateCutButtonLabel();
-        drawOverlay();
+        var cand = getFreeformCandidate(w, h);
+        if (!cand) return false;
+        applyCandidateResult(cand);
         return freeformCells.length > 0;
       }
 
-      function handleFile(file) {
-        clearError();
-        if (!file || !file.type.startsWith('image/')) {
-          showError('Please drop or select an image file.');
-          return;
-        }
-        var url = URL.createObjectURL(file);
-        if (objectUrl) URL.revokeObjectURL(objectUrl);
-        objectUrl = url;
-        var img = new Image();
-        img.onload = function () {
-          setupGridEditor(img);
-        };
-        img.onerror = function () {
-          showError('Could not load the image.');
-        };
-        img.src = url;
+      function runLineFormAutoDetect() {
+        if (!currentImage) return false;
+        var w = currentImage.naturalWidth;
+        var h = currentImage.naturalHeight;
+        var cand = getLineformCandidate(w, h);
+        if (!cand) return false;
+        applyCandidateResult(cand);
+        return freeformCells.length > 0;
       }
 
-      function runCut() {
-        if (!currentImage) {
-          showError('Load an image first.');
+      function runAdjacentAutoDetect() {
+        if (!currentImage) return false;
+        var w = currentImage.naturalWidth;
+        var h = currentImage.naturalHeight;
+        var cand = getAdjacentCandidate(w, h);
+        if (!cand) return false;
+        applyCandidateResult(cand);
+        return freeformCells.length > 0;
+      }
+
+      function runBlackBgAutoDetect() {
+        if (!currentImage) return false;
+        var w = currentImage.naturalWidth;
+        var h = currentImage.naturalHeight;
+        var cand = getBlackBgCandidate(w, h);
+        if (!cand) return false;
+        applyCandidateResult(cand);
+        return freeformCells.length > 0;
+      }
+
+      var PARSER_MODE_REGISTRY = {
+        uniform: {
+          label: 'Grid',
+          minCells: 2,
+          maxCells: 64,
+          getCandidate: function (w, h) { return getUniformCandidate(w, h, true); }
+        },
+        freeform: {
+          label: 'Freeform',
+          minCells: 2,
+          maxCells: 64,
+          getCandidate: function (w, h) { return getFreeformCandidate(w, h); }
+        },
+        lineform: {
+          label: 'Lines',
+          minCells: 2,
+          maxCells: 64,
+          getCandidate: function (w, h) { return getLineformCandidate(w, h); }
+        },
+        adjacent: {
+          label: 'Adjacent',
+          minCells: 2,
+          maxCells: 64,
+          getCandidate: function (w, h) { return getAdjacentCandidate(w, h); }
+        },
+        blackbg: {
+          label: 'Black BG',
+          minCells: 2,
+          maxCells: 64,
+          getCandidate: function (w, h) { return getBlackBgCandidate(w, h); }
+        },
+        geometrical: {
+          label: 'Simple Grid',
+          minCells: 2,
+          maxCells: 64,
+          getCandidate: function (w, h) { return getGeometricalCandidate(w, h); }
+        }
+      };
+
+      function getParserModeIds() {
+        return Object.keys(PARSER_MODE_REGISTRY);
+      }
+
+      function buildCandidateShortlist(w, h) {
+        var modes = quickImageAnalysis(w, h);
+        return modes.length > 0 ? modes : getParserModeIds();
+      }
+
+      function runCandidateForMode(mode, w, h) {
+        var reg = PARSER_MODE_REGISTRY[mode];
+        if (!reg || typeof reg.getCandidate !== 'function') return null;
+        return reg.getCandidate(w, h);
+      }
+
+      function getGeometricalCandidate(w, h) {
+        var fmt = getGridFormat();
+        var cols = fmt.cols;
+        var rows = fmt.rows;
+        var xB = [];
+        for (var c = 0; c <= cols; c++) xB.push((c * w) / cols);
+        var yB = [];
+        for (var r = 0; r <= rows; r++) yB.push((r * h) / rows);
+        return { mode: 'geometrical', xBounds: xB, yBounds: yB, source: 'geometrical' };
+      }
+
+      var UNIFORM_GRID_SIZES = [[2, 2], [3, 3], [4, 4], [2, 3], [3, 2], [1, 2], [2, 1], [1, 3], [3, 1], [4, 2], [2, 4], [3, 4], [4, 3], [1, 4], [4, 1]];
+
+      function getUniformCandidate(w, h, tryAllSizes) {
+        if (typeof gridDetect === 'undefined' || !gridDetect.detectGridLines) return null;
+        var presets = [
+          { blackThreshold: 100, darknessThreshold: 0.12, minLinePx: 1, minGap: 6, minSpanFraction: 0.35 },
+          { blackThreshold: 130, darknessThreshold: 0.10, minLinePx: 1, minGap: 6, minSpanFraction: 0.30 },
+          { blackThreshold: 160, darknessThreshold: 0.08, minLinePx: 1, minGap: 6, minSpanFraction: 0.25 },
+          { blackThreshold: 185, darknessThreshold: 0.06, minLinePx: 1, minGap: 6, minSpanFraction: 0.22 }
+        ];
+        var sizesToTry = tryAllSizes ? UNIFORM_GRID_SIZES : [[getGridFormat().rows, getGridFormat().cols]];
+        for (var si = 0; si < sizesToTry.length; si++) {
+          var rows = sizesToTry[si][0];
+          var cols = sizesToTry[si][1];
+          var wantX = cols + 1;
+          var wantY = rows + 1;
+          for (var p = 0; p < presets.length; p++) {
+            var opts = { gridCols: cols, gridRows: rows };
+            for (var k in presets[p]) opts[k] = presets[p][k];
+            var result = gridDetect.detectGridLines(currentImage, opts);
+            if (result && result.xBounds && result.xBounds.length === wantX && result.yBounds && result.yBounds.length === wantY) {
+              return {
+                mode: 'uniform',
+                xBounds: result.xBounds.slice(),
+                yBounds: result.yBounds.slice(),
+                xTrim: result.xTrim ? result.xTrim.slice() : [],
+                yTrim: result.yTrim ? result.yTrim.slice() : [],
+                rows: rows,
+                cols: cols,
+                source: 'gridLines'
+              };
+            }
+          }
+        }
+        return null;
+      }
+
+      function getFreeformCandidate(w, h) {
+        var cells = [];
+        var source = null;
+        if (typeof segmentDetect !== 'undefined' && segmentDetect.detectPanelRects) {
+          var panelPresets = [
+            { nonWhiteThreshold: 246, minAreaFraction: 0.008, minWFrac: 0.06, minHFrac: 0.06, minFillRatio: 0.12, padPx: 1, mergeGapPx: 0 },
+            { nonWhiteThreshold: 242, minAreaFraction: 0.006, minWFrac: 0.05, minHFrac: 0.05, minFillRatio: 0.10, padPx: 1, mergeGapPx: 1 },
+            { nonWhiteThreshold: 238, minAreaFraction: 0.004, minWFrac: 0.04, minHFrac: 0.04, minFillRatio: 0.08, padPx: 1, mergeGapPx: 1 }
+          ];
+          for (var p = 0; p < panelPresets.length; p++) {
+            cells = segmentDetect.detectPanelRects(currentImage, panelPresets[p]) || [];
+            if (cells.length > 1) { source = 'panelRects'; break; }
+          }
+        }
+        if (!source && cells.length <= 1) {
+          cells = trySegmentCells(w, h);
+          if (cells.length > 1) source = 'whiteGaps';
+        }
+        if (!source && cells.length <= 1) {
+          cells = tryBlackLineGrid(w, h);
+          if (cells.length > 1) source = 'blackLineGrid';
+        }
+        if (!cells.length || cells.length > 64) return null;
+        return { mode: 'freeform', cells: cells.slice(), source: source || 'panelRects' };
+      }
+
+      function getLineformCandidate(w, h) {
+        var darkCells = tryDarkLineCells(w, h);
+        var source = 'darkLines';
+        var candidates = [];
+        if (darkCells && darkCells.length > 1) candidates.push({ cells: darkCells, source: 'darkLines' });
+        var blackGridCells = tryBlackLineGrid(w, h);
+        if (blackGridCells && blackGridCells.length > 1) candidates.push({ cells: blackGridCells, source: 'blackLineGrid' });
+        var best = [];
+        var bestScore = -1000000;
+        var bestSource = source;
+        for (var i = 0; i < candidates.length; i++) {
+          var filtered = filterLineModeCells(candidates[i].cells, w, h);
+          var score = scoreLineModeCells(filtered, w, h);
+          if (score > bestScore) { bestScore = score; best = filtered; bestSource = candidates[i].source; }
+        }
+        if (best.length < 2 || best.length > 64) return null;
+        return { mode: 'lineform', cells: best.slice(), source: bestSource };
+      }
+
+      function getAdjacentCandidate(w, h) {
+        var candA = tryAdjacentSeparatorCells(w, h);
+        var candB = tryAdjacentForegroundCells(w, h);
+        var candC1 = tryDarkLineCells(w, h);
+        var candC2 = tryBlackLineGrid(w, h);
+        var candidates = [
+          { cells: candA, source: 'separators' },
+          { cells: candB, source: 'foreground' },
+          { cells: candC1, source: 'darkLines' },
+          { cells: candC2, source: 'blackLineGrid' }
+        ].filter(function (c) { return c.cells && c.cells.length > 1; });
+        var best = [];
+        var bestScore = -1000000;
+        var bestSource = null;
+        for (var i = 0; i < candidates.length; i++) {
+          var filtered = filterAdjacentCells(candidates[i].cells, w, h);
+          if (filtered.length < 2 || filtered.length > 64) continue;
+          var score = scoreAdjacentCells(filtered, w, h);
+          if (score > bestScore) { bestScore = score; best = filtered; bestSource = candidates[i].source; }
+        }
+        if (best.length < 2 || best.length > 64) return null;
+        return { mode: 'adjacent', cells: best.slice(), source: bestSource || 'separators' };
+      }
+
+      function tryBlackBgCutLines(w, h) {
+        if (typeof segmentDetect === 'undefined' || !segmentDetect.detectAdjacentDarkSeparators) return [];
+        if (typeof segmentArrangement === 'undefined' || !segmentArrangement.segmentsToCells) return [];
+        var presets = [
+          { darkThreshold: 80, minSpanFraction: 0.5, maxThicknessPx: 20, darknessFraction: 0.5, mergeGapPx: 3, minFlankLuminance: 30, flankSamplePx: 5 },
+          { darkThreshold: 100, minSpanFraction: 0.4, maxThicknessPx: 25, darknessFraction: 0.45, mergeGapPx: 4, minFlankLuminance: 25, flankSamplePx: 6 },
+          { darkThreshold: 120, minSpanFraction: 0.35, maxThicknessPx: 30, darknessFraction: 0.4, mergeGapPx: 5, minFlankLuminance: 20, flankSamplePx: 8 }
+        ];
+        for (var i = 0; i < presets.length; i++) {
+          var segs = segmentDetect.detectAdjacentDarkSeparators(currentImage, presets[i]) || [];
+          if (!segs.length) continue;
+          var cells = segmentArrangement.segmentsToCells(w, h, segs) || [];
+          var filtered = cells.filter(function (c) { return c.w > 8 && c.h > 8; });
+          if (filtered.length > 1 && filtered.length <= 64) return filtered;
+        }
+        return [];
+      }
+
+      function getBlackBgCandidate(w, h) {
+        var candidates = [];
+        var cutLineCells = tryBlackBgCutLines(w, h);
+        if (cutLineCells.length >= 2) candidates.push({ cells: cutLineCells, source: 'cutLines' });
+        if (typeof segmentDetect !== 'undefined' && segmentDetect.detectIsolatedShapesOnBlackBg) {
+          var shapePresets = [
+            { darkBgThreshold: 70, minAreaFraction: 0.008, minWFrac: 0.05, minHFrac: 0.05, padPx: 0, mergeGapPx: 2, minSpanFraction: 0.5, darknessFraction: 0.55, maxThicknessPx: 6 },
+            { darkBgThreshold: 85, minAreaFraction: 0.01, minWFrac: 0.06, minHFrac: 0.06, padPx: 1, mergeGapPx: 2, minSpanFraction: 0.45, darknessFraction: 0.5, maxThicknessPx: 8 },
+            { darkBgThreshold: 100, minAreaFraction: 0.012, minWFrac: 0.06, minHFrac: 0.06, padPx: 1, mergeGapPx: 3 }
+          ];
+          for (var i = 0; i < shapePresets.length; i++) {
+            var rects = segmentDetect.detectIsolatedShapesOnBlackBg(currentImage, shapePresets[i]) || [];
+            if (rects.length >= 2 && rects.length <= 64) { candidates.push({ cells: rects, source: 'isolatedShapes' }); break; }
+          }
+        }
+        var best = [];
+        var bestScore = -1000000;
+        var bestSource = null;
+        for (var ci = 0; ci < candidates.length; ci++) {
+          var filtered = filterAdjacentCells(candidates[ci].cells, w, h);
+          if (filtered.length < 2 || filtered.length > 64) continue;
+          var score = scoreAdjacentCells(filtered, w, h);
+          if (score > bestScore) {
+            bestScore = score;
+            best = filtered;
+            bestSource = candidates[ci].source;
+          }
+        }
+        if (best.length < 2 || best.length > 64) return null;
+        return { mode: 'blackbg', cells: best.slice(), source: bestSource || 'cutLines' };
+      }
+
+      function quickImageAnalysis(w, h) {
+        var signals = getQuickImageSignals(w, h);
+        return prioritizeModesFromSignals(signals, w, h);
+      }
+
+      function getQuickImageSignals(w, h) {
+        var canvas = typeof document !== 'undefined' && document.createElement('canvas');
+        if (!canvas || !currentImage) return {};
+        canvas.width = w;
+        canvas.height = h;
+        var ctx = canvas.getContext('2d');
+        if (!ctx) return {};
+        ctx.drawImage(currentImage, 0, 0);
+        var data = ctx.getImageData(0, 0, w, h).data;
+        var darkCount = 0;
+        var lightCount = 0;
+        var total = w * h;
+        for (var i = 0; i < data.length; i += 4) {
+          var L = (0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2]);
+          var a = data[i + 3] / 255;
+          L = L * a + 255 * (1 - a);
+          if (L <= 80) darkCount++;
+          else if (L >= 200) lightCount++;
+        }
+        return {
+          darkRatio: darkCount / total,
+          lightRatio: lightCount / total,
+          w: w,
+          h: h
+        };
+      }
+
+      function prioritizeModesFromSignals(signals, w, h) {
+        if (!signals || typeof signals.darkRatio !== 'number') return ['uniform', 'freeform', 'lineform', 'adjacent'];
+        var d = signals.darkRatio;
+        var l = signals.lightRatio;
+        if (d > 0.4) return ['blackbg', 'adjacent', 'lineform', 'uniform', 'freeform'];
+        if (l > 0.5) return ['freeform', 'uniform', 'lineform', 'adjacent'];
+        if (d >= 0.15 && d <= 0.35 && l >= 0.25 && l <= 0.45) return ['uniform', 'freeform', 'lineform', 'adjacent', 'blackbg'];
+        return ['uniform', 'lineform', 'adjacent', 'blackbg', 'freeform'];
+      }
+
+      function scoreAndSelectBest(candidates, w, h) {
+        var scored = [];
+        for (var i = 0; i < candidates.length; i++) {
+          var c = candidates[i];
+          var s = scoreCandidateUnified(c, w, h);
+          if (s.valid) scored.push({ candidate: c, score: s.score, confidence: s.confidence });
+        }
+        if (scored.length === 0) return null;
+        scored.sort(function (a, b) { return b.score - a.score; });
+        var best = scored[0];
+        var gap = scored.length > 1 ? (best.score - scored[1].score) : best.score;
+        var confidence = gap >= 30 ? 'high' : (gap >= 15 || best.score > 80 ? 'medium' : 'low');
+        var cand = best.candidate;
+        return {
+          mode: cand.mode,
+          xBounds: cand.xBounds,
+          yBounds: cand.yBounds,
+          cells: cand.cells,
+          confidence: confidence,
+          source: cand.source || null
+        };
+      }
+
+      function scoreCandidateUnified(cand, w, h) {
+        var reg = cand.mode ? PARSER_MODE_REGISTRY[cand.mode] : null;
+        var minC = reg ? reg.minCells : 2;
+        var maxC = reg ? reg.maxCells : 64;
+        var imgArea = w * h;
+        var cells = (cand.mode === 'uniform' || cand.mode === 'geometrical') ? boundsToCells(cand.xBounds, cand.yBounds) : (cand.cells || []);
+        if (cells.length < minC || cells.length > maxC) return { valid: false, score: -1e9, confidence: 'low' };
+        var maxArea = 0;
+        var stripPenalty = 0;
+        var tinyPenalty = 0;
+        var areas = [];
+        for (var i = 0; i < cells.length; i++) {
+          var c = cells[i];
+          var area = c.w * c.h;
+          areas.push(area);
+          if (area > maxArea) maxArea = area;
+          var minSide = Math.min(c.w, c.h);
+          var aspect = Math.max(c.w, c.h) / Math.max(1, minSide);
+          if (minSide < Math.min(w, h) * 0.06) stripPenalty += 2;
+          if (aspect > 6) stripPenalty += 1;
+        }
+        areas.sort(function (a, b) { return a - b; });
+        var medianArea = areas[Math.floor(areas.length / 2)] || 1;
+        for (var t = 0; t < areas.length; t++) {
+          if (areas[t] < medianArea * 0.25) tinyPenalty++;
+        }
+        var meanArea = imgArea / cells.length;
+        var variance = 0;
+        for (var v = 0; v < areas.length; v++) variance += (areas[v] - meanArea) * (areas[v] - meanArea);
+        variance = variance / cells.length;
+        var cv = meanArea > 0 ? Math.sqrt(variance) / meanArea : 1;
+        var variancePenalty = cv > 0.8 ? 25 : (cv > 0.5 ? 12 : 0);
+        var score = Math.min(32, cells.length) * 12;
+        var dominance = maxArea / imgArea;
+        if (dominance > 0.55) score -= (dominance - 0.55) * 200;
+        score -= stripPenalty * 35;
+        score -= tinyPenalty * 25;
+        score -= variancePenalty;
+        var confidence = score > 80 ? 'high' : (score > 40 ? 'medium' : 'low');
+        return { valid: true, score: score, confidence: confidence };
+      }
+
+      function buildAllCandidates(w, h) {
+        return buildCandidateShortlist(w, h).map(function (mode) { return runCandidateForMode(mode, w, h); }).filter(Boolean);
+      }
+
+      function selectBestCandidate(candidates, w, h) {
+        return scoreAndSelectBest(candidates, w, h);
+      }
+
+      function setGridFormatFromBounds(xBounds, yBounds) {
+        var sel = document.getElementById('grid-format');
+        if (!sel) return;
+        var rows = yBounds && yBounds.length > 1 ? yBounds.length - 1 : 4;
+        var cols = xBounds && xBounds.length > 1 ? xBounds.length - 1 : 4;
+        rows = Math.max(1, Math.min(10, rows));
+        cols = Math.max(1, Math.min(10, cols));
+        var val = rows + '_' + cols;
+        if (sel.value !== val) {
+          sel.value = val;
+          if (typeof syncGridFormatVisual === 'function') syncGridFormatVisual();
+        }
+      }
+
+      function applyCandidateResult(cand) {
+        if (!cand) return;
+        if (cand.mode === 'uniform' && cand.xBounds && cand.yBounds) {
+          xBounds = cand.xBounds.slice();
+          yBounds = cand.yBounds.slice();
+          xTrim = cand.xTrim && cand.xTrim.length === cand.xBounds.length ? cand.xTrim.slice() : [];
+          yTrim = cand.yTrim && cand.yTrim.length === cand.yBounds.length ? cand.yTrim.slice() : [];
+          freeformCells = [];
+          setGridFormatFromBounds(xBounds, yBounds);
+        } else if (cand.mode === 'geometrical' && cand.xBounds && cand.yBounds && currentImage) {
+          var w = currentImage.naturalWidth;
+          var h = currentImage.naturalHeight;
+          var lastX = cand.xBounds.length - 1;
+          var lastY = cand.yBounds.length - 1;
+          geoCorners.topLeft = { x: cand.xBounds[0], y: cand.yBounds[0] };
+          geoCorners.topRight = { x: cand.xBounds[lastX], y: cand.yBounds[0] };
+          geoCorners.bottomLeft = { x: cand.xBounds[0], y: cand.yBounds[lastY] };
+          geoCorners.bottomRight = { x: cand.xBounds[lastX], y: cand.yBounds[lastY] };
+          xBounds = cand.xBounds.slice();
+          yBounds = cand.yBounds.slice();
+          xTrim = [];
+          yTrim = [];
+          freeformCells = [];
+          setGridFormatFromBounds(xBounds, yBounds);
+        } else if (cand.cells && cand.cells.length) {
+          freeformCells = cand.cells.slice();
+          xBounds = [];
+          yBounds = [];
+          xTrim = [];
+          yTrim = [];
+        }
+        excludedCellIds = {};
+        selectedCellIndex = null;
+        updateParserStatus(cand);
+        updateFreeformButtons();
+        updateCutButtonLabel();
+        drawOverlay();
+      }
+
+      function updateParserStatus(cand) {
+        var el = document.getElementById('parser-status');
+        if (!el) return;
+        if (!cand || !cand.mode) {
+          el.textContent = '';
           return;
         }
+        var reg = PARSER_MODE_REGISTRY[cand.mode];
+        var label = reg ? reg.label : cand.mode;
+        var source = cand.source || '';
+        el.textContent = source ? label + ' (' + source + ')' : label;
+      }
+
+      function baseNameFromFileName(fileName) {
+        if (!fileName) return 'image';
+        var base = fileName.replace(/\.[^.]+$/, '').trim();
+        base = base.replace(/[/\\:*?"<>|]/g, '_');
+        return base || 'image';
+      }
+
+      function handleFiles(fileList) {
         clearError();
+        if (!fileList || !fileList.length) return;
+        var files = [];
+        for (var f = 0; f < fileList.length; f++) {
+          var file = fileList[f];
+          if (file && file.type && file.type.startsWith('image/')) files.push(file);
+        }
+        if (!files.length) {
+          showError('Please drop or select image file(s).');
+          return;
+        }
+        if (objectUrl) URL.revokeObjectURL(objectUrl);
+        objectUrl = null;
+        for (var i = 0; i < batchImages.length; i++) {
+          if (batchImages[i].objectURL) URL.revokeObjectURL(batchImages[i].objectURL);
+        }
+        batchImages = [];
+        var pending = files.length;
+        function onOneLoaded() {
+          pending--;
+          if (pending > 0) return;
+          finishBatchLoad();
+        }
+        for (var j = 0; j < files.length; j++) {
+          (function (file, idx) {
+            var url = URL.createObjectURL(file);
+            var name = baseNameFromFileName(file.name);
+            var entry = {
+              id: batchIdCounter++,
+              file: file,
+              name: name,
+              objectURL: url,
+              img: null,
+              mode: 'uniform',
+              xBounds: [],
+              yBounds: [],
+              xTrim: [],
+              yTrim: [],
+              freeformCells: [],
+              excludedCellIds: {},
+              tileBlobs: [],
+              tileCropInfos: [],
+              processed: false
+            };
+            batchImages.push(entry);
+            var img = new Image();
+            img.onload = function () {
+              currentImage = img;
+              var w = img.naturalWidth;
+              var h = img.naturalHeight;
+              initBounds(w, h);
+              runAutoDetect();
+              entry.img = img;
+              entry.xBounds = xBounds.slice();
+              entry.yBounds = yBounds.slice();
+              entry.xTrim = (xTrim || []).slice();
+              entry.yTrim = (yTrim || []).slice();
+              entry.freeformCells = freeformCells.map(function (c) { return { x: c.x, y: c.y, w: c.w, h: c.h }; });
+              entry.mode = 'uniform';
+              onOneLoaded();
+            };
+            img.onerror = function () {
+              showError('Could not load image: ' + (file.name || ''));
+              batchImages.splice(batchImages.indexOf(entry), 1);
+              onOneLoaded();
+            };
+            img.src = url;
+          })(files[j], j);
+        }
+      }
+
+      function handleFilesAppend(fileList) {
+        if (!fileList || !fileList.length) return;
+        var files = [];
+        for (var f = 0; f < fileList.length; f++) {
+          var file = fileList[f];
+          if (file && file.type && file.type.startsWith('image/')) files.push(file);
+        }
+        if (!files.length) return;
+        var startLen = batchImages.length;
+        var pending = files.length;
+        function onOneLoaded() {
+          pending--;
+          if (pending > 0) return;
+          renderBatchStrip();
+          var countEl = document.getElementById('batch-count');
+          if (countEl) countEl.textContent = batchImages.length === 1 ? '1 image loaded' : batchImages.length + ' images loaded';
+        }
+        for (var j = 0; j < files.length; j++) {
+          (function (file) {
+            var url = URL.createObjectURL(file);
+            var name = baseNameFromFileName(file.name);
+            var entry = {
+              id: batchIdCounter++,
+              file: file,
+              name: name,
+              objectURL: url,
+              img: null,
+              mode: 'uniform',
+              xBounds: [],
+              yBounds: [],
+              xTrim: [],
+              yTrim: [],
+              freeformCells: [],
+              excludedCellIds: {},
+              tileBlobs: [],
+              tileCropInfos: [],
+              processed: false
+            };
+            batchImages.push(entry);
+            var img = new Image();
+            img.onload = function () {
+              currentImage = img;
+              var w = img.naturalWidth;
+              var h = img.naturalHeight;
+              initBounds(w, h);
+              runAutoDetect();
+              entry.img = img;
+              entry.xBounds = xBounds.slice();
+              entry.yBounds = yBounds.slice();
+              entry.xTrim = (xTrim || []).slice();
+              entry.yTrim = (yTrim || []).slice();
+              entry.freeformCells = freeformCells.map(function (c) { return { x: c.x, y: c.y, w: c.w, h: c.h }; });
+              entry.mode = 'uniform';
+              loadImageState(currentBatchIndex);
+              onOneLoaded();
+            };
+            img.onerror = function () {
+              batchImages.splice(batchImages.indexOf(entry), 1);
+              if (currentBatchIndex >= batchImages.length && batchImages.length) currentBatchIndex = batchImages.length - 1;
+              loadImageState(currentBatchIndex);
+              onOneLoaded();
+            };
+            img.src = url;
+          })(files[j]);
+        }
+      }
+
+      function finishBatchLoad() {
+        if (!batchImages.length) return;
+        currentBatchIndex = 0;
+        loadImageState(0);
+        renderBatchStrip();
+        var nav = document.getElementById('batch-navigator');
+        if (nav) nav.style.display = batchImages.length > 1 ? '' : 'none';
+        var countEl = document.getElementById('batch-count');
+        if (countEl) {
+          countEl.style.display = '';
+          countEl.textContent = batchImages.length === 1 ? '1 image loaded' : batchImages.length + ' images loaded';
+        }
+        gridEditor.classList.add('visible');
+      }
+
+      function saveCurrentImageState() {
+        if (batchImages.length === 0 || currentBatchIndex < 0 || currentBatchIndex >= batchImages.length) return;
+        var entry = batchImages[currentBatchIndex];
+        entry.xBounds = xBounds.slice();
+        entry.yBounds = yBounds.slice();
+        entry.xTrim = (xTrim || []).slice();
+        entry.yTrim = (yTrim || []).slice();
+        entry.freeformCells = freeformCells.map(function (c) { return { x: c.x, y: c.y, w: c.w, h: c.h }; });
+        entry.excludedCellIds = {};
+        for (var k in excludedCellIds) { entry.excludedCellIds[k] = excludedCellIds[k]; }
+        entry.mode = getEditorMode();
+      }
+
+      function loadImageState(index, silent) {
+        if (batchImages.length === 0 || index < 0 || index >= batchImages.length) return;
+        var entry = batchImages[index];
+        currentBatchIndex = index;
+        currentImage = entry.img;
+        xBounds = (entry.xBounds || []).slice();
+        yBounds = (entry.yBounds || []).slice();
+        xTrim = (entry.xTrim || []).slice();
+        yTrim = (entry.yTrim || []).slice();
+        freeformCells = (entry.freeformCells || []).map(function (c) { return { x: c.x, y: c.y, w: c.w, h: c.h }; });
+        excludedCellIds = {};
+        for (var k in (entry.excludedCellIds || {})) { excludedCellIds[k] = true; }
+        editorMode = entry.mode || 'uniform';
+        // #region agent log
+        sendAgentDebugLog('H1', 'index.html:loadImageState:beforeSetEditorMode', 'loadImageState before setEditorMode', {
+          index: index,
+          silent: !!silent,
+          entryMode: editorMode,
+          batchSize: batchImages.length,
+          currentBatchIndex: currentBatchIndex
+        }, 'pre-fix');
+        // #endregion
+        setEditorMode(editorMode);
+        setGridFormatFromBounds(xBounds, yBounds);
+        updateFreeformButtons();
+        updateCutButtonLabel();
+        if (silent) return;
+        gridImg.src = entry.img ? entry.img.src : '';
+        if (entry.img && entry.img.complete) {
+          var w = entry.img.naturalWidth;
+          var h = entry.img.naturalHeight;
+          var maxDisplay = 560;
+          if (w >= h) {
+            baseWidth = Math.min(w, maxDisplay);
+            baseHeight = Math.round((h / w) * baseWidth);
+          } else {
+            baseHeight = Math.min(h, maxDisplay);
+            baseWidth = Math.round((w / h) * baseHeight);
+          }
+          if (baseWidth && baseHeight) {
+            var totalW = baseWidth + 2 * MARGIN;
+            var totalH = baseHeight + 2 * MARGIN;
+            gridImg.style.position = 'absolute';
+            gridImg.style.left = MARGIN + 'px';
+            gridImg.style.top = MARGIN + 'px';
+            gridImg.style.width = baseWidth + 'px';
+            gridImg.style.height = baseHeight + 'px';
+            gridOverlay.width = totalW;
+            gridOverlay.height = totalH;
+            gridOverlay.style.width = totalW + 'px';
+            gridOverlay.style.height = totalH + 'px';
+            gridWrapper.style.width = totalW + 'px';
+            gridWrapper.style.height = totalH + 'px';
+            applyZoom();
+          }
+        }
+        drawOverlay();
+        if (typeof updateFreeformCellsVisual === 'function') updateFreeformCellsVisual();
+      }
+
+      function renderBatchStrip() {
+        var strip = document.getElementById('batch-strip');
+        if (!strip) return;
+        strip.innerHTML = '';
+        var modeLabels = { uniform: 'Grid', freeform: 'Freeform', lineform: 'Lines', adjacent: 'Adjacent', blackbg: 'Black BG', geometrical: 'Simple Grid' };
+        for (var i = 0; i < batchImages.length; i++) {
+          var entry = batchImages[i];
+          var thumb = document.createElement('button');
+          thumb.type = 'button';
+          thumb.className = 'batch-thumb' + (i === currentBatchIndex ? ' active' : '');
+          thumb.setAttribute('aria-label', 'Image ' + (i + 1) + ': ' + entry.name);
+          thumb.setAttribute('data-batch-index', i);
+          if (entry.img && entry.img.src) {
+            var im = document.createElement('img');
+            im.src = entry.img.src;
+            im.alt = '';
+            thumb.appendChild(im);
+          }
+          var badge = document.createElement('span');
+          badge.className = 'batch-thumb__badge';
+          badge.textContent = modeLabels[entry.mode] || entry.mode;
+          thumb.appendChild(badge);
+          var removeBtn = document.createElement('button');
+          removeBtn.type = 'button';
+          removeBtn.className = 'batch-thumb__remove';
+          removeBtn.innerHTML = '&times;';
+          removeBtn.title = 'Remove this image';
+          removeBtn.setAttribute('aria-label', 'Remove image ' + (i + 1));
+          (function (idx) {
+            removeBtn.addEventListener('click', function (e) { e.stopPropagation(); removeBatchImage(idx); });
+          })(i);
+          thumb.appendChild(removeBtn);
+          (function (idx) {
+            thumb.addEventListener('click', function (e) { if (e.target !== removeBtn && e.target !== removeBtn.firstChild) switchToImage(idx); });
+          })(i);
+          strip.appendChild(thumb);
+        }
+      }
+
+      function switchToImage(index) {
+        if (index === currentBatchIndex) return;
+        saveCurrentImageState();
+        loadImageState(index);
+        renderBatchStrip();
+      }
+
+      function removeBatchImage(index) {
+        saveCurrentImageState();
+        var entry = batchImages[index];
+        if (entry.objectURL) URL.revokeObjectURL(entry.objectURL);
+        batchImages.splice(index, 1);
+        if (batchImages.length === 0) {
+          currentImage = null;
+          currentBatchIndex = 0;
+          tileBlobs = [];
+          tileCropInfos = [];
+          tileSrcImage = null;
+          outputEl.classList.remove('visible');
+          previewGrid.innerHTML = '';
+          previewGrid.style.display = '';
+          downloadBtn.disabled = true;
+          setRunAutoNameButtonEnabled(false);
+          gridEditor.classList.remove('visible');
+          var nav = document.getElementById('batch-navigator');
+          if (nav) nav.style.display = 'none';
+          var countEl = document.getElementById('batch-count');
+          if (countEl) countEl.style.display = 'none';
+          return;
+        }
+        if (currentBatchIndex >= batchImages.length) currentBatchIndex = batchImages.length - 1;
+        if (currentBatchIndex === index && index > 0) currentBatchIndex = index - 1;
+        loadImageState(currentBatchIndex);
+        renderBatchStrip();
+        var countEl = document.getElementById('batch-count');
+        if (countEl) countEl.textContent = batchImages.length === 1 ? '1 image loaded' : batchImages.length + ' images loaded';
+      }
+
+      function handleFile(file) {
+        if (file) handleFiles([file]);
+      }
+
+      function runSplitForCurrentState(quiet) {
+        if (!currentImage) return Promise.reject(new Error('Load an image first.'));
         var mode = getEditorMode();
         var fmt = getGridFormat();
         var expectedCount = fmt.rows * fmt.cols;
         var splitPromise;
-
-        if (mode === 'freeform') {
-          if (typeof segmentSplit === 'undefined' || !segmentSplit.splitByCells) {
-            showError('Freeform splitter not loaded.');
-            return;
+        if (isFormsMode(mode)) {
+          if (typeof segmentSplit === 'undefined' || !segmentSplit.splitByCells) return Promise.reject(new Error('Freeform splitter not loaded.'));
+          if (!freeformCells.length) {
+            var autoDetected = (mode === 'lineform' ? runLineFormAutoDetect() : (mode === 'adjacent' ? runAdjacentAutoDetect() : (mode === 'blackbg' ? runBlackBgAutoDetect() : runFreeformAutoDetect())));
+            if (!autoDetected) return Promise.reject(new Error('No forms detected.'));
           }
-          if (!freeformCells.length && !runFreeformAutoDetect()) {
-            showError('No forms detected. Click Auto-detect cells or add a form.');
-            return;
-          }
-          splitPromise = segmentSplit.splitByCells(currentImage, freeformCells, {
-            trimPixels: getTrimPixels(),
-            excludedCellIds: excludedCellIds
-          });
+          splitPromise = segmentSplit.splitByCells(currentImage, freeformCells, { trimPixels: getTrimPixels(), excludedCellIds: excludedCellIds });
         } else {
-          if (typeof gridSplit === 'undefined' || !gridSplit.splitGridCustom) {
-            showError('Grid splitter not loaded.');
-            return;
-          }
+          if (mode === 'geometrical') geoAlignBoundsToCorners(true);
+          if (typeof gridSplit === 'undefined' || !gridSplit.splitGridCustom) return Promise.reject(new Error('Grid splitter not loaded.'));
           var w = currentImage.naturalWidth;
           var h = currentImage.naturalHeight;
           var clamp = function (v, lo, hi) { return Math.max(lo, Math.min(hi, v)); };
           var xClamped = xBounds.map(function (v) { return clamp(v, 0, w); });
           var yClamped = yBounds.map(function (v) { return clamp(v, 0, h); });
-          splitPromise = gridSplit.splitGridCustom(currentImage, xClamped, yClamped, { trimPixels: getTrimPixels() });
+          var splitOpts = { trimPixels: getTrimPixels() };
+          if (xTrim.length === xClamped.length && yTrim.length === yClamped.length) { splitOpts.xTrim = xTrim; splitOpts.yTrim = yTrim; }
+          splitPromise = gridSplit.splitGridCustom(currentImage, xClamped, yClamped, splitOpts);
         }
+        return splitPromise.then(function (blobs) {
+          if (!isFormsMode(mode) && blobs.length !== expectedCount) return Promise.reject(new Error('Expected ' + expectedCount + ' tiles, got ' + blobs.length));
+          if (!blobs.length) return Promise.reject(new Error('No tiles were produced.'));
+          var cropInfos = [];
+          var globalTrim = getTrimPixels();
+          if (isFormsMode(mode)) {
+            for (var ci = 0; ci < freeformCells.length; ci++) {
+              if (excludedCellIds && excludedCellIds[ci]) continue;
+              var cell = freeformCells[ci];
+              cropInfos.push({ sx: Math.round(cell.x), sy: Math.round(cell.y), sw: Math.round(cell.w), sh: Math.round(cell.h), trimTop: globalTrim, trimRight: globalTrim, trimBottom: globalTrim, trimLeft: globalTrim });
+            }
+          } else {
+            var usePerBound = xTrim.length === xClamped.length && yTrim.length === yClamped.length;
+            for (var ri = 0; ri < fmt.rows; ri++) {
+              for (var ci = 0; ci < fmt.cols; ci++) {
+                var tTop = usePerBound ? (yTrim[ri] || 0) : globalTrim;
+                var tBottom = usePerBound ? (yTrim[ri + 1] || 0) : globalTrim;
+                var tLeft = usePerBound ? (xTrim[ci] || 0) : globalTrim;
+                var tRight = usePerBound ? (xTrim[ci + 1] || 0) : globalTrim;
+                cropInfos.push({
+                  sx: Math.round(xClamped[ci]), sy: Math.round(yClamped[ri]),
+                  sw: Math.round(xClamped[ci + 1] - xClamped[ci]), sh: Math.round(yClamped[ri + 1] - yClamped[ri]),
+                  trimTop: tTop, trimRight: tRight, trimBottom: tBottom, trimLeft: tLeft
+                });
+              }
+            }
+          }
+          return { blobs: blobs, cropInfos: cropInfos, mode: mode, fmt: fmt };
+        });
+      }
 
-        splitPromise.then(function (blobs) {
-          if (mode !== 'freeform' && blobs.length !== expectedCount) {
-            showError('Expected ' + expectedCount + ' tiles, got ' + blobs.length);
-            return;
+      function runCut(quiet) {
+        // #region agent log
+        sendAgentDebugLog('H4', 'index.html:runCut:entry', 'runCut entered', {
+          quiet: !!quiet,
+          hasCurrentImage: !!currentImage,
+          batchSize: batchImages.length,
+          currentBatchIndex: currentBatchIndex,
+          autoNameRunId: autoNameRunId
+        }, 'pre-fix');
+        // #endregion
+        if (!currentImage) {
+          if (!quiet) showError('Load an image first.');
+          return;
+        }
+        if (!quiet) clearError();
+        if (batchImages.length > 1) {
+          saveCurrentImageState();
+          var cutBtn = document.getElementById('cut-btn');
+          if (cutBtn) cutBtn.disabled = true;
+          var chain = Promise.resolve();
+          for (var i = 0; i < batchImages.length; i++) {
+            (function (idx) {
+              chain = chain.then(function () {
+                loadImageState(idx, true);
+                return runSplitForCurrentState(true);
+              }).then(function (r) {
+                var entry = batchImages[idx];
+                entry.tileBlobs = r.blobs;
+                entry.tileCropInfos = r.cropInfos;
+                entry.processed = true;
+                entry.tileNames = [];
+                var prefix = entry.name + '_';
+                for (var ti = 0; ti < r.blobs.length; ti++) entry.tileNames[ti] = prefix + 'tile_' + (ti + 1) + '.png';
+              }).catch(function (err) {
+                batchImages[idx].tileBlobs = [];
+                batchImages[idx].tileCropInfos = [];
+                batchImages[idx].processed = false;
+                if (!quiet) showError('Image ' + (idx + 1) + ': ' + (err && err.message ? err.message : 'Failed to create tiles.'));
+              });
+            })(i);
           }
-          if (!blobs.length) {
-            showError('No tiles were produced. Check exclusions and try again.');
-            return;
-          }
-          tileBlobs = blobs;
+          chain.then(function () {
+            var anyOk = false;
+            for (var k = 0; k < batchImages.length; k++) {
+              if (batchImages[k].tileBlobs && batchImages[k].tileBlobs.length) { anyOk = true; break; }
+            }
+            if (!anyOk && !quiet) showError('No tiles could be created from any image.');
+            loadImageState(currentBatchIndex);
+            renderBatchPreview();
+            if (cutBtn) cutBtn.disabled = false;
+          }).catch(function () {
+            if (cutBtn) cutBtn.disabled = false;
+          });
+          return;
+        }
+        runSplitForCurrentState(quiet).then(function (r) {
+          tileBlobs = r.blobs;
+          tileCropInfos = r.cropInfos;
+          tileSrcImage = currentImage;
+          var mode = r.mode;
+          var fmt = r.fmt;
+          var blobs = r.blobs;
           previewGrid.innerHTML = '';
-          var previewCols = mode === 'freeform'
-            ? Math.max(1, Math.ceil(Math.sqrt(blobs.length)))
-            : fmt.cols;
+          previewGrid.style.display = '';
+          var previewCols = isFormsMode(mode) ? Math.max(1, Math.ceil(Math.sqrt(blobs.length))) : fmt.cols;
           previewGrid.style.gridTemplateColumns = 'repeat(' + previewCols + ', 1fr)';
           function defaultBaseName(index) {
-            if (mode === 'freeform') return 'tile_' + (index + 1);
+            if (isFormsMode(mode)) return 'tile_' + (index + 1);
             var r = Math.floor(index / fmt.cols);
             var c = index % fmt.cols;
             return 'tile_' + r + '_' + c;
           }
+          var dlSvg = '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M8 2v8m0 0l-3-3m3 3l3-3"/><path d="M3 12h10"/></svg>';
           blobs.forEach(function (blob, index) {
             var defaultName = defaultBaseName(index) + '.png';
             var wrap = document.createElement('div');
             wrap.className = 'preview-tile';
             var imgWrap = document.createElement('div');
             imgWrap.className = 'tile-img-wrap';
+            imgWrap.setAttribute('data-tile-index', index);
+            imgWrap.title = 'Click to enlarge & fine-tune';
+            imgWrap.addEventListener('click', function () { openTileModal(index); });
             var thumb = document.createElement('img');
             thumb.src = URL.createObjectURL(blob);
             thumb.alt = 'Tile ' + (index + 1);
             imgWrap.appendChild(thumb);
+            var actions = document.createElement('div');
+            actions.className = 'tile-actions';
             var input = document.createElement('input');
             input.type = 'text';
-            input.className = 'tile-name';
+            input.className = 'tile-name tile-name--in-row';
             input.value = defaultName;
             input.setAttribute('data-index', index);
             input.placeholder = 'filename.png';
             input.title = 'Rename before download';
+            var dlBtn = document.createElement('button');
+            dlBtn.type = 'button';
+            dlBtn.className = 'tile-dl-btn';
+            dlBtn.title = 'Download this tile';
+            dlBtn.innerHTML = dlSvg;
+            dlBtn.addEventListener('click', function () { downloadSingleTile(index); });
+            actions.appendChild(input);
+            actions.appendChild(dlBtn);
             wrap.appendChild(imgWrap);
-            wrap.appendChild(input);
+            wrap.appendChild(actions);
             previewGrid.appendChild(wrap);
           });
           outputEl.classList.add('visible');
           downloadBtn.disabled = false;
+          setRunAutoNameButtonEnabled(true);
+        }).catch(function (err) {
+          if (!quiet) showError(err && err.message ? err.message : 'Failed to create tiles.');
+        });
+      }
 
-          var autoNameCheckbox = document.getElementById('auto-name-from-labels');
-          var detectingEl = document.getElementById('detecting-labels');
-          if (autoNameCheckbox && autoNameCheckbox.checked && typeof Tesseract !== 'undefined' && Tesseract.recognize) {
-            detectingEl.style.display = 'block';
-            var thumbs = previewGrid.querySelectorAll('.tile-img-wrap img');
-            var inputs = previewGrid.querySelectorAll('.tile-name');
-            var labelPct = getLabelRegionPct();
-            var indices = [];
-            for (var k = 0; k < blobs.length; k++) indices.push(k);
-            Promise.all(indices.map(function (index) {
-              var defaultBase = defaultBaseName(index);
-              return getLabelRegionCanvas(thumbs[index].src, labelPct).then(function (labelCanvas) {
-                return Tesseract.recognize(labelCanvas, 'eng').then(function (result) {
-                  var words = extractWordsFromOcrResult(result);
-                  var base = wordsToBaseName(words);
-                  return base ? base : defaultBase;
-                });
-              }).catch(function () { return defaultBase; });
-            })).then(function (baseNames) {
-              var used = {};
-              var finalNames = [];
-              for (var i = 0; i < blobs.length; i++) {
-                var base = baseNames[i];
-                var name = base + '.png';
-                if (used[name]) {
-                  var n = 1;
-                  while (used[base + '_' + n + '.png']) n++;
-                  name = base + '_' + n + '.png';
-                }
-                used[name] = true;
-                finalNames.push(name);
-              }
-              for (var j = 0; j < blobs.length; j++) {
-                if (inputs[j]) inputs[j].value = finalNames[j];
-              }
-              detectingEl.style.display = 'none';
-            }).catch(function () {
-              detectingEl.style.display = 'none';
+      function renderBatchPreview() {
+        batchPreviewTiles = [];
+        for (var bi = 0; bi < batchImages.length; bi++) {
+          var entry = batchImages[bi];
+          if (!entry.processed || !entry.tileBlobs || !entry.tileBlobs.length) continue;
+          if (!entry.tileNames) {
+            entry.tileNames = [];
+            var prefix = entry.name + '_';
+            for (var ti = 0; ti < entry.tileBlobs.length; ti++) entry.tileNames[ti] = prefix + 'tile_' + (ti + 1) + '.png';
+          }
+          for (var ti = 0; ti < entry.tileBlobs.length; ti++) {
+            batchPreviewTiles.push({
+              batchIndex: bi,
+              tileIndex: ti,
+              blob: entry.tileBlobs[ti],
+              defaultName: entry.name + '_tile_' + (ti + 1) + '.png',
+              entryName: entry.name
             });
           }
-        }).catch(function (err) {
-          showError(err && err.message ? err.message : 'Failed to create tiles.');
-        });
+        }
+        batchPreviewPage = 0;
+        renderBatchPreviewPage();
+      }
+
+      function renderBatchPreviewPage() {
+        previewGrid.innerHTML = '';
+        previewGrid.style.display = 'block';
+        var totalTiles = batchPreviewTiles.length;
+        var totalPages = Math.max(1, Math.ceil(totalTiles / BATCH_PREVIEW_PAGE_SIZE));
+        var start = batchPreviewPage * BATCH_PREVIEW_PAGE_SIZE;
+        var end = Math.min(start + BATCH_PREVIEW_PAGE_SIZE, totalTiles);
+        var pageTiles = batchPreviewTiles.slice(start, end);
+
+        var section = document.createElement('div');
+        section.className = 'preview-batch-group';
+        var groupGrid = document.createElement('div');
+        groupGrid.className = 'preview-grid preview-batch-group__grid';
+        var cols = Math.max(1, Math.min(10, Math.ceil(Math.sqrt(pageTiles.length))));
+        groupGrid.style.gridTemplateColumns = 'repeat(' + cols + ', 1fr)';
+        var dlSvg = '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M8 2v8m0 0l-3-3m3 3l3-3"/><path d="M3 12h10"/></svg>';
+        for (var i = 0; i < pageTiles.length; i++) {
+          var t = pageTiles[i];
+          var entry = batchImages[t.batchIndex];
+          var displayName = (entry.tileNames && entry.tileNames[t.tileIndex]) ? entry.tileNames[t.tileIndex] : t.defaultName;
+          var wrap = document.createElement('div');
+          wrap.className = 'preview-tile';
+          var imgWrap = document.createElement('div');
+          imgWrap.className = 'tile-img-wrap';
+          imgWrap.setAttribute('data-batch-index', t.batchIndex);
+          imgWrap.setAttribute('data-tile-index', t.tileIndex);
+          imgWrap.title = 'Click to enlarge & fine-tune';
+          imgWrap.addEventListener('click', function () { openBatchTileModal(parseInt(this.getAttribute('data-batch-index'), 10), parseInt(this.getAttribute('data-tile-index'), 10)); });
+          var thumb = document.createElement('img');
+          thumb.src = URL.createObjectURL(t.blob);
+          thumb.alt = 'Tile ' + (t.tileIndex + 1);
+          imgWrap.appendChild(thumb);
+          var actions = document.createElement('div');
+          actions.className = 'tile-actions';
+          var input = document.createElement('input');
+          input.type = 'text';
+          input.className = 'tile-name tile-name--in-row';
+          input.value = displayName;
+          input.setAttribute('data-batch-index', t.batchIndex);
+          input.setAttribute('data-tile-index', t.tileIndex);
+          input.placeholder = 'filename.png';
+          input.title = 'Rename before download';
+          (function (bIdx, tIdx) {
+            input.addEventListener('input', function () {
+              if (batchImages[bIdx] && batchImages[bIdx].tileNames) batchImages[bIdx].tileNames[tIdx] = input.value;
+            });
+          })(t.batchIndex, t.tileIndex);
+          var dlBtn = document.createElement('button');
+          dlBtn.type = 'button';
+          dlBtn.className = 'tile-dl-btn';
+          dlBtn.title = 'Download this tile';
+          dlBtn.innerHTML = dlSvg;
+          (function (bIdx, tIdx) {
+            dlBtn.addEventListener('click', function () { downloadBatchSingleTile(bIdx, tIdx); });
+          })(t.batchIndex, t.tileIndex);
+          actions.appendChild(input);
+          actions.appendChild(dlBtn);
+          wrap.appendChild(imgWrap);
+          wrap.appendChild(actions);
+          groupGrid.appendChild(wrap);
+        }
+        section.appendChild(groupGrid);
+        previewGrid.appendChild(section);
+
+        if (totalTiles > BATCH_PREVIEW_PAGE_SIZE) {
+          var pagination = document.createElement('div');
+          pagination.className = 'batch-preview-pagination';
+          var prevBtn = document.createElement('button');
+          prevBtn.type = 'button';
+          prevBtn.className = 'btn btn-secondary';
+          prevBtn.textContent = '\u2190 Previous';
+          prevBtn.disabled = batchPreviewPage <= 0;
+          prevBtn.addEventListener('click', function () {
+            batchPreviewPage--;
+            renderBatchPreviewPage();
+            previewGrid.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          });
+          var label = document.createElement('span');
+          label.className = 'batch-preview-page-label';
+          label.textContent = 'Page ' + (batchPreviewPage + 1) + ' of ' + totalPages;
+          var nextBtn = document.createElement('button');
+          nextBtn.type = 'button';
+          nextBtn.className = 'btn btn-secondary';
+          nextBtn.textContent = 'Next \u2192';
+          nextBtn.disabled = batchPreviewPage >= totalPages - 1;
+          nextBtn.addEventListener('click', function () {
+            batchPreviewPage++;
+            renderBatchPreviewPage();
+            previewGrid.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          });
+          pagination.appendChild(prevBtn);
+          pagination.appendChild(label);
+          pagination.appendChild(nextBtn);
+          previewGrid.appendChild(pagination);
+        }
+
+        outputEl.classList.add('visible');
+        downloadBtn.disabled = false;
+        setRunAutoNameButtonEnabled(true);
+      }
+
+      function runBatchAutoName() {
+        var section = previewGrid.querySelector('.preview-batch-group');
+        if (!section) return Promise.resolve();
+        var thumbs = section.querySelectorAll('.tile-img-wrap img');
+        var inputs = section.querySelectorAll('.tile-name');
+        if (!thumbs.length || thumbs.length !== inputs.length) return Promise.resolve();
+        // #region agent log
+        sendAgentDebugLog('H2', 'index.html:runBatchAutoName:invoke', 'runBatchAutoName invoking OCR', {
+          thumbs: thumbs.length,
+          inputs: inputs.length,
+          batchPreviewPage: batchPreviewPage,
+          totalBatchPreviewTiles: batchPreviewTiles.length
+        }, 'pre-fix');
+        // #endregion
+        return runAutoNameForInputs(
+          thumbs,
+          inputs,
+          function (index) {
+            var bi = parseInt(inputs[index].getAttribute('data-batch-index'), 10);
+            var ti = parseInt(inputs[index].getAttribute('data-tile-index'), 10);
+            var entry = batchImages[bi];
+            return (entry && entry.name) ? entry.name + '_tile_' + (ti + 1) : 'tile_' + (index + 1);
+          },
+          function (index, name) {
+            var bi = parseInt(inputs[index].getAttribute('data-batch-index'), 10);
+            var ti = parseInt(inputs[index].getAttribute('data-tile-index'), 10);
+            if (batchImages[bi] && batchImages[bi].tileNames) batchImages[bi].tileNames[ti] = name;
+          }
+        );
+      }
+
+      function runSinglePreviewAutoName() {
+        var thumbs = previewGrid.querySelectorAll('.tile-img-wrap img');
+        var inputs = previewGrid.querySelectorAll('.tile-name');
+        if (!thumbs.length || thumbs.length !== inputs.length) return Promise.resolve();
+        // #region agent log
+        sendAgentDebugLog('H6', 'index.html:runSinglePreviewAutoName:invoke', 'runSinglePreviewAutoName invoking OCR', {
+          thumbs: thumbs.length,
+          inputs: inputs.length,
+          currentBatchIndex: currentBatchIndex
+        }, 'pre-fix');
+        // #endregion
+        return runAutoNameForInputs(
+          thumbs,
+          inputs,
+          function (index) {
+            var current = inputs[index] && inputs[index].value ? String(inputs[index].value).trim() : '';
+            current = current.replace(/\.png$/i, '');
+            return ocrTextToBaseName(current) || ('tile_' + (index + 1));
+          }
+        );
+      }
+
+      function runAutoNameFromPreview() {
+        var isBatchPreview = !!previewGrid.querySelector('.preview-batch-group');
+        // #region agent log
+        sendAgentDebugLog('H6', 'index.html:runAutoNameFromPreview', 'Manual auto-name requested', {
+          isBatchPreview: isBatchPreview,
+          tileInputs: previewGrid.querySelectorAll('.tile-name').length,
+          currentBatchIndex: currentBatchIndex
+        }, 'pre-fix');
+        // #endregion
+        if (isBatchPreview) return runBatchAutoName();
+        return runSinglePreviewAutoName();
+      }
+
+      function openBatchTileModal(batchIndex, tileIndex) {
+        if (batchIndex < 0 || batchIndex >= batchImages.length) return;
+        var entry = batchImages[batchIndex];
+        if (tileIndex < 0 || tileIndex >= (entry.tileCropInfos || []).length) return;
+        modalBatchIndex = batchIndex;
+        tileSrcImage = entry.img;
+        tileBlobs = entry.tileBlobs;
+        tileCropInfos = entry.tileCropInfos;
+        modalTileIndex = tileIndex;
+        var name = (entry.tileNames && entry.tileNames[tileIndex]) ? entry.tileNames[tileIndex] : (entry.name + '_tile_' + (tileIndex + 1) + '.png');
+        tileModalTitle.textContent = name + '  (' + (tileIndex + 1) + '/' + entry.tileCropInfos.length + ')';
+        var info = entry.tileCropInfos[tileIndex];
+        trimTopInput.value = info.trimTop;
+        trimRightInput.value = info.trimRight;
+        trimBottomInput.value = info.trimBottom;
+        trimLeftInput.value = info.trimLeft;
+        trimTopInput.max = Math.floor(info.sh / 2) - 1;
+        trimRightInput.max = Math.floor(info.sw / 2) - 1;
+        trimBottomInput.max = Math.floor(info.sh / 2) - 1;
+        trimLeftInput.max = Math.floor(info.sw / 2) - 1;
+        tileModalPrevBtn.disabled = tileIndex <= 0;
+        tileModalNextBtn.disabled = tileIndex >= entry.tileCropInfos.length - 1;
+        renderModalTile(tileIndex);
+        tileModalOverlay.classList.add('open');
+      }
+
+      function downloadBatchSingleTile(batchIndex, tileIndex) {
+        if (batchIndex < 0 || batchIndex >= batchImages.length) return;
+        var entry = batchImages[batchIndex];
+        if (tileIndex < 0 || tileIndex >= (entry.tileBlobs || []).length) return;
+        var name = (entry.tileNames && entry.tileNames[tileIndex] && entry.tileNames[tileIndex].trim()) ? entry.tileNames[tileIndex].trim() : (entry.name + '_tile_' + (tileIndex + 1) + '.png');
+        if (!/\.png$/i.test(name)) name += '.png';
+        var a = document.createElement('a');
+        a.href = URL.createObjectURL(entry.tileBlobs[tileIndex]);
+        a.download = name;
+        a.click();
+        URL.revokeObjectURL(a.href);
       }
 
       gridOverlay.addEventListener('mousedown', function (e) {
@@ -1091,11 +3290,45 @@
         var h = currentImage.naturalHeight;
         var imgX = clamp01(pt.x, 0, w);
         var imgY = clamp01(pt.y, 0, h);
-        if (getEditorMode() === 'freeform') {
+        if (isFormsMode()) {
           var cellIdx = hitFreeformCell(imgX, imgY);
-          selectedCellIndex = cellIdx;
+          if (cellIdx != null) {
+            selectedCellIndex = cellIdx;
+            var selectedCell = freeformCells[cellIdx];
+            var handle = hitFreeformHandle(selectedCell, imgX, imgY);
+            formDrag.active = true;
+            formDrag.cellIndex = cellIdx;
+            formDrag.mode = handle ? 'resize' : 'move';
+            formDrag.handle = handle;
+            formDrag.startX = imgX;
+            formDrag.startY = imgY;
+            formDrag.origX = selectedCell.x;
+            formDrag.origY = selectedCell.y;
+            formDrag.origW = selectedCell.w;
+            formDrag.origH = selectedCell.h;
+            e.preventDefault();
+          } else {
+            selectedCellIndex = null;
+          }
           updateFreeformButtons();
           drawOverlay();
+          return;
+        }
+        if (getEditorMode() === 'geometrical') {
+          var cornerKey = hitGeoCorner(imgX, imgY);
+          if (cornerKey) {
+            e.preventDefault();
+            geoDrag.active = true;
+            geoDrag.corner = cornerKey;
+            return;
+          }
+          var geoHit = hitLine(imgX, imgY);
+          if (geoHit) {
+            e.preventDefault();
+            drag.active = true;
+            drag.axis = geoHit.axis;
+            drag.index = geoHit.index;
+          }
           return;
         }
         var hit = hitLine(imgX, imgY);
@@ -1107,6 +3340,127 @@
         }
       });
       document.addEventListener('mousemove', function (e) {
+        if (formDrag.active && currentImage && isFormsMode()) {
+          var pt = getImagePointFromMouseEvent(e);
+          if (!pt) return;
+          var w = currentImage.naturalWidth;
+          var h = currentImage.naturalHeight;
+          var c = freeformCells[formDrag.cellIndex];
+          if (!c) return;
+          var dx = pt.x - formDrag.startX;
+          var dy = pt.y - formDrag.startY;
+          if (formDrag.mode === 'move') {
+            var nx = formDrag.origX + dx;
+            var ny = formDrag.origY + dy;
+            nx = Math.max(0, Math.min(w - c.w, nx));
+            ny = Math.max(0, Math.min(h - c.h, ny));
+            c.x = nx;
+            c.y = ny;
+          } else {
+            var minW = 12;
+            var minH = 12;
+            var left = formDrag.origX;
+            var top = formDrag.origY;
+            var right = formDrag.origX + formDrag.origW;
+            var bottom = formDrag.origY + formDrag.origH;
+            var hnd = formDrag.handle || '';
+            if (hnd.indexOf('w') !== -1) left = formDrag.origX + dx;
+            if (hnd.indexOf('e') !== -1) right = formDrag.origX + formDrag.origW + dx;
+            if (hnd.indexOf('n') !== -1) top = formDrag.origY + dy;
+            if (hnd.indexOf('s') !== -1) bottom = formDrag.origY + formDrag.origH + dy;
+
+            if (hnd.indexOf('w') !== -1) left = Math.max(0, Math.min(left, right - minW));
+            if (hnd.indexOf('e') !== -1) right = Math.min(w, Math.max(right, left + minW));
+            if (hnd.indexOf('n') !== -1) top = Math.max(0, Math.min(top, bottom - minH));
+            if (hnd.indexOf('s') !== -1) bottom = Math.min(h, Math.max(bottom, top + minH));
+
+            c.x = left;
+            c.y = top;
+            c.w = right - left;
+            c.h = bottom - top;
+          }
+          drawOverlay();
+          return;
+        }
+        if (geoDrag.active && currentImage && getEditorMode() === 'geometrical') {
+          var pt = getImagePointFromMouseEvent(e);
+          if (!pt) return;
+          var w = currentImage.naturalWidth;
+          var h = currentImage.naturalHeight;
+          var nx = Math.max(0, Math.min(w, pt.x));
+          var ny = Math.max(0, Math.min(h, pt.y));
+          var leftInset = geoCorners.topLeft.x;
+          var topInset = geoCorners.topLeft.y;
+          var rightInset = w - geoCorners.topRight.x;
+          var bottomInset = h - geoCorners.bottomLeft.y;
+          var key = geoDrag.corner;
+          if (key === 'topLeft') {
+            leftInset = nx;
+            topInset = ny;
+          } else if (key === 'topRight') {
+            rightInset = w - nx;
+            topInset = ny;
+          } else if (key === 'bottomLeft') {
+            leftInset = nx;
+            bottomInset = h - ny;
+          } else if (key === 'bottomRight') {
+            rightInset = w - nx;
+            bottomInset = h - ny;
+          }
+          setGeoRectFromInsets(leftInset, topInset, rightInset, bottomInset);
+          geoAlignBoundsToCorners(true);
+          drawOverlay();
+          return;
+        }
+        if (drag.active && currentImage && getEditorMode() === 'geometrical') {
+          var pt = getImagePointFromMouseEvent(e);
+          if (!pt) return;
+          var w = currentImage.naturalWidth;
+          var h = currentImage.naturalHeight;
+          var nx = Math.max(0, Math.min(w, pt.x));
+          var ny = Math.max(0, Math.min(h, pt.y));
+          var leftInset = geoCorners.topLeft.x;
+          var topInset = geoCorners.topLeft.y;
+          var rightInset = w - geoCorners.topRight.x;
+          var bottomInset = h - geoCorners.bottomLeft.y;
+          var geoLastX = xBounds.length - 1;
+          var geoLastY = yBounds.length - 1;
+          if (drag.axis === 'v') {
+            if (drag.index === 0 || drag.index === geoLastX) {
+              if (drag.index === 0) leftInset = nx;
+              else rightInset = w - nx;
+              setGeoRectFromInsets(leftInset, topInset, rightInset, bottomInset);
+              geoAlignBoundsToCorners(true);
+            } else {
+              var geoMinX = xBounds[drag.index - 1] + 2;
+              var geoMaxX = xBounds[drag.index + 1] - 2;
+              xBounds[drag.index] = Math.max(geoMinX, Math.min(geoMaxX, nx));
+              geoCorners.topLeft.x = xBounds[0];
+              geoCorners.bottomLeft.x = xBounds[0];
+              geoCorners.topRight.x = xBounds[geoLastX];
+              geoCorners.bottomRight.x = xBounds[geoLastX];
+              updateGeoInsetInputs();
+            }
+          } else {
+            if (drag.index === 0 || drag.index === geoLastY) {
+              if (drag.index === 0) topInset = ny;
+              else bottomInset = h - ny;
+              setGeoRectFromInsets(leftInset, topInset, rightInset, bottomInset);
+              geoAlignBoundsToCorners(true);
+            } else {
+              var geoMinY = yBounds[drag.index - 1] + 2;
+              var geoMaxY = yBounds[drag.index + 1] - 2;
+              yBounds[drag.index] = Math.max(geoMinY, Math.min(geoMaxY, ny));
+              geoCorners.topLeft.y = yBounds[0];
+              geoCorners.topRight.y = yBounds[0];
+              geoCorners.bottomLeft.y = yBounds[geoLastY];
+              geoCorners.bottomRight.y = yBounds[geoLastY];
+              updateGeoInsetInputs();
+            }
+          }
+          drawOverlay();
+          return;
+        }
         if (!drag.active || !currentImage) return;
         var rect = gridOverlay.getBoundingClientRect();
         var w = currentImage.naturalWidth;
@@ -1131,9 +3485,17 @@
         drawOverlay();
       });
       document.addEventListener('mouseup', function () {
+        var wasDragging = drag.active || formDrag.active || geoDrag.active;
         drag.active = false;
         drag.axis = null;
         drag.index = null;
+        geoDrag.active = false;
+        geoDrag.corner = null;
+        formDrag.active = false;
+        formDrag.mode = null;
+        formDrag.handle = null;
+        formDrag.cellIndex = null;
+        if (wasDragging) scheduleAutoCut();
       });
 
       document.getElementById('loupe-btn').addEventListener('click', function () {
@@ -1160,28 +3522,48 @@
       });
 
       function updateCutButtonLabel() {
+        var btn = document.getElementById('cut-btn');
+        if (!btn) return;
+        if (batchImages.length > 1) {
+          var total = 0;
+          for (var i = 0; i < batchImages.length; i++) {
+            var mode = batchImages[i].mode || 'uniform';
+            if (mode === 'uniform' || mode === 'geometrical') {
+              var b = batchImages[i].xBounds;
+              var b2 = batchImages[i].yBounds;
+              var rows = b2 && b2.length > 1 ? b2.length - 1 : 4;
+              var cols = b && b.length > 1 ? b.length - 1 : 4;
+              total += rows * cols;
+            } else {
+              total += (batchImages[i].freeformCells || []).length;
+            }
+          }
+          btn.textContent = 'Cut all images (' + total + ' tiles)';
+          return;
+        }
         var mode = getEditorMode();
         var n;
-        if (mode === 'freeform') {
+        if (isFormsMode(mode)) {
           n = freeformCells.length;
         } else {
           var fmt = getGridFormat();
           n = fmt.rows * fmt.cols;
         }
-        var btn = document.getElementById('cut-btn');
-        if (btn) btn.textContent = 'Cut and create ' + n + ' image' + (n !== 1 ? 's' : '');
+        btn.textContent = 'Cut and create ' + n + ' image' + (n !== 1 ? 's' : '');
       }
       var gridFormatHover = null;
       function syncGridFormatVisual() {
         gridFormatHover = null;
         var sel = document.getElementById('grid-format');
-        var valueEl = document.getElementById('grid-format-value');
         var gridEl = document.getElementById('grid-format-visual');
-        if (!sel || !valueEl || !gridEl) return;
+        var rowsEl = document.getElementById('grid-format-rows');
+        var colsEl = document.getElementById('grid-format-cols');
+        if (!sel || !gridEl) return;
         var v = (sel.value || '4_4').split('_');
-        var rows = Math.max(1, Math.min(4, parseInt(v[0], 10) || 4));
-        var cols = Math.max(1, Math.min(4, parseInt(v[1], 10) || 4));
-        valueEl.textContent = rows + '×' + cols;
+        var rows = Math.max(1, Math.min(10, parseInt(v[0], 10) || 4));
+        var cols = Math.max(1, Math.min(10, parseInt(v[1], 10) || 4));
+        if (rowsEl) rowsEl.value = String(rows);
+        if (colsEl) colsEl.value = String(cols);
         var cells = gridEl.querySelectorAll('.grid-format-picker__cell');
         for (var i = 0; i < cells.length; i++) {
           var r = parseInt(cells[i].getAttribute('data-row'), 10);
@@ -1206,9 +3588,20 @@
         var gridEl = document.getElementById('grid-format-visual');
         var sel = document.getElementById('grid-format');
         if (!gridEl || !sel) return;
+        var maxGrid = 10;
+        sel.innerHTML = '';
+        for (var r = 1; r <= maxGrid; r++) {
+          for (var c = 1; c <= maxGrid; c++) {
+            var opt = document.createElement('option');
+            opt.value = r + '_' + c;
+            opt.textContent = r + '×' + c;
+            if (r === 4 && c === 4) opt.selected = true;
+            sel.appendChild(opt);
+          }
+        }
         gridEl.innerHTML = '';
-        for (var r = 0; r < 4; r++) {
-          for (var c = 0; c < 4; c++) {
+        for (var r = 0; r < maxGrid; r++) {
+          for (var c = 0; c < maxGrid; c++) {
             var cell = document.createElement('button');
             cell.type = 'button';
             cell.className = 'grid-format-picker__cell';
@@ -1232,11 +3625,29 @@
           gridFormatHover = null;
           syncGridFormatVisual();
         });
+        sel.addEventListener('change', syncGridFormatVisual);
+        function applyDimensionInputs() {
+          var rowsEl = document.getElementById('grid-format-rows');
+          var colsEl = document.getElementById('grid-format-cols');
+          if (!rowsEl || !colsEl || !sel) return;
+          var rows = Math.max(1, Math.min(10, parseInt(rowsEl.value, 10) || 1));
+          var cols = Math.max(1, Math.min(10, parseInt(colsEl.value, 10) || 1));
+          rowsEl.value = String(rows);
+          colsEl.value = String(cols);
+          sel.value = rows + '_' + cols;
+          syncGridFormatVisual();
+          sel.dispatchEvent(new Event('change', { bubbles: true }));
+        }
+        var rowsInput = document.getElementById('grid-format-rows');
+        var colsInput = document.getElementById('grid-format-cols');
+        if (rowsInput) rowsInput.addEventListener('change', applyDimensionInputs);
+        if (colsInput) colsInput.addEventListener('change', applyDimensionInputs);
         syncGridFormatVisual();
       }
       initGridFormatPicker();
       updateCutButtonLabel();
       function setEditorMode(mode) {
+        var previousMode = editorMode;
         editorMode = mode;
         var uniformToolbar = document.getElementById('uniform-grid-toolbar');
         var freeformToolbar = document.getElementById('freeform-toolbar');
@@ -1244,27 +3655,83 @@
         var resetLinesBtn = document.getElementById('reset-lines');
         var freeformAutodetectBtn = document.getElementById('freeform-autodetect-btn');
         var freeformResetBtn = document.getElementById('freeform-reset-btn');
+        var resetCornersBtn = document.getElementById('reset-corners-btn');
+        var geoInsetControls = document.getElementById('geo-inset-controls');
+        var introEl = document.getElementById('grid-editor-intro');
         var introFreeform = document.getElementById('grid-editor-intro-freeform');
+        var introLineform = document.getElementById('grid-editor-intro-lineform');
+        var introAdjacent = document.getElementById('grid-editor-intro-adjacent');
+        var introBlackbg = document.getElementById('grid-editor-intro-blackbg');
+        var introGeometrical = document.getElementById('grid-editor-intro-geometrical');
+        var isFormMode = isFormsMode(mode);
+        var isGeometrical = (mode === 'geometrical');
         var isFreeform = (mode === 'freeform');
-        if (uniformToolbar) uniformToolbar.style.display = isFreeform ? 'none' : '';
-        if (freeformToolbar) freeformToolbar.style.display = isFreeform ? '' : 'none';
-        if (autoDetectBtn) autoDetectBtn.style.display = isFreeform ? 'none' : '';
-        if (resetLinesBtn) resetLinesBtn.style.display = isFreeform ? 'none' : '';
-        if (freeformAutodetectBtn) freeformAutodetectBtn.style.display = isFreeform ? '' : 'none';
-        if (freeformResetBtn) freeformResetBtn.style.display = isFreeform ? '' : 'none';
+        var isLineform = (mode === 'lineform');
+        var isAdjacent = (mode === 'adjacent');
+        var isBlackbg = (mode === 'blackbg');
+        if (uniformToolbar) uniformToolbar.style.display = isFormMode ? 'none' : '';
+        if (freeformToolbar) freeformToolbar.style.display = isFormMode ? '' : 'none';
+        if (autoDetectBtn) { autoDetectBtn.style.display = (isFormMode || isGeometrical) ? 'none' : ''; autoDetectBtn.textContent = 'Auto-detect grid'; }
+        if (resetLinesBtn) resetLinesBtn.style.display = (isFormMode || isGeometrical) ? 'none' : '';
+        if (resetCornersBtn) resetCornersBtn.style.display = isGeometrical ? '' : 'none';
+        if (geoInsetControls) geoInsetControls.style.display = isGeometrical ? 'inline-flex' : 'none';
+        if (freeformAutodetectBtn) freeformAutodetectBtn.style.display = isFormMode ? '' : 'none';
+        if (freeformResetBtn) freeformResetBtn.style.display = isFormMode ? '' : 'none';
+        if (introEl) introEl.style.display = (!isFormMode && !isGeometrical) ? 'block' : 'none';
         if (introFreeform) introFreeform.style.display = isFreeform ? 'block' : 'none';
+        if (introLineform) introLineform.style.display = isLineform ? 'block' : 'none';
+        if (introAdjacent) introAdjacent.style.display = isAdjacent ? 'block' : 'none';
+        if (introBlackbg) introBlackbg.style.display = isBlackbg ? 'block' : 'none';
+        if (introGeometrical) introGeometrical.style.display = isGeometrical ? 'block' : 'none';
         updateFreeformButtons();
         updateCutButtonLabel();
-        if (currentImage && isFreeform) {
-          runFreeformAutoDetect();
-        } else if (currentImage) {
+        if (isFormMode) updateFreeformCellsVisual();
+        if (currentImage && isFormMode) {
+          if (isLineform) runLineFormAutoDetect();
+          else if (isAdjacent) runAdjacentAutoDetect();
+          else if (isBlackbg) runBlackBgAutoDetect();
+          else runFreeformAutoDetect();
+        } else if (currentImage && isGeometrical) {
+          // Entering Simple Grid should start from full image rectangle (0/0/0/0 insets),
+          // not from the previously detected Grid mode bounds.
+          var shouldResetGeoRect = previousMode !== 'geometrical';
+          if (shouldResetGeoRect || xBounds.length <= 1 || yBounds.length <= 1) {
+            initGeoCorners(currentImage.naturalWidth, currentImage.naturalHeight);
+            geoCornersToBounds();
+          } else if (xBounds.length > 1 && yBounds.length > 1) {
+            var gxLast = xBounds.length - 1;
+            var gyLast = yBounds.length - 1;
+            setGeoRectFromInsets(
+              xBounds[0],
+              yBounds[0],
+              currentImage.naturalWidth - xBounds[gxLast],
+              currentImage.naturalHeight - yBounds[gyLast]
+            );
+            geoAlignBoundsToCorners(true);
+          }
           drawOverlay();
+        } else if (currentImage) {
+          runAutoDetect();
         }
+        // #region agent log
+        sendAgentDebugLog('H1', 'index.html:setEditorMode:beforeScheduleAutoCut', 'setEditorMode scheduling auto cut', {
+          mode: mode,
+          isFormMode: isFormMode,
+          isGeometrical: isGeometrical,
+          hasCurrentImage: !!currentImage,
+          batchSize: batchImages.length,
+          currentBatchIndex: currentBatchIndex
+        }, 'pre-fix');
+        // #endregion
+        scheduleAutoCut();
       }
       var editorModeRadios = document.querySelectorAll('input[name="editor-mode"]');
       for (var r = 0; r < editorModeRadios.length; r++) {
         editorModeRadios[r].addEventListener('change', function () {
           setEditorMode(getEditorMode());
+          if (batchImages.length && currentBatchIndex >= 0 && currentBatchIndex < batchImages.length) {
+            batchImages[currentBatchIndex].mode = getEditorMode();
+          }
         });
       }
       setEditorMode(getEditorMode());
@@ -1272,10 +3739,29 @@
         syncGridFormatVisual();
         updateCutButtonLabel();
         if (currentImage) {
-          initBounds(currentImage.naturalWidth, currentImage.naturalHeight);
+          if (getEditorMode() === 'geometrical') {
+            geoAlignBoundsToCorners(true);
+          } else {
+            initBounds(currentImage.naturalWidth, currentImage.naturalHeight);
+          }
           drawOverlay();
+          scheduleAutoCut();
         }
       });
+      var geoInsetInputMap = [
+        { id: 'geo-inset-left', edge: 'left' },
+        { id: 'geo-inset-top', edge: 'top' },
+        { id: 'geo-inset-right', edge: 'right' },
+        { id: 'geo-inset-bottom', edge: 'bottom' }
+      ];
+      for (var gi = 0; gi < geoInsetInputMap.length; gi++) {
+        (function (cfg) {
+          var el = document.getElementById(cfg.id);
+          if (!el) return;
+          el.addEventListener('input', function () { applyGeoInsetsFromInputs(cfg.edge); });
+          el.addEventListener('change', function () { applyGeoInsetsFromInputs(cfg.edge); });
+        })(geoInsetInputMap[gi]);
+      }
       document.getElementById('auto-detect-btn').addEventListener('click', function () {
         clearError();
         if (!currentImage) {
@@ -1290,13 +3776,23 @@
           drawOverlay();
         }
       });
+      document.getElementById('reset-corners-btn').addEventListener('click', function () {
+        if (currentImage) {
+          initGeoCorners(currentImage.naturalWidth, currentImage.naturalHeight);
+          geoCornersToBounds();
+          drawOverlay();
+          scheduleAutoCut();
+        }
+      });
       document.getElementById('freeform-autodetect-btn').addEventListener('click', function () {
         clearError();
         if (!currentImage) {
           showError('Load an image first.');
           return;
         }
-        if (!runFreeformAutoDetect()) showError('Could not detect forms. Try adding a form manually.');
+        var mode = getEditorMode();
+        var ok = (mode === 'lineform') ? runLineFormAutoDetect() : (mode === 'adjacent' ? runAdjacentAutoDetect() : (mode === 'blackbg' ? runBlackBgAutoDetect() : runFreeformAutoDetect()));
+        if (!ok) showError('Could not detect forms. Try adding a form manually.');
       });
       document.getElementById('freeform-reset-btn').addEventListener('click', function () {
         if (currentImage) {
@@ -1317,6 +3813,12 @@
         updateFreeformButtons();
         updateCutButtonLabel();
         drawOverlay();
+      });
+      document.getElementById('increase-form-btn').addEventListener('click', function () {
+        resizeSelectedForm(1);
+      });
+      document.getElementById('decrease-form-btn').addEventListener('click', function () {
+        resizeSelectedForm(-1);
       });
       document.getElementById('delete-form-btn').addEventListener('click', function () {
         if (selectedCellIndex == null || selectedCellIndex < 0 || selectedCellIndex >= freeformCells.length) return;
@@ -1340,6 +3842,31 @@
         drawOverlay();
       });
       document.getElementById('cut-btn').addEventListener('click', runCut);
+      if (runAutoNameBtn) {
+        runAutoNameBtn.addEventListener('click', function () {
+          var hasTiles = previewGrid.querySelectorAll('.tile-name').length > 0;
+          // #region agent log
+          sendAgentDebugLog('H6', 'index.html:run-auto-name-btn:click', 'Run auto-name button clicked', {
+            hasTiles: hasTiles,
+            outputVisible: outputEl.classList.contains('visible'),
+            currentBatchIndex: currentBatchIndex
+          }, 'pre-fix');
+          // #endregion
+          if (!hasTiles) {
+            setDetectingLabelsMessage('Auto-name skipped: create preview tiles first.', true);
+            clearDetectingLabelsMessage(2200);
+            return;
+          }
+          runAutoNameFromPreview();
+        });
+      }
+      setRunAutoNameButtonEnabled(false);
+      // #region agent log
+      sendAgentDebugLog('H7', 'index.html:init:autoNameMode', 'Auto-name mode initialized', {
+        mode: 'manual-preview-button',
+        hasRunAutoNameButton: !!runAutoNameBtn
+      }, 'pre-fix');
+      // #endregion
       var trimMain = document.getElementById('trim-pixels');
       var trimInline = document.getElementById('trim-pixels-inline');
       var lineThicknessEl = document.getElementById('line-thickness');
@@ -1351,6 +3878,7 @@
           if (lineThicknessValueEl) lineThicknessValueEl.textContent = v;
         }
         drawOverlay();
+        scheduleAutoCut();
       }
       if (trimInline) {
         trimInline.addEventListener('input', function () {
@@ -1388,12 +3916,27 @@
         e.preventDefault();
         e.stopPropagation();
         dropZone.classList.remove('dragover');
-        var file = e.dataTransfer.files && e.dataTransfer.files[0];
-        handleFile(file);
+        var files = e.dataTransfer.files;
+        if (files && files.length) handleFiles(files);
       });
       fileInput.addEventListener('change', function () {
-        handleFile(fileInput.files[0]);
+        var files = fileInput.files;
+        if (!files || !files.length) { fileInput.value = ''; addMoreMode = false; return; }
+        if (addMoreMode) {
+          handleFilesAppend(files);
+          addMoreMode = false;
+        } else {
+          handleFiles(files);
+        }
+        fileInput.value = '';
       });
+      var batchAddMoreBtn = document.getElementById('batch-add-more');
+      if (batchAddMoreBtn) {
+        batchAddMoreBtn.addEventListener('click', function () {
+          addMoreMode = true;
+          fileInput.click();
+        });
+      }
 
       function sanitizeZipName(val) {
         var s = (val || '').trim().replace(/[/\\:*?"<>|]/g, '_');
@@ -1402,8 +3945,14 @@
         return s || 'tile.png';
       }
 
+      function normalizeOcrString(text) {
+        var s = (text == null) ? '' : String(text);
+        if (s.normalize) s = s.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+        return s;
+      }
+
       function ocrTextToBaseName(text) {
-        var s = (text || '').trim().toLowerCase().replace(/[\s/\\:*?"<>|]/g, '_').replace(/_+/g, '_').replace(/^_|_$/g, '');
+        var s = normalizeOcrString(text).trim().toLowerCase().replace(/['\u2019]/g, '').replace(/[^a-z0-9]+/g, '_').replace(/_+/g, '_').replace(/^_|_$/g, '');
         if (!s || s.length < 2) return null;
         var maxLen = 50;
         if (s.length > maxLen) s = s.slice(0, maxLen).replace(/_$/, '');
@@ -1412,45 +3961,77 @@
 
       function isWordLike(text) {
         if (!text || typeof text !== 'string') return false;
-        var t = text.trim();
+        var t = normalizeOcrString(text).trim();
         if (t.length < 2) return false;
-        return /^[a-zA-Z][a-zA-Z'\u2019-]*[a-zA-Z]$|^[a-zA-Z]{2,}$/.test(t) || /^[a-zA-Z]+$/.test(t);
+        if (!/[a-zA-Z]/.test(t)) return false;
+        return /^[a-zA-Z][a-zA-Z'\u2019-]*$/.test(t);
       }
 
       function extractWordsFromOcrResult(result) {
-        var words = result && result.data && result.data.words;
-        if (!words || !Array.isArray(words)) return [];
         var out = [];
-        for (var i = 0; i < words.length; i++) {
-          var w = words[i];
-          var text = (w && w.text && w.text.trim()) || '';
-          if (isWordLike(text)) out.push(text);
+        var words = result && result.data && result.data.words;
+        if (words && Array.isArray(words)) {
+          for (var i = 0; i < words.length; i++) {
+            var w = words[i] || {};
+            var text = (w.text && String(w.text).trim()) || '';
+            var confidence = typeof w.confidence === 'number' ? w.confidence : 100;
+            if (confidence < 20) continue;
+            if (isWordLike(text)) out.push(normalizeOcrString(text).trim());
+          }
+        }
+        if (out.length) return out;
+        var rawText = result && result.data && result.data.text ? normalizeOcrString(result.data.text) : '';
+        var parts = rawText.split(/\s+/);
+        for (var j = 0; j < parts.length; j++) {
+          if (isWordLike(parts[j])) out.push(parts[j].trim());
         }
         return out;
       }
 
       function wordsToBaseName(words) {
         if (!words || words.length === 0) return null;
-        var s = words.join('_').toLowerCase().replace(/['\u2019]/g, '').replace(/[^a-z0-9_]/g, '_').replace(/_+/g, '_').replace(/^_|_$/g, '');
-        if (!s || s.length < 2) return null;
-        if (s.length > 50) s = s.slice(0, 50).replace(/_$/, '');
-        return s || null;
+        var trimmed = words.slice(0, 4);
+        return ocrTextToBaseName(trimmed.join(' '));
       }
 
-      function getLabelRegionCanvas(imageUrl, bottomPercent) {
+      function getLabelRegionCanvas(imageUrl, bottomPercent, enhance) {
         return new Promise(function (resolve, reject) {
           var img = new Image();
           if (imageUrl.indexOf('blob:') !== 0) img.crossOrigin = 'anonymous';
           img.onload = function () {
             var w = img.naturalWidth;
             var h = img.naturalHeight;
-            var sliceH = Math.max(1, Math.floor((bottomPercent / 100) * h));
+            var pct = Math.max(10, Math.min(60, parseInt(bottomPercent, 10) || 30));
+            var sliceH = Math.max(1, Math.floor((pct / 100) * h));
+            var scale = 2;
+            var outW = Math.max(1, Math.floor(w * scale));
+            var outH = Math.max(1, Math.floor(sliceH * scale));
             var canvas = document.createElement('canvas');
-            canvas.width = w;
-            canvas.height = sliceH;
+            canvas.width = outW;
+            canvas.height = outH;
             var ctx = canvas.getContext('2d');
             if (!ctx) { reject(new Error('No 2d context')); return; }
-            ctx.drawImage(img, 0, h - sliceH, w, sliceH, 0, 0, w, sliceH);
+            ctx.imageSmoothingEnabled = true;
+            ctx.drawImage(img, 0, h - sliceH, w, sliceH, 0, 0, outW, outH);
+            if (enhance) {
+              var imgData = ctx.getImageData(0, 0, outW, outH);
+              var d = imgData.data;
+              var sum = 0;
+              var px = d.length / 4;
+              for (var i = 0; i < d.length; i += 4) {
+                sum += 0.299 * d[i] + 0.587 * d[i + 1] + 0.114 * d[i + 2];
+              }
+              var avg = px ? (sum / px) : 160;
+              var threshold = Math.max(90, Math.min(210, avg * 0.96));
+              for (var j = 0; j < d.length; j += 4) {
+                var lum = 0.299 * d[j] + 0.587 * d[j + 1] + 0.114 * d[j + 2];
+                var v = lum > threshold ? 255 : 0;
+                d[j] = v;
+                d[j + 1] = v;
+                d[j + 2] = v;
+              }
+              ctx.putImageData(imgData, 0, 0);
+            }
             resolve(canvas);
           };
           img.onerror = function () { reject(new Error('Failed to load image for label region')); };
@@ -1458,25 +4039,360 @@
         });
       }
 
-      downloadBtn.addEventListener('click', function () {
-        if (!tileBlobs.length) return;
-        downloadBtn.disabled = true;
-        var zip = new JSZip();
-        var inputs = previewGrid.querySelectorAll('.tile-name');
-        var used = {};
-        for (var i = 0; i < tileBlobs.length; i++) {
-          var name = sanitizeZipName(inputs[i] ? inputs[i].value : '');
-          if (used[name]) {
-            var base = name.replace(/\.png$/i, '');
-            var n = 1;
-            while (used[base + '_' + n + '.png']) n++;
-            name = base + '_' + n + '.png';
-            used[name] = true;
-          } else {
-            used[name] = true;
-          }
-          zip.file(name, tileBlobs[i], { binary: true });
+      function recognizeBaseFromCanvas(worker, canvas) {
+        return worker.recognize(canvas).then(function (result) {
+          var words = extractWordsFromOcrResult(result);
+          return wordsToBaseName(words);
+        });
+      }
+
+      function recognizeBestBaseForTile(worker, imageUrl, labelPct, defaultBase) {
+        var fallbackPct = Math.min(60, labelPct + 12);
+        return getLabelRegionCanvas(imageUrl, labelPct, false)
+          .then(function (canvas) { return recognizeBaseFromCanvas(worker, canvas); })
+          .then(function (base) {
+            if (base) return base;
+            return getLabelRegionCanvas(imageUrl, fallbackPct, true)
+              .then(function (canvas) { return recognizeBaseFromCanvas(worker, canvas); })
+              .then(function (fallbackBase) { return fallbackBase || defaultBase; });
+          })
+          .catch(function () {
+            return getLabelRegionCanvas(imageUrl, fallbackPct, true)
+              .then(function (canvas) { return recognizeBaseFromCanvas(worker, canvas); })
+              .then(function (fallbackBase) { return fallbackBase || defaultBase; })
+              .catch(function () { return defaultBase; });
+          });
+      }
+
+      function buildOcrWorkerOptions() {
+        var src = window.TESSERACT_OPTIONS || {};
+        var opts = {};
+        for (var k in src) {
+          if (Object.prototype.hasOwnProperty.call(src, k)) opts[k] = src[k];
         }
+        return opts;
+      }
+
+      function runAutoNameForInputs(thumbs, inputs, defaultBaseForIndex, onNameApplied) {
+        if (!thumbs || !inputs) return Promise.resolve();
+        var total = thumbs.length;
+        if (!total || total !== inputs.length) return Promise.resolve();
+        if (!hasOcrSupport()) {
+          setDetectingLabelsMessage('Auto-name skipped: OCR library is not available.', true);
+          clearDetectingLabelsMessage(3500);
+          logAutoName('Skipped: OCR support is unavailable.');
+          return Promise.resolve();
+        }
+        autoNameRunId += 1;
+        var runId = autoNameRunId;
+        var labelPct = getLabelRegionPct();
+        var options = buildOcrWorkerOptions();
+        var workerRef = null;
+        var bases = new Array(total);
+        setDetectingLabelsMessage('Auto-name: preparing OCR…');
+        logAutoName('Starting OCR run', { tiles: total, labelPct: labelPct });
+        var source = (inputs[0] && inputs[0].getAttribute && inputs[0].getAttribute('data-batch-index') !== null) ? 'batch-preview' : 'single-preview';
+        // #region agent log
+        sendAgentDebugLog('H5', 'index.html:runAutoNameForInputs:start', 'runAutoNameForInputs started', {
+          autoNameRunId: runId,
+          tiles: total,
+          labelPct: labelPct,
+          source: source,
+          currentBatchIndex: currentBatchIndex
+        }, 'pre-fix');
+        // #endregion
+
+        function runTile(index) {
+          if (runId !== autoNameRunId) {
+            if (autoNameCancelLogCount < 30) {
+              autoNameCancelLogCount++;
+              // #region agent log
+              sendAgentDebugLog('H4', 'index.html:runAutoNameForInputs:runTile', 'runTile cancelled because newer run started', {
+                runId: runId,
+                activeAutoNameRunId: autoNameRunId,
+                index: index
+              }, 'pre-fix');
+              // #endregion
+            }
+            return Promise.resolve();
+          }
+          if (index >= total) return Promise.resolve();
+          var defaultBase = defaultBaseForIndex(index);
+          setDetectingLabelsMessage('Auto-name: reading tile ' + (index + 1) + '/' + total + '…');
+          return recognizeBestBaseForTile(workerRef, thumbs[index].src, labelPct, defaultBase)
+            .then(function (base) {
+              bases[index] = base || defaultBase;
+            })
+            .catch(function (err) {
+              if (ocrCatchLogCount < 20) {
+                ocrCatchLogCount++;
+                logAutoName('Tile OCR failed; fallback used', {
+                  index: index,
+                  error: err && err.message ? String(err.message) : String(err || 'unknown')
+                });
+              }
+              bases[index] = defaultBase;
+            })
+            .then(function () { return runTile(index + 1); });
+        }
+
+        return Tesseract.createWorker('eng', 1, options).then(function (worker) {
+          workerRef = worker;
+          return runTile(0).then(function () { return bases; });
+        }).then(function (baseNames) {
+          var terminate = workerRef ? workerRef.terminate().catch(function () {}) : Promise.resolve();
+          return terminate.then(function () { return baseNames; });
+        }, function (err) {
+          var terminate = workerRef ? workerRef.terminate().catch(function () {}) : Promise.resolve();
+          return terminate.then(function () { throw err; });
+        }).then(function (baseNames) {
+          if (runId !== autoNameRunId) return;
+          var renamedCount = 0;
+          var used = {};
+          for (var i = 0; i < total; i++) {
+            var defaultBase = defaultBaseForIndex(i);
+            var chosenBase = ocrTextToBaseName(baseNames[i]) || ocrTextToBaseName(defaultBase) || ('tile_' + (i + 1));
+            if (chosenBase !== ocrTextToBaseName(defaultBase)) renamedCount++;
+            var name = chosenBase + '.png';
+            if (used[name]) {
+              var n = 1;
+              while (used[chosenBase + '_' + n + '.png']) n++;
+              name = chosenBase + '_' + n + '.png';
+            }
+            used[name] = true;
+            if (inputs[i]) inputs[i].value = name;
+            if (onNameApplied) onNameApplied(i, name);
+          }
+          if (renamedCount > 0) {
+            setDetectingLabelsMessage('Auto-name: renamed ' + renamedCount + ' / ' + total + ' tiles.');
+          } else {
+            setDetectingLabelsMessage('Auto-name: no reliable labels found (kept default names).');
+          }
+          clearDetectingLabelsMessage(2600);
+          logAutoName('OCR run finished', { tiles: total, renamed: renamedCount });
+        }).catch(function (err) {
+          var message = err && err.message ? err.message : 'Unknown OCR error';
+          setDetectingLabelsMessage('Auto-name failed: ' + message, true);
+          clearDetectingLabelsMessage(5000);
+          logAutoName('OCR run failed', { error: message });
+        });
+      }
+
+      /* ---- Tile detail modal ---- */
+      var tileModalOverlay = document.getElementById('tile-modal-overlay');
+      var tileModalCanvas = document.getElementById('tile-modal-canvas');
+      var tileModalTitle = document.getElementById('tile-modal-title');
+      var tileModalCloseBtn = document.getElementById('tile-modal-close');
+      var tileModalPrevBtn = document.getElementById('tile-modal-prev');
+      var tileModalNextBtn = document.getElementById('tile-modal-next');
+      var tileModalDownloadBtn = document.getElementById('tile-modal-download');
+      var trimTopInput = document.getElementById('tile-trim-top');
+      var trimRightInput = document.getElementById('tile-trim-right');
+      var trimBottomInput = document.getElementById('tile-trim-bottom');
+      var trimLeftInput = document.getElementById('tile-trim-left');
+      var modalTileIndex = -1;
+      var modalBatchIndex = -1;
+
+      function renderModalTile(index) {
+        if (!tileSrcImage || index < 0 || index >= tileCropInfos.length) return;
+        var info = tileCropInfos[index];
+        var sx = info.sx + info.trimLeft;
+        var sy = info.sy + info.trimTop;
+        var sw = info.sw - info.trimLeft - info.trimRight;
+        var sh = info.sh - info.trimTop - info.trimBottom;
+        if (sw <= 0 || sh <= 0) { sw = Math.max(1, sw); sh = Math.max(1, sh); }
+        tileModalCanvas.width = sw;
+        tileModalCanvas.height = sh;
+        var ctx = tileModalCanvas.getContext('2d');
+        ctx.clearRect(0, 0, sw, sh);
+        ctx.drawImage(tileSrcImage, sx, sy, sw, sh, 0, 0, sw, sh);
+      }
+
+      function regenerateTileBlob(index) {
+        if (!tileSrcImage || index < 0 || index >= tileCropInfos.length) return Promise.resolve();
+        var info = tileCropInfos[index];
+        var sx = info.sx + info.trimLeft;
+        var sy = info.sy + info.trimTop;
+        var sw = info.sw - info.trimLeft - info.trimRight;
+        var sh = info.sh - info.trimTop - info.trimBottom;
+        if (sw <= 0 || sh <= 0) return Promise.resolve();
+        var c = document.createElement('canvas');
+        c.width = sw; c.height = sh;
+        var ctx = c.getContext('2d');
+        ctx.drawImage(tileSrcImage, sx, sy, sw, sh, 0, 0, sw, sh);
+        return new Promise(function (resolve) {
+          c.toBlob(function (blob) {
+            if (blob) {
+              tileBlobs[index] = blob;
+              if (modalBatchIndex >= 0 && batchImages[modalBatchIndex]) batchImages[modalBatchIndex].tileBlobs[index] = blob;
+              var thumb;
+              if (modalBatchIndex >= 0) {
+                var wrap = previewGrid.querySelector('.tile-img-wrap[data-batch-index="' + modalBatchIndex + '"][data-tile-index="' + index + '"]');
+                thumb = wrap ? wrap.querySelector('img') : null;
+              } else {
+                thumb = previewGrid.querySelectorAll('.tile-img-wrap img')[index];
+              }
+              if (thumb) {
+                if (thumb.src.indexOf('blob:') === 0) URL.revokeObjectURL(thumb.src);
+                thumb.src = URL.createObjectURL(blob);
+              }
+            }
+            resolve();
+          }, 'image/png');
+        });
+      }
+
+      function openTileModal(index) {
+        if (index < 0 || index >= tileCropInfos.length) return;
+        modalBatchIndex = -1;
+        modalTileIndex = index;
+        var inputs = previewGrid.querySelectorAll('.tile-name');
+        var name = inputs[index] ? inputs[index].value : ('Tile ' + (index + 1));
+        tileModalTitle.textContent = name + '  (' + (index + 1) + '/' + tileCropInfos.length + ')';
+        var info = tileCropInfos[index];
+        trimTopInput.value = info.trimTop;
+        trimRightInput.value = info.trimRight;
+        trimBottomInput.value = info.trimBottom;
+        trimLeftInput.value = info.trimLeft;
+        trimTopInput.max = Math.floor(info.sh / 2) - 1;
+        trimRightInput.max = Math.floor(info.sw / 2) - 1;
+        trimBottomInput.max = Math.floor(info.sh / 2) - 1;
+        trimLeftInput.max = Math.floor(info.sw / 2) - 1;
+        tileModalPrevBtn.disabled = index <= 0;
+        tileModalNextBtn.disabled = index >= tileCropInfos.length - 1;
+        renderModalTile(index);
+        tileModalOverlay.classList.add('open');
+      }
+
+      function closeTileModal() {
+        tileModalOverlay.classList.remove('open');
+        modalTileIndex = -1;
+        modalBatchIndex = -1;
+      }
+
+      tileModalCloseBtn.addEventListener('click', closeTileModal);
+      tileModalOverlay.addEventListener('click', function (e) {
+        if (e.target === tileModalOverlay) closeTileModal();
+      });
+      document.addEventListener('keydown', function (e) {
+        if (!tileModalOverlay.classList.contains('open')) return;
+        if (e.key === 'Escape') { closeTileModal(); return; }
+        if (e.key === 'ArrowLeft' && modalTileIndex > 0) {
+          applyModalTrims();
+          if (modalBatchIndex >= 0) openBatchTileModal(modalBatchIndex, modalTileIndex - 1);
+          else openTileModal(modalTileIndex - 1);
+        }
+        if (e.key === 'ArrowRight' && modalTileIndex < tileCropInfos.length - 1) {
+          applyModalTrims();
+          if (modalBatchIndex >= 0) openBatchTileModal(modalBatchIndex, modalTileIndex + 1);
+          else openTileModal(modalTileIndex + 1);
+        }
+      });
+      tileModalPrevBtn.addEventListener('click', function () {
+        if (modalTileIndex > 0) {
+          applyModalTrims();
+          if (modalBatchIndex >= 0) openBatchTileModal(modalBatchIndex, modalTileIndex - 1);
+          else openTileModal(modalTileIndex - 1);
+        }
+      });
+      tileModalNextBtn.addEventListener('click', function () {
+        if (modalTileIndex < tileCropInfos.length - 1) {
+          applyModalTrims();
+          if (modalBatchIndex >= 0) openBatchTileModal(modalBatchIndex, modalTileIndex + 1);
+          else openTileModal(modalTileIndex + 1);
+        }
+      });
+
+      function applyModalTrims() {
+        if (modalTileIndex < 0 || modalTileIndex >= tileCropInfos.length) return;
+        var info = tileCropInfos[modalTileIndex];
+        var t = Math.max(0, parseInt(trimTopInput.value, 10) || 0);
+        var r = Math.max(0, parseInt(trimRightInput.value, 10) || 0);
+        var b = Math.max(0, parseInt(trimBottomInput.value, 10) || 0);
+        var l = Math.max(0, parseInt(trimLeftInput.value, 10) || 0);
+        if (t === info.trimTop && r === info.trimRight && b === info.trimBottom && l === info.trimLeft) return;
+        info.trimTop = t;
+        info.trimRight = r;
+        info.trimBottom = b;
+        info.trimLeft = l;
+        regenerateTileBlob(modalTileIndex);
+      }
+
+      function handleTrimInput() {
+        if (modalTileIndex < 0 || modalTileIndex >= tileCropInfos.length) return;
+        var info = tileCropInfos[modalTileIndex];
+        info.trimTop = Math.max(0, parseInt(trimTopInput.value, 10) || 0);
+        info.trimRight = Math.max(0, parseInt(trimRightInput.value, 10) || 0);
+        info.trimBottom = Math.max(0, parseInt(trimBottomInput.value, 10) || 0);
+        info.trimLeft = Math.max(0, parseInt(trimLeftInput.value, 10) || 0);
+        renderModalTile(modalTileIndex);
+        regenerateTileBlob(modalTileIndex);
+      }
+
+      trimTopInput.addEventListener('input', handleTrimInput);
+      trimRightInput.addEventListener('input', handleTrimInput);
+      trimBottomInput.addEventListener('input', handleTrimInput);
+      trimLeftInput.addEventListener('input', handleTrimInput);
+
+      function downloadSingleTile(index) {
+        if (index < 0 || index >= tileBlobs.length) return;
+        var inputs = previewGrid.querySelectorAll('.tile-name');
+        var name = inputs[index] ? inputs[index].value.trim() : '';
+        if (!name) name = 'tile_' + (index + 1) + '.png';
+        if (!/\.png$/i.test(name)) name += '.png';
+        var a = document.createElement('a');
+        a.href = URL.createObjectURL(tileBlobs[index]);
+        a.download = name;
+        a.click();
+        URL.revokeObjectURL(a.href);
+      }
+
+      tileModalDownloadBtn.addEventListener('click', function () {
+        applyModalTrims();
+        downloadSingleTile(modalTileIndex);
+      });
+
+      downloadBtn.addEventListener('click', function () {
+        var zip = new JSZip();
+        var used = {};
+        if (batchImages.length > 1) {
+          var hasAny = false;
+          for (var bi = 0; bi < batchImages.length; bi++) {
+            var entry = batchImages[bi];
+            if (!entry.tileBlobs || !entry.tileBlobs.length) continue;
+            hasAny = true;
+            for (var ti = 0; ti < entry.tileBlobs.length; ti++) {
+              var defaultName = entry.name + '_tile_' + (ti + 1) + '.png';
+              var name = sanitizeZipName((entry.tileNames && entry.tileNames[ti]) ? entry.tileNames[ti] : defaultName);
+              if (used[name]) {
+                var base = name.replace(/\.png$/i, '');
+                var n = 1;
+                while (used[base + '_' + n + '.png']) n++;
+                name = base + '_' + n + '.png';
+              }
+              used[name] = true;
+              zip.file(name, entry.tileBlobs[ti], { binary: true });
+            }
+          }
+          if (!hasAny) return;
+        } else {
+          if (!tileBlobs.length) return;
+          var inputs = previewGrid.querySelectorAll('.tile-name');
+          for (var i = 0; i < tileBlobs.length; i++) {
+            var name = sanitizeZipName(inputs[i] ? inputs[i].value : '');
+            if (used[name]) {
+              var base = name.replace(/\.png$/i, '');
+              var n = 1;
+              while (used[base + '_' + n + '.png']) n++;
+              name = base + '_' + n + '.png';
+              used[name] = true;
+            } else {
+              used[name] = true;
+            }
+            zip.file(name, tileBlobs[i], { binary: true });
+          }
+        }
+        downloadBtn.disabled = true;
         zip.generateAsync({ type: 'blob' }).then(function (blob) {
           var a = document.createElement('a');
           a.href = URL.createObjectURL(blob);
@@ -1495,7 +4411,33 @@
       if (storedImageUrl) {
         try { sessionStorage.removeItem('generatedGridImage'); } catch (e) {}
         var img = new Image();
-        img.onload = function () { setupGridEditor(img); };
+        img.onload = function () {
+          currentImage = img;
+          var w = img.naturalWidth;
+          var h = img.naturalHeight;
+          initBounds(w, h);
+          runAutoDetect();
+          var entry = {
+            id: batchIdCounter++,
+            file: null,
+            name: 'image',
+            objectURL: storedImageUrl,
+            img: img,
+            mode: 'uniform',
+            xBounds: xBounds.slice(),
+            yBounds: yBounds.slice(),
+            xTrim: (xTrim || []).slice(),
+            yTrim: (yTrim || []).slice(),
+            freeformCells: freeformCells.map(function (c) { return { x: c.x, y: c.y, w: c.w, h: c.h }; }),
+            excludedCellIds: {},
+            tileBlobs: [],
+            tileCropInfos: [],
+            processed: false
+          };
+          batchImages = [entry];
+          currentBatchIndex = 0;
+          finishBatchLoad();
+        };
         img.onerror = function () { showError('Could not load generated image.'); };
         img.src = storedImageUrl;
       }

@@ -6,6 +6,7 @@
   <title>Grid gallery – Imagine</title>
   <link rel="stylesheet" href="css/shared.css">
   <script src="js/gridSchema.js"></script>
+  <script src="js/promptComposer.js"></script>
   <style>
     body {
       font-family: var(--font-sans);
@@ -463,6 +464,65 @@
         return '4x4';
       }
 
+      /** Normalize gallery item to canonical keys for prompt builder and prompt generation. */
+      function normalizeGalleryItem(item) {
+        if (!item) return item;
+        var layoutKey = getLayoutKey(item);
+        var spec = (typeof gridSchema !== 'undefined' && gridSchema.parseCompactGrid)
+          ? gridSchema.parseCompactGrid(layoutKey)
+          : { mode: 'uniform', rows: 4, cols: 4, cells: [] };
+        spec = (typeof gridSchema !== 'undefined' && gridSchema.normalizeSpec)
+          ? gridSchema.normalizeSpec(spec)
+          : spec;
+        var cellCount = (typeof gridSchema !== 'undefined' && gridSchema.getCellCount)
+          ? gridSchema.getCellCount(spec)
+          : 16;
+        var cells = Array.isArray(item.cells) ? item.cells.slice(0, cellCount) : [];
+        while (cells.length < cellCount) cells.push({ name: '', description: '' });
+        return {
+          id: item.id,
+          title: item.title,
+          description: item.description,
+          image: item.image,
+          model: item.model,
+          galleries: item.galleries,
+          layout: layoutKey,
+          style: (item.style || '').trim() || 'minimalist vector',
+          background: (item.background || '').trim() || 'pure white',
+          palette: (item.palette || '').trim() || 'flat and vivid',
+          outlines: (item.outlines || '').trim() || 'bold black',
+          labels: (item.labels || '').trim() || 'NO',
+          anthropomorphism: (item.anthropomorphism || '').trim() || 'Off',
+          lighting: (item.lighting || item.lumiere || '').trim() || 'natural light',
+          mood: (item.mood || '').trim(),
+          maxColors: item.maxColors != null && item.maxColors !== '' ? item.maxColors : (item.couleursMax != null && item.couleursMax !== '' ? item.couleursMax : ''),
+          theme: (item.theme || '').trim() || 'fruits',
+          cells: cells,
+          cellCount: cellCount,
+          prompt: item.prompt || ''
+        };
+      }
+
+      function getDisplayPrompt(norm) {
+        if (typeof promptComposer !== 'undefined' && promptComposer.buildPrompt && norm.layout && norm.cellCount) {
+          return promptComposer.buildPrompt({
+            layoutCompact: norm.layout,
+            cellCount: norm.cellCount,
+            theme: norm.theme,
+            style: norm.style,
+            background: norm.background,
+            palette: norm.palette,
+            outlines: norm.outlines,
+            labels: norm.labels,
+            anthropomorphism: norm.anthropomorphism,
+            mood: norm.mood,
+            maxColors: norm.maxColors,
+            cells: norm.cells
+          });
+        }
+        return norm.prompt || '';
+      }
+
       function renderGridPreview(layoutKey) {
         var wrap = document.createElement('div');
         wrap.className = 'gallery-card__grid-wrap';
@@ -586,6 +646,7 @@
 
       function openModal(item) {
         currentItem = item;
+        var norm = normalizeGalleryItem(item);
         var hasImage = !!(item.image && String(item.image).trim());
         var imgWrap = modalImg && modalImg.parentElement;
         if (imgWrap) imgWrap.style.display = hasImage ? '' : 'none';
@@ -601,19 +662,19 @@
         modalBadge.className = 'modal__badge modal__badge--' + (item.model === 'Grok' ? 'grok' : 'gpt');
         modalTitle.textContent = item.title;
         var metaParts = [];
-        if (item.size) metaParts.push('<strong>Size:</strong> ' + escapeHtml(item.size));
-        if (item.style) metaParts.push('<strong>Style:</strong> ' + escapeHtml(item.style));
-        if (item.background) metaParts.push('<strong>Background:</strong> ' + escapeHtml(item.background));
-        if (item.palette) metaParts.push('<strong>Palette:</strong> ' + escapeHtml(item.palette));
-        if (item.outlines) metaParts.push('<strong>Outlines:</strong> ' + escapeHtml(item.outlines));
-        if (item.labels) metaParts.push('<strong>Labels:</strong> ' + escapeHtml(item.labels));
-        if (item.anthropomorphism) metaParts.push('<strong>Anthropomorphism:</strong> ' + escapeHtml(item.anthropomorphism));
-        if (item.lumiere) metaParts.push('<strong>Lumière:</strong> ' + escapeHtml(item.lumiere));
-        if (item.couleursMax != null && item.couleursMax !== '') metaParts.push('<strong>Couleurs max:</strong> ' + escapeHtml(String(item.couleursMax)));
-        if (item.mood) metaParts.push('<strong>Mood:</strong> ' + escapeHtml(item.mood));
+        if (norm.layout) metaParts.push('<strong>Layout:</strong> ' + escapeHtml(norm.layout));
+        if (norm.style) metaParts.push('<strong>Style:</strong> ' + escapeHtml(norm.style));
+        if (norm.background) metaParts.push('<strong>Background:</strong> ' + escapeHtml(norm.background));
+        if (norm.palette) metaParts.push('<strong>Palette:</strong> ' + escapeHtml(norm.palette));
+        if (norm.outlines) metaParts.push('<strong>Outlines:</strong> ' + escapeHtml(norm.outlines));
+        if (norm.labels) metaParts.push('<strong>Labels:</strong> ' + escapeHtml(norm.labels));
+        if (norm.anthropomorphism) metaParts.push('<strong>Anthropomorphism:</strong> ' + escapeHtml(norm.anthropomorphism));
+        if (norm.lighting) metaParts.push('<strong>Lighting:</strong> ' + escapeHtml(norm.lighting));
+        if (norm.maxColors !== '' && norm.maxColors != null) metaParts.push('<strong>Max colors:</strong> ' + escapeHtml(String(norm.maxColors)));
+        if (norm.mood) metaParts.push('<strong>Mood:</strong> ' + escapeHtml(norm.mood));
         modalMeta.innerHTML = metaParts.length ? metaParts.join(' &middot; ') : '';
         modalDesc.textContent = item.description;
-        modalPrompt.value = item.prompt || '';
+        modalPrompt.value = getDisplayPrompt(norm);
         modalCopyFeedback.textContent = '';
         overlay.classList.add('is-open');
         overlay.setAttribute('aria-hidden', 'false');
@@ -633,9 +694,24 @@
       });
 
       modalCreateSimilar.addEventListener('click', function () {
-        if (!currentItem || !currentItem.prompt) return;
+        if (!currentItem) return;
         try {
-          sessionStorage.setItem(GALLERY_KEY, currentItem.prompt);
+          var norm = normalizeGalleryItem(currentItem);
+          var payload = {
+            layout: norm.layout,
+            style: norm.style,
+            background: norm.background,
+            palette: norm.palette,
+            outlines: norm.outlines,
+            labels: norm.labels,
+            anthropomorphism: norm.anthropomorphism,
+            mood: norm.mood,
+            maxColors: norm.maxColors,
+            theme: norm.theme,
+            cells: norm.cells,
+            prompt: getDisplayPrompt(norm)
+          };
+          sessionStorage.setItem(GALLERY_KEY, JSON.stringify(payload));
           window.location.href = 'prompt-builder.html';
         } catch (err) {
           modalCopyFeedback.textContent = 'Could not open Prompt Builder. Copy the prompt instead.';

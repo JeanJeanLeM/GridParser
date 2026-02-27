@@ -15,6 +15,14 @@
     return 0.299 * r + 0.587 * g + 0.114 * b;
   }
 
+  function pixelLuminanceOverWhite(data, i) {
+    var a = data[i + 3] / 255;
+    var r = data[i] * a + 255 * (1 - a);
+    var g = data[i + 1] * a + 255 * (1 - a);
+    var b = data[i + 2] * a + 255 * (1 - a);
+    return luminance(r, g, b);
+  }
+
   /**
    * Build darkness profile along an axis (columns or rows).
    * @param {Uint8ClampedArray} data - RGBA ImageData.data
@@ -31,7 +39,7 @@
         var dark = 0;
         for (var y = 0; y < h; y++) {
           var i = (y * w + x) * 4;
-          var L = luminance(data[i], data[i + 1], data[i + 2]);
+          var L = pixelLuminanceOverWhite(data, i);
           if (L <= blackThreshold) dark++;
         }
         out.push(dark / h);
@@ -41,7 +49,7 @@
         var dark = 0;
         for (var x = 0; x < w; x++) {
           var i = (y * w + x) * 4;
-          var L = luminance(data[i], data[i + 1], data[i + 2]);
+          var L = pixelLuminanceOverWhite(data, i);
           if (L <= blackThreshold) dark++;
         }
         out.push(dark / w);
@@ -61,7 +69,7 @@
       var y = index;
       for (var x = 0; x < w; x++) {
         var i = (y * w + x) * 4;
-        var L = luminance(data[i], data[i + 1], data[i + 2]);
+        var L = pixelLuminanceOverWhite(data, i);
         if (L <= blackThreshold) {
           run++;
           if (run > maxRun) maxRun = run;
@@ -73,7 +81,7 @@
       var x = index;
       for (var y = 0; y < h; y++) {
         var i = (y * w + x) * 4;
-        var L = luminance(data[i], data[i + 1], data[i + 2]);
+        var L = pixelLuminanceOverWhite(data, i);
         if (L <= blackThreshold) {
           run++;
           if (run > maxRun) maxRun = run;
@@ -206,6 +214,47 @@
   }
 
   /**
+   * Pick N lines from actual detected positions (no equal-spacing target).
+   * Uses the real line positions; when there are more than N, picks N spread across by index.
+   * When fewer than N detected, fills with interpolated positions so layout still has N divisions.
+   */
+  function pickNLinesFromActual(detectedLines, size, count) {
+    if (count <= 0) return [];
+    var positions = detectedLines.map(function (l) { return l.position; }).sort(function (a, b) { return a - b; });
+    if (positions.length >= count) {
+      var out = [];
+      for (var i = 0; i < count; i++) {
+        var idx = Math.round((i + 1) * positions.length / (count + 1)) - 1;
+        idx = Math.max(0, Math.min(positions.length - 1, idx));
+        out.push(positions[idx]);
+      }
+      out.sort(function (a, b) { return a - b; });
+      return out;
+    }
+    if (positions.length === 0) {
+      var filled = [];
+      for (var t = 1; t <= count; t++) filled.push((t * size) / (count + 1));
+      return filled;
+    }
+    var result = positions.slice();
+    while (result.length < count) {
+      var bestIdx = 0;
+      var bestGap = 0;
+      for (var k = 0; k <= result.length; k++) {
+        var left = k === 0 ? 0 : result[k - 1];
+        var right = k === result.length ? size : result[k];
+        if (right - left > bestGap) {
+          bestGap = right - left;
+          bestIdx = k;
+        }
+      }
+      result.splice(bestIdx, 0, (bestIdx === 0 ? 0 : result[bestIdx - 1]) + bestGap / 2);
+      result.sort(function (a, b) { return a - b; });
+    }
+    return result.slice(0, count);
+  }
+
+  /**
    * Detect grid lines from image pixel data.
    * Uses continuity (long contiguous dark span) to reject text; only accepts lines with thickness <= maxLinePx.
    * @param {HTMLImageElement|object} image - image with naturalWidth/naturalHeight
@@ -221,8 +270,9 @@
     maxLinePx = Math.max(minLinePx, maxLinePx);
     var minGap = Math.max(2, parseInt(opts.minGap, 10) || 8);
     var minSpanFraction = typeof opts.minSpanFraction === 'number' ? opts.minSpanFraction : 0.35;
-    var gridCols = Math.max(1, Math.min(4, parseInt(opts.gridCols, 10) || 4));
-    var gridRows = Math.max(1, Math.min(4, parseInt(opts.gridRows, 10) || 4));
+    var gridCols = Math.max(1, Math.min(10, parseInt(opts.gridCols, 10) || 4));
+    var gridRows = Math.max(1, Math.min(10, parseInt(opts.gridRows, 10) || 4));
+    var useActualPositions = opts.useActualLinePositions === true;
 
     var w = image.naturalWidth || image.width;
     var h = image.naturalHeight || image.height;
@@ -271,8 +321,8 @@
     var relRow = innerRowRuns.map(function (r) { return { position: r.position - topOuter, thickness: r.thickness }; });
     var numInnerCol = gridCols - 1;
     var numInnerRow = gridRows - 1;
-    var innerX = pickNLines(relCol, contentW, numInnerCol).map(function (p) { return leftOuter + p; });
-    var innerY = pickNLines(relRow, contentH, numInnerRow).map(function (p) { return topOuter + p; });
+    var innerX = (useActualPositions ? pickNLinesFromActual(relCol, contentW, numInnerCol) : pickNLines(relCol, contentW, numInnerCol)).map(function (p) { return leftOuter + p; });
+    var innerY = (useActualPositions ? pickNLinesFromActual(relRow, contentH, numInnerRow) : pickNLines(relRow, contentH, numInnerRow)).map(function (p) { return topOuter + p; });
     innerX.sort(function (a, b) { return a - b; });
     innerY.sort(function (a, b) { return a - b; });
 

@@ -15,12 +15,20 @@
     return 0.299 * r + 0.587 * g + 0.114 * b;
   }
 
+  function pixelLuminanceOverWhite(data, i) {
+    var a = data[i + 3] / 255;
+    var r = data[i] * a + 255 * (1 - a);
+    var g = data[i + 1] * a + 255 * (1 - a);
+    var b = data[i + 2] * a + 255 * (1 - a);
+    return luminance(r, g, b);
+  }
+
   function buildLightMask(data, w, h, whiteThreshold) {
     var out = new Uint8Array(w * h);
     for (var y = 0; y < h; y++) {
       for (var x = 0; x < w; x++) {
         var i = (y * w + x) * 4;
-        var L = luminance(data[i], data[i + 1], data[i + 2]);
+        var L = pixelLuminanceOverWhite(data, i);
         out[y * w + x] = L >= whiteThreshold ? 1 : 0;
       }
     }
@@ -252,11 +260,382 @@
     for (var y = 0; y < h; y++) {
       for (var x = 0; x < w; x++) {
         var i = (y * w + x) * 4;
-        var L = luminance(data[i], data[i + 1], data[i + 2]);
+        var L = pixelLuminanceOverWhite(data, i);
         out[y * w + x] = L <= nonWhiteThreshold ? 1 : 0;
       }
     }
     return out;
+  }
+
+  function buildDarkMask(data, w, h, darkThreshold) {
+    var out = new Uint8Array(w * h);
+    for (var y = 0; y < h; y++) {
+      for (var x = 0; x < w; x++) {
+        var i = (y * w + x) * 4;
+        var L = pixelLuminanceOverWhite(data, i);
+        out[y * w + x] = L <= darkThreshold ? 1 : 0;
+      }
+    }
+    return out;
+  }
+
+  function darknessProfile(data, w, h, axis, darkThreshold) {
+    var out = [];
+    if (axis === 'x') {
+      for (var x = 0; x < w; x++) {
+        var dark = 0;
+        for (var y = 0; y < h; y++) {
+          var i = (y * w + x) * 4;
+          var L = pixelLuminanceOverWhite(data, i);
+          if (L <= darkThreshold) dark++;
+        }
+        out.push(dark / h);
+      }
+    } else {
+      for (var y = 0; y < h; y++) {
+        var dark = 0;
+        for (var x = 0; x < w; x++) {
+          var i = (y * w + x) * 4;
+          var L = pixelLuminanceOverWhite(data, i);
+          if (L <= darkThreshold) dark++;
+        }
+        out.push(dark / w);
+      }
+    }
+    return out;
+  }
+
+  function maxContiguousDark(data, w, h, axis, index, darkThreshold) {
+    var maxRun = 0;
+    var run = 0;
+    if (axis === 'y') {
+      var y = index;
+      for (var x = 0; x < w; x++) {
+        var i = (y * w + x) * 4;
+        var L = pixelLuminanceOverWhite(data, i);
+        if (L <= darkThreshold) {
+          run++;
+          if (run > maxRun) maxRun = run;
+        } else {
+          run = 0;
+        }
+      }
+    } else {
+      var x = index;
+      for (var y = 0; y < h; y++) {
+        var i = (y * w + x) * 4;
+        var L = pixelLuminanceOverWhite(data, i);
+        if (L <= darkThreshold) {
+          run++;
+          if (run > maxRun) maxRun = run;
+        } else {
+          run = 0;
+        }
+      }
+    }
+    return maxRun;
+  }
+
+  function detectDarkLines(image, options) {
+    var opts = options || {};
+    var darkThreshold = Math.min(255, Math.max(0, parseInt(opts.darkThreshold, 10) || 140));
+    var minRunFraction = typeof opts.minRunFraction === 'number' ? opts.minRunFraction : 0.12;
+    var minTrackThicknessPx = Math.max(1, parseInt(opts.minLinePx, 10) || 1);
+    var maxTrackThicknessPx = typeof opts.maxLinePx === 'number' ? Math.max(minTrackThicknessPx, parseInt(opts.maxLinePx, 10) || 18) : 18;
+    var mergeGapPx = Math.max(0, parseInt(opts.mergeGap, 10) || 2);
+    var maxTrackGapPx = Math.max(1, parseInt(opts.maxTrackGapPx, 10) || 2);
+    var minOverlapRatio = typeof opts.minOverlapRatio === 'number' ? opts.minOverlapRatio : 0.45;
+    var w = image.naturalWidth || image.width;
+    var h = image.naturalHeight || image.height;
+    if (!w || !h) return [];
+    var canvas = typeof document !== 'undefined' && document.createElement('canvas');
+    if (!canvas) return [];
+    canvas.width = w;
+    canvas.height = h;
+    var ctx = canvas.getContext('2d');
+    if (!ctx) return [];
+    ctx.drawImage(image, 0, 0);
+    var data = ctx.getImageData(0, 0, w, h).data;
+    var mask = buildDarkMask(data, w, h, darkThreshold);
+    var trackOpts = {
+      minRunFraction: minRunFraction,
+      minTrackThicknessPx: minTrackThicknessPx,
+      maxTrackThicknessPx: Math.min(maxTrackThicknessPx, Math.round(Math.max(w, h) * 0.08)),
+      mergeGapPx: mergeGapPx,
+      maxTrackGapPx: maxTrackGapPx,
+      minOverlapRatio: minOverlapRatio
+    };
+    var horizontals = collectHorizontalTracks(mask, w, h, trackOpts);
+    var verticals = collectVerticalTracks(mask, w, h, trackOpts);
+    horizontals = mergeCollinearSegments(horizontals, 'h', 2, 2);
+    verticals = mergeCollinearSegments(verticals, 'v', 2, 2);
+    var segments = horizontals.concat(verticals).map(function (s) {
+      return {
+        x1: Math.max(0, Math.min(w, s.x1)),
+        y1: Math.max(0, Math.min(h, s.y1)),
+        x2: Math.max(0, Math.min(w, s.x2)),
+        y2: Math.max(0, Math.min(h, s.y2))
+      };
+    });
+    segments = segments.filter(function (s) {
+      var len = Math.hypot(s.x2 - s.x1, s.y2 - s.y1);
+      return len >= Math.max(6, Math.min(w, h) * 0.04);
+    });
+    return removeNearDuplicates(segments, 1.5);
+  }
+
+  function detectAdjacentDarkSeparators(image, options) {
+    var opts = options || {};
+    var darkThreshold = Math.min(255, Math.max(0, parseInt(opts.darkThreshold, 10) || 100));
+    var minSpanFraction = typeof opts.minSpanFraction === 'number' ? opts.minSpanFraction : 0.4;
+    var darknessFraction = typeof opts.darknessFraction === 'number' ? opts.darknessFraction : 0.5;
+    var maxThicknessPx = Math.max(1, parseInt(opts.maxThicknessPx, 10) || 10);
+    var mergeGapPx = Math.max(0, parseInt(opts.mergeGapPx, 10) || 2);
+    var minFlankLuminance = opts.minFlankLuminance != null ? Math.min(255, Math.max(0, parseInt(opts.minFlankLuminance, 10) || 0)) : null;
+    var flankSamplePx = Math.max(0, parseInt(opts.flankSamplePx, 10) || 0);
+    var w = image.naturalWidth || image.width;
+    var h = image.naturalHeight || image.height;
+    if (!w || !h) return [];
+    var canvas = typeof document !== 'undefined' && document.createElement('canvas');
+    if (!canvas) return [];
+    canvas.width = w;
+    canvas.height = h;
+    var ctx = canvas.getContext('2d');
+    if (!ctx) return [];
+    ctx.drawImage(image, 0, 0);
+    var data = ctx.getImageData(0, 0, w, h).data;
+    var colProfile = darknessProfile(data, w, h, 'x', darkThreshold);
+    var rowProfile = darknessProfile(data, w, h, 'y', darkThreshold);
+    function filterByContiguous(profile, size, minSpanFrac) {
+      var minSpan = Math.floor(size * minSpanFrac);
+      var out = [];
+      for (var i = 0; i < profile.length; i++) {
+        var axis = profile === rowProfile ? 'y' : 'x';
+        var span = axis === 'y' ? maxContiguousDark(data, w, h, 'y', i, darkThreshold) : maxContiguousDark(data, w, h, 'x', i, darkThreshold);
+        out.push(span >= minSpan && profile[i] >= darknessFraction ? profile[i] : 0);
+      }
+      return out;
+    }
+    var colFiltered = filterByContiguous(colProfile, h, minSpanFraction);
+    var rowFiltered = filterByContiguous(rowProfile, w, minSpanFraction);
+    function findBands(profile, maxThick) {
+      var bands = [];
+      var i = 0;
+      while (i < profile.length) {
+        if (profile[i] > 0) {
+          var start = i;
+          while (i < profile.length && profile[i] > 0) i++;
+          var thickness = i - start;
+          if (thickness <= maxThick) bands.push({ start: start, end: i, mid: start + thickness / 2 });
+        } else {
+          i++;
+        }
+      }
+      return bands;
+    }
+    function mergeBands(bands, maxGap) {
+      if (bands.length <= 1) return bands;
+      bands.sort(function (a, b) { return a.start - b.start; });
+      var out = [bands[0]];
+      for (var k = 1; k < bands.length; k++) {
+        var prev = out[out.length - 1];
+        var cur = bands[k];
+        if (cur.start - prev.end <= maxGap) {
+          out[out.length - 1] = { start: prev.start, end: cur.end, mid: (prev.mid + cur.mid) / 2 };
+        } else {
+          out.push(cur);
+        }
+      }
+      return out;
+    }
+    var rowBands = mergeBands(findBands(rowFiltered, maxThicknessPx), mergeGapPx);
+    var colBands = mergeBands(findBands(colFiltered, maxThicknessPx), mergeGapPx);
+    var segments = [];
+    for (var r = 0; r < rowBands.length; r++) {
+      var midY = rowBands[r].mid;
+      segments.push({ x1: 0, y1: midY, x2: w, y2: midY });
+    }
+    for (var c = 0; c < colBands.length; c++) {
+      var midX = colBands[c].mid;
+      segments.push({ x1: midX, y1: 0, x2: midX, y2: h });
+    }
+    return segments;
+  }
+
+  function buildSeparatorMask(image, options) {
+    var segs = detectAdjacentDarkSeparators(image, options);
+    var w = image.naturalWidth || image.width;
+    var h = image.naturalHeight || image.height;
+    if (!w || !h) return new Uint8Array(0);
+    var mask = new Uint8Array(w * h);
+    var tol = 2;
+    for (var i = 0; i < segs.length; i++) {
+      var s = segs[i];
+      if (Math.abs(s.y1 - s.y2) <= tol) {
+        var y = Math.round((s.y1 + s.y2) / 2);
+        y = Math.max(0, Math.min(h - 1, y));
+        for (var x = 0; x < w; x++) mask[y * w + x] = 1;
+      } else if (Math.abs(s.x1 - s.x2) <= tol) {
+        var x = Math.round((s.x1 + s.x2) / 2);
+        x = Math.max(0, Math.min(w - 1, x));
+        for (var y = 0; y < h; y++) mask[y * w + x] = 1;
+      }
+    }
+    return mask;
+  }
+
+  function detectForegroundRectsOnDarkBg(image, options) {
+    var opts = options || {};
+    var darkBgThreshold = Math.min(255, Math.max(0, parseInt(opts.darkBgThreshold, 10) || 80));
+    var minAreaFraction = typeof opts.minAreaFraction === 'number' ? opts.minAreaFraction : 0.008;
+    var minWFrac = typeof opts.minWFrac === 'number' ? opts.minWFrac : 0.05;
+    var minHFrac = typeof opts.minHFrac === 'number' ? opts.minHFrac : 0.05;
+    var pad = Math.max(0, parseInt(opts.padPx, 10) || 1);
+    var mergeGap = Math.max(0, parseInt(opts.mergeGapPx, 10) || 2);
+    var w = image.naturalWidth || image.width;
+    var h = image.naturalHeight || image.height;
+    if (!w || !h) return [];
+    var canvas = typeof document !== 'undefined' && document.createElement('canvas');
+    if (!canvas) return [];
+    canvas.width = w;
+    canvas.height = h;
+    var ctx = canvas.getContext('2d');
+    if (!ctx) return [];
+    ctx.drawImage(image, 0, 0);
+    var data = ctx.getImageData(0, 0, w, h).data;
+    var mask = new Uint8Array(w * h);
+    for (var y = 0; y < h; y++) {
+      for (var x = 0; x < w; x++) {
+        var i = (y * w + x) * 4;
+        var L = pixelLuminanceOverWhite(data, i);
+        mask[y * w + x] = L > darkBgThreshold ? 1 : 0;
+      }
+    }
+    var visited = new Uint8Array(w * h);
+    var minArea = Math.max(20, Math.floor(w * h * minAreaFraction));
+    var minW = Math.max(8, Math.floor(w * minWFrac));
+    var minH = Math.max(8, Math.floor(h * minHFrac));
+    var rects = [];
+    function idx(x, y) { return y * w + x; }
+    var queue = [];
+    for (var yy = 0; yy < h; yy++) {
+      for (var xx = 0; xx < w; xx++) {
+        var start = idx(xx, yy);
+        if (!mask[start] || visited[start]) continue;
+        var qh = 0, qt = 0;
+        queue[qt++] = start;
+        visited[start] = 1;
+        var minX = xx, minY = yy, maxX = xx, maxY = yy, area = 0;
+        while (qh < qt) {
+          var cur = queue[qh++];
+          var cy = Math.floor(cur / w);
+          var cx = cur - cy * w;
+          area++;
+          if (cx < minX) minX = cx;
+          if (cy < minY) minY = cy;
+          if (cx > maxX) maxX = cx;
+          if (cy > maxY) maxY = cy;
+          if (cx > 0) { var n = cur - 1; if (mask[n] && !visited[n]) { visited[n] = 1; queue[qt++] = n; } }
+          if (cx + 1 < w) { n = cur + 1; if (mask[n] && !visited[n]) { visited[n] = 1; queue[qt++] = n; } }
+          if (cy > 0) { n = cur - w; if (mask[n] && !visited[n]) { visited[n] = 1; queue[qt++] = n; } }
+          if (cy + 1 < h) { n = cur + w; if (mask[n] && !visited[n]) { visited[n] = 1; queue[qt++] = n; } }
+        }
+        var bw = maxX - minX + 1;
+        var bh = maxY - minY + 1;
+        if (bw < minW || bh < minH || area < minArea) continue;
+        rects.push({
+          x: Math.max(0, minX - pad),
+          y: Math.max(0, minY - pad),
+          w: Math.min(w, maxX + 1 + pad) - Math.max(0, minX - pad),
+          h: Math.min(h, maxY + 1 + pad) - Math.max(0, minY - pad)
+        });
+      }
+    }
+    rects = mergeRects(rects, mergeGap);
+    rects = removeContainedRects(rects);
+    rects.sort(function (a, b) { return a.y !== b.y ? a.y - b.y : a.x - b.x; });
+    return rects;
+  }
+
+  function detectIsolatedShapesOnBlackBg(image, options) {
+    var opts = options || {};
+    var darkBgThreshold = Math.min(255, Math.max(0, parseInt(opts.darkBgThreshold, 10) || 80));
+    var minAreaFraction = typeof opts.minAreaFraction === 'number' ? opts.minAreaFraction : 0.008;
+    var minWFrac = typeof opts.minWFrac === 'number' ? opts.minWFrac : 0.05;
+    var minHFrac = typeof opts.minHFrac === 'number' ? opts.minHFrac : 0.05;
+    var pad = Math.max(0, parseInt(opts.padPx, 10) || 1);
+    var mergeGap = Math.max(0, parseInt(opts.mergeGapPx, 10) || 2);
+    var sepOpts = {
+      darkThreshold: opts.darkThreshold != null ? parseInt(opts.darkThreshold, 10) : 90,
+      minSpanFraction: typeof opts.minSpanFraction === 'number' ? opts.minSpanFraction : 0.45,
+      darknessFraction: typeof opts.darknessFraction === 'number' ? opts.darknessFraction : 0.5,
+      maxThicknessPx: parseInt(opts.maxThicknessPx, 10) || 12,
+      mergeGapPx: parseInt(opts.mergeGapPx, 10) || 2
+    };
+    var w = image.naturalWidth || image.width;
+    var h = image.naturalHeight || image.height;
+    if (!w || !h) return [];
+    var canvas = typeof document !== 'undefined' && document.createElement('canvas');
+    if (!canvas) return [];
+    canvas.width = w;
+    canvas.height = h;
+    var ctx = canvas.getContext('2d');
+    if (!ctx) return [];
+    ctx.drawImage(image, 0, 0);
+    var data = ctx.getImageData(0, 0, w, h).data;
+    var separatorMask = buildSeparatorMask(image, sepOpts);
+    var contentMask = new Uint8Array(w * h);
+    for (var pi = 0; pi < w * h; pi++) {
+      var oy = Math.floor(pi / w);
+      var ox = pi - oy * w;
+      var didx = (oy * w + ox) * 4;
+      var L = pixelLuminanceOverWhite(data, didx);
+      contentMask[pi] = (L > darkBgThreshold && !separatorMask[pi]) ? 1 : 0;
+    }
+    var visited = new Uint8Array(w * h);
+    var minArea = Math.max(20, Math.floor(w * h * minAreaFraction));
+    var minW = Math.max(8, Math.floor(w * minWFrac));
+    var minH = Math.max(8, Math.floor(h * minHFrac));
+    var rects = [];
+    function idx(i, j) { return j * w + i; }
+    var queue = [];
+    for (var yy = 0; yy < h; yy++) {
+      for (var xx = 0; xx < w; xx++) {
+        var start = idx(xx, yy);
+        if (!contentMask[start] || visited[start]) continue;
+        var qh = 0, qt = 0;
+        queue[qt++] = start;
+        visited[start] = 1;
+        var minX = xx, minY = yy, maxX = xx, maxY = yy, area = 0;
+        while (qh < qt) {
+          var cur = queue[qh++];
+          var cy = Math.floor(cur / w);
+          var cx = cur - cy * w;
+          area++;
+          if (cx < minX) minX = cx;
+          if (cy < minY) minY = cy;
+          if (cx > maxX) maxX = cx;
+          if (cy > maxY) maxY = cy;
+          if (cx > 0) { var n = cur - 1; if (contentMask[n] && !visited[n]) { visited[n] = 1; queue[qt++] = n; } }
+          if (cx + 1 < w) { n = cur + 1; if (contentMask[n] && !visited[n]) { visited[n] = 1; queue[qt++] = n; } }
+          if (cy > 0) { n = cur - w; if (contentMask[n] && !visited[n]) { visited[n] = 1; queue[qt++] = n; } }
+          if (cy + 1 < h) { n = cur + w; if (contentMask[n] && !visited[n]) { visited[n] = 1; queue[qt++] = n; } }
+        }
+        var bw = maxX - minX + 1;
+        var bh = maxY - minY + 1;
+        if (bw < minW || bh < minH || area < minArea) continue;
+        rects.push({
+          x: Math.max(0, minX - pad),
+          y: Math.max(0, minY - pad),
+          w: Math.min(w, maxX + 1 + pad) - Math.max(0, minX - pad),
+          h: Math.min(h, maxY + 1 + pad) - Math.max(0, minY - pad)
+        });
+      }
+    }
+    rects = mergeRects(rects, mergeGap);
+    rects = removeContainedRects(rects);
+    rects.sort(function (a, b) { return a.y !== b.y ? a.y - b.y : a.x - b.x; });
+    return rects;
   }
 
   function mergeRects(rects, gapPx) {
@@ -463,6 +842,11 @@
 
   return {
     detectWhiteGaps: detectWhiteGaps,
-    detectPanelRects: detectPanelRects
+    detectPanelRects: detectPanelRects,
+    detectDarkLines: detectDarkLines,
+    detectAdjacentDarkSeparators: detectAdjacentDarkSeparators,
+    buildSeparatorMask: buildSeparatorMask,
+    detectForegroundRectsOnDarkBg: detectForegroundRectsOnDarkBg,
+    detectIsolatedShapesOnBlackBg: detectIsolatedShapesOnBlackBg
   };
 });

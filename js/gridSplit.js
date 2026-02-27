@@ -100,6 +100,9 @@
   function splitGridCustom(image, xBounds, yBounds, options, adapter) {
     var opts = options || {};
     var trim = Math.max(0, parseInt(opts.trimPixels, 10) || 0);
+    var xTrim = opts.xTrim || [];
+    var yTrim = opts.yTrim || [];
+    var usePerBoundTrim = xTrim.length === xBounds.length && yTrim.length === yBounds.length;
     var w = getWidth(image);
     var h = getHeight(image);
     var cols = xBounds ? xBounds.length - 1 : 0;
@@ -142,10 +145,20 @@
     for (var row = 0; row < rows; row++) {
       for (var col = 0; col < cols; col++) {
         (function (r, c) {
-          var sx = Math.round(xBounds[c]) + trim;
-          var sy = Math.round(yBounds[r]) + trim;
-          var cw = Math.round(xBounds[c + 1] - xBounds[c]) - 2 * trim;
-          var ch = Math.round(yBounds[r + 1] - yBounds[r]) - 2 * trim;
+          var trimLeft = trim;
+          var trimRight = trim;
+          var trimTop = trim;
+          var trimBottom = trim;
+          if (usePerBoundTrim) {
+            trimLeft = xTrim[c] || 0;
+            trimRight = xTrim[c + 1] || 0;
+            trimTop = yTrim[r] || 0;
+            trimBottom = yTrim[r + 1] || 0;
+          }
+          var sx = Math.round(xBounds[c]) + trimLeft;
+          var sy = Math.round(yBounds[r]) + trimTop;
+          var cw = Math.round(xBounds[c + 1] - xBounds[c]) - trimLeft - trimRight;
+          var ch = Math.round(yBounds[r + 1] - yBounds[r]) - trimTop - trimBottom;
           if (cw <= 0 || ch <= 0) {
             promises.push(Promise.reject(new Error('Cell ' + r + ',' + c + ' has non-positive size')));
             return;

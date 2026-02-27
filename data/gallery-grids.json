@@ -7,7 +7,14 @@
     "title": "2×2 Classic",
     "description": "4 cells, symmetric. Ideal for before/after, 4 steps.",
     "prompt": "Create a 2×2 grid with thin black borders. Four equal cells.",
-    "size": "2×2"
+    "size": "2×2",
+    "style": "minimalist vector",
+    "background": "pure white",
+    "palette": "flat and vivid",
+    "outlines": "bold black",
+    "labels": "NO",
+    "anthropomorphism": "Off",
+    "theme": "fruits"
   },
   {
     "id": "grid-2x2-b",
@@ -17,7 +24,14 @@
     "title": "2×2 One big + 3 small",
     "description": "Hero image plus 3 details.",
     "prompt": "Create an image with one large top cell and two rows below.",
-    "size": "2×2"
+    "size": "2×2",
+    "style": "minimalist vector",
+    "background": "pure white",
+    "palette": "flat and vivid",
+    "outlines": "bold black",
+    "labels": "NO",
+    "anthropomorphism": "Off",
+    "theme": "fruits"
   },
   {
     "id": "grid-3x3",
@@ -27,7 +41,14 @@
     "title": "3×3 Classic",
     "description": "9 cells. Very popular for Instagram feed.",
     "prompt": "Create a 3×3 grid, 9 equal cells.",
-    "size": "3×3"
+    "size": "3×3",
+    "style": "minimalist vector",
+    "background": "pure white",
+    "palette": "flat and vivid",
+    "outlines": "bold black",
+    "labels": "NO",
+    "anthropomorphism": "Off",
+    "theme": "fruits"
   },
   {
     "id": "grid-3x3-a",
@@ -37,7 +58,14 @@
     "title": "3×3 Text center",
     "description": "TXT in center. Perfect for quote, CTA, branding.",
     "prompt": "Create a 3×3 grid with text in the center cell.",
-    "size": "3×3"
+    "size": "3×3",
+    "style": "minimalist vector",
+    "background": "pure white",
+    "palette": "flat and vivid",
+    "outlines": "bold black",
+    "labels": "NO",
+    "anthropomorphism": "Off",
+    "theme": "fruits"
   },
   {
     "id": "grid-3x3-b",
@@ -47,7 +75,14 @@
     "title": "3×3 Text band",
     "description": "Middle row = text. Message, timeline.",
     "prompt": "Create a 3×3 grid with a horizontal text band in the middle row.",
-    "size": "3×3"
+    "size": "3×3",
+    "style": "minimalist vector",
+    "background": "pure white",
+    "palette": "flat and vivid",
+    "outlines": "bold black",
+    "labels": "NO",
+    "anthropomorphism": "Off",
+    "theme": "fruits"
   },
   {
     "id": "grok-realistic-1",
@@ -65,9 +100,12 @@
     "outlines": "fine",
     "labels": "French",
     "anthropomorphism": "On",
+    "lighting": "natural light",
     "lumiere": "doux",
+    "maxColors": 4,
     "couleursMax": 4,
-    "mood": "calme"
+    "mood": "calme",
+    "theme": "landscapes"
   },
   {
     "id": "gpt-icons-1",
@@ -79,7 +117,12 @@
     "description": "Clean icon grid for UI or app assets.",
     "prompt": "Create an image in a perfectly aligned 4×4 grid, with thin, sharp black borders between each cell and a pure white background. Uniform style for all 16 illustrations: minimalist vector, clean and precise lines, flat and vivid colors, bold black outlines. In each cell, place a single centered element from the category fruits, front view, clearly recognizable shape.",
     "style": "minimalist vector",
-    "palette": "flat and vivid"
+    "palette": "flat and vivid",
+    "background": "pure white",
+    "outlines": "bold black",
+    "labels": "NO",
+    "anthropomorphism": "Off",
+    "theme": "fruits"
   },
   {
     "id": "grok-realistic-2",
@@ -91,7 +134,12 @@
     "description": "Mixed realistic subjects in grid layout.",
     "prompt": "Generate a 4×4 grid of realistic images. Each cell is a high-quality photograph-style image: varied subjects (objects, nature, architecture). Consistent aspect ratio, sharp borders between cells, professional color palette.",
     "style": "realistic",
-    "palette": "natural"
+    "palette": "natural",
+    "background": "pure white",
+    "outlines": "none",
+    "labels": "NO",
+    "anthropomorphism": "Off",
+    "theme": "varied subjects"
   },
   {
     "id": "gpt-schema-1",
@@ -103,7 +151,12 @@
     "description": "Structured visual schema in grid form.",
     "prompt": "Create a 4×4 grid with thin black borders. Each cell contains a simple, diagrammatic illustration: clean lines, no shading, flat colors. Style: schematic, educational. Uniform icon-like elements, white background.",
     "style": "schematic",
-    "palette": "flat and vivid"
+    "palette": "flat and vivid",
+    "background": "pure white",
+    "outlines": "fine",
+    "labels": "NO",
+    "anthropomorphism": "Off",
+    "theme": "diagram elements"
   },
   {
     "id": "gpt-icons-2",
@@ -115,7 +168,12 @@
     "description": "Soft pastel icon grid for gentle UI.",
     "prompt": "Create an image in a 4×4 grid with thin black borders and white background. All 16 cells: soft and pastel colors, minimalist vector style, no gradients. Single centered element per cell from a chosen theme, front view, clean outlines.",
     "style": "minimalist vector",
-    "palette": "soft and pastel"
+    "palette": "soft and pastel",
+    "background": "pure white",
+    "outlines": "none",
+    "labels": "NO",
+    "anthropomorphism": "Off",
+    "theme": "fruits"
   },
   {
     "id": "grid-4x4-a",
@@ -125,7 +183,14 @@
     "title": "4×4 Center 2×2 text",
     "description": "Middle 4 cells = TXT. Cover, hero, product.",
     "prompt": "Create a 4×4 grid with a 2×2 text block in the center.",
-    "size": "4×4"
+    "size": "4×4",
+    "style": "minimalist vector",
+    "background": "pure white",
+    "palette": "flat and vivid",
+    "outlines": "bold black",
+    "labels": "NO",
+    "anthropomorphism": "Off",
+    "theme": "fruits"
   },
   {
     "id": "grid-4x4-b",
@@ -135,7 +200,14 @@
     "title": "4×4 Vertical band text",
     "description": "Middle 2 columns = TXT. Timeline, message.",
     "prompt": "Create a 4×4 grid with a vertical text band in the middle two columns.",
-    "size": "4×4"
+    "size": "4×4",
+    "style": "minimalist vector",
+    "background": "pure white",
+    "palette": "flat and vivid",
+    "outlines": "bold black",
+    "labels": "NO",
+    "anthropomorphism": "Off",
+    "theme": "fruits"
   },
   {
     "id": "grid-4x4-c",
@@ -145,6 +217,13 @@
     "title": "4×4 Frame (B + IMG)",
     "description": "Border = branding, center = image.",
     "prompt": "Create a 4×4 grid with branding border and image in the center 2×2.",
-    "size": "4×4"
+    "size": "4×4",
+    "style": "minimalist vector",
+    "background": "pure white",
+    "palette": "flat and vivid",
+    "outlines": "bold black",
+    "labels": "NO",
+    "anthropomorphism": "Off",
+    "theme": "fruits"
   }
 ]
