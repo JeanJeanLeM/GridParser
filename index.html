@@ -344,6 +344,90 @@
       font-size: 0.75rem;
       color: var(--text-subtle);
     }
+    .tile-modal__bg-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem 1rem;
+      align-items: center;
+      justify-content: center;
+      margin-top: 0.75rem;
+      padding-top: 0.75rem;
+      border-top: 1px solid var(--border-light);
+      font-size: var(--text-xs);
+    }
+    .tile-modal__bg-check {
+      display: flex;
+      align-items: center;
+      gap: 0.35rem;
+      color: var(--text-muted);
+      cursor: pointer;
+    }
+    .tile-modal__bg-check input { cursor: pointer; }
+    .tile-modal__pipette-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      padding: 0.3rem 0.6rem;
+      background: var(--input-bg);
+      border: 1px solid var(--border-input);
+      border-radius: var(--radius-input);
+      font-size: var(--text-xs);
+      cursor: pointer;
+      transition: background 0.15s, border-color 0.15s;
+    }
+    .tile-modal__pipette-btn:hover { background: #e8e8e8; border-color: var(--text-secondary); }
+    .tile-modal__pipette-btn.active { background: #e0e8f0; border-color: var(--text-secondary); }
+    .tile-modal__pipette-icon { width: 1rem; height: 1rem; }
+    .tile-modal__bg-swatch-wrap {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 1.5rem;
+      height: 1.5rem;
+      border: 1px solid var(--border-input);
+      border-radius: 3px;
+      background: #fff;
+    }
+    .tile-modal__bg-swatch {
+      display: block;
+      width: 1rem;
+      height: 1rem;
+      border-radius: 2px;
+      background: var(--input-bg);
+    }
+    .tile-modal__tolerance-label {
+      display: flex;
+      align-items: center;
+      gap: 0.3rem;
+      color: var(--text-muted);
+    }
+    .tile-modal__tolerance-label input[type="number"] {
+      width: 3.5em;
+      padding: 0.2rem 0.3rem;
+      border: 1px solid var(--border-input);
+      border-radius: var(--radius-input);
+      font-size: var(--text-xs);
+      text-align: center;
+    }
+    .tile-modal__bg-reset-btn {
+      padding: 0.25rem 0.5rem;
+      background: transparent;
+      border: 1px solid var(--border-input);
+      border-radius: var(--radius-input);
+      font-size: var(--text-xs);
+      color: var(--text-muted);
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+    .tile-modal__bg-reset-btn:hover { background: var(--input-bg); }
+    .tile-modal__bg-hint {
+      width: 100%;
+      text-align: center;
+      font-size: 0.7rem;
+      color: var(--text-subtle);
+      margin-top: 0.35rem;
+      margin-bottom: 0;
+    }
     .tile-modal__footer {
       display: flex;
       gap: 0.5rem;
@@ -655,16 +739,28 @@
       cursor: crosshair;
       pointer-events: auto;
     }
-    .grid-editor-buttons { margin-top: 0.75rem; }
+    .grid-editor-buttons {
+      margin-top: 0.75rem;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 1rem;
+    }
     .grid-editor-labelisation {
       display: flex;
       flex-wrap: wrap;
       align-items: center;
       gap: 0.75rem 1.25rem;
-      padding: 0.65rem 0.9rem;
+      padding: 0.5rem 0.75rem;
       background: var(--input-bg);
       border: 1px solid var(--border-light);
       border-radius: 10px;
+    }
+    .grid-editor-actions {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 0.5rem;
     }
     .trim-inline {
       display: inline-flex;
@@ -876,6 +972,7 @@
       <select id="grid-format" aria-label="Grid format (rows × columns)" class="visually-hidden">
         <option value="4_4" selected>4×4</option>
       </select>
+      <button type="button" class="btn btn-secondary" id="grid-redetect-btn" title="Re-run grid line detection for current rows × cols">Re-detect grid</button>
       <div class="editor-mode-row">
         <span class="editor-mode-label">Editor:</span>
         <label class="editor-mode-option"><input type="radio" name="editor-mode" value="uniform" checked>Grid</label>
@@ -989,6 +1086,21 @@
           <label>Left <input type="number" id="tile-trim-left" min="0" step="1" value="0"></label>
         </div>
         <p class="tile-modal__trim-hint">Adjust per-side trim to fine-tune this tile's cropping.</p>
+        <div class="tile-modal__bg-row">
+          <label class="tile-modal__bg-check">
+            <input type="checkbox" id="tile-bg-remove-enable" aria-label="Remove background color"> Remove background
+          </label>
+          <button type="button" class="tile-modal__pipette-btn" id="tile-pipette-btn" title="Click tile to sample background color">
+            <svg class="tile-modal__pipette-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20l8-8"/><path d="M10 14l-4 4"/><path d="M20 4l-8 8"/><path d="M14 10l4-4"/></svg>
+            Pipette
+          </button>
+          <span class="tile-modal__bg-swatch-wrap" title="Sampled color">
+            <span class="tile-modal__bg-swatch" id="tile-bg-swatch" aria-hidden="true"></span>
+          </span>
+          <label class="tile-modal__tolerance-label">Tolerance <input type="number" id="tile-bg-tolerance" min="0" max="255" step="1" value="32" aria-label="Color match tolerance"></label>
+          <button type="button" class="tile-modal__bg-reset-btn" id="tile-bg-reset">Reset</button>
+        </div>
+        <p class="tile-modal__bg-hint">Use Pipette, then click on the tile to sample the background color. Enable &quot;Remove background&quot; to make that color transparent.</p>
       </div>
       <div class="tile-modal__footer">
         <button type="button" class="btn" id="tile-modal-download">Download this tile</button>
@@ -2927,7 +3039,7 @@
             for (var ci = 0; ci < freeformCells.length; ci++) {
               if (excludedCellIds && excludedCellIds[ci]) continue;
               var cell = freeformCells[ci];
-              cropInfos.push({ sx: Math.round(cell.x), sy: Math.round(cell.y), sw: Math.round(cell.w), sh: Math.round(cell.h), trimTop: globalTrim, trimRight: globalTrim, trimBottom: globalTrim, trimLeft: globalTrim });
+              cropInfos.push({ sx: Math.round(cell.x), sy: Math.round(cell.y), sw: Math.round(cell.w), sh: Math.round(cell.h), trimTop: globalTrim, trimRight: globalTrim, trimBottom: globalTrim, trimLeft: globalTrim, bgRemoveEnabled: false, bgColor: null, bgTolerance: 32 });
             }
           } else {
             var usePerBound = xTrim.length === xClamped.length && yTrim.length === yClamped.length;
@@ -2940,7 +3052,8 @@
                 cropInfos.push({
                   sx: Math.round(xClamped[ci]), sy: Math.round(yClamped[ri]),
                   sw: Math.round(xClamped[ci + 1] - xClamped[ci]), sh: Math.round(yClamped[ri + 1] - yClamped[ri]),
-                  trimTop: tTop, trimRight: tRight, trimBottom: tBottom, trimLeft: tLeft
+                  trimTop: tTop, trimRight: tRight, trimBottom: tBottom, trimLeft: tLeft,
+                  bgRemoveEnabled: false, bgColor: null, bgTolerance: 32
                 });
               }
             }
@@ -3264,9 +3377,11 @@
         tileBlobs = entry.tileBlobs;
         tileCropInfos = entry.tileCropInfos;
         modalTileIndex = tileIndex;
+        setPipetteMode(false);
         var name = (entry.tileNames && entry.tileNames[tileIndex]) ? entry.tileNames[tileIndex] : (entry.name + '_tile_' + (tileIndex + 1) + '.png');
         tileModalTitle.textContent = name + '  (' + (tileIndex + 1) + '/' + entry.tileCropInfos.length + ')';
         var info = entry.tileCropInfos[tileIndex];
+        ensureBgDefaults(info);
         trimTopInput.value = info.trimTop;
         trimRightInput.value = info.trimRight;
         trimBottomInput.value = info.trimBottom;
@@ -3275,6 +3390,7 @@
         trimRightInput.max = Math.floor(info.sw / 2) - 1;
         trimBottomInput.max = Math.floor(info.sh / 2) - 1;
         trimLeftInput.max = Math.floor(info.sw / 2) - 1;
+        syncBgUiFromInfo(info);
         tileModalPrevBtn.disabled = tileIndex <= 0;
         tileModalNextBtn.disabled = tileIndex >= entry.tileCropInfos.length - 1;
         renderModalTile(tileIndex);
@@ -3673,6 +3789,8 @@
         if (uniformToolbar) uniformToolbar.style.display = isFormMode ? 'none' : '';
         if (freeformToolbar) freeformToolbar.style.display = isFormMode ? '' : 'none';
         if (autoDetectBtn) { autoDetectBtn.style.display = (isFormMode || isGeometrical) ? 'none' : ''; autoDetectBtn.textContent = 'Auto-detect grid'; }
+        var gridRedetectBtn = document.getElementById('grid-redetect-btn');
+        if (gridRedetectBtn) gridRedetectBtn.style.display = (mode === 'uniform') ? '' : 'none';
         if (resetLinesBtn) resetLinesBtn.style.display = (isFormMode || isGeometrical) ? 'none' : '';
         if (resetCornersBtn) resetCornersBtn.style.display = isGeometrical ? '' : 'none';
         if (geoInsetControls) geoInsetControls.style.display = isGeometrical ? 'inline-flex' : 'none';
@@ -3762,6 +3880,17 @@
           return;
         }
         if (!runAutoDetect()) showError('Could not detect grid. Try adjusting lines manually.');
+      });
+      document.getElementById('grid-redetect-btn').addEventListener('click', function () {
+        clearError();
+        if (!currentImage) {
+          showError('Load an image first.');
+          return;
+        }
+        if (runAutoDetect()) {
+          drawOverlay();
+          scheduleAutoCut();
+        } else showError('Could not detect grid. Try adjusting lines manually.');
       });
       document.getElementById('reset-lines').addEventListener('click', function () {
         if (currentImage) {
@@ -4148,12 +4277,63 @@
       var trimRightInput = document.getElementById('tile-trim-right');
       var trimBottomInput = document.getElementById('tile-trim-bottom');
       var trimLeftInput = document.getElementById('tile-trim-left');
+      var tilePipetteBtn = document.getElementById('tile-pipette-btn');
+      var tileBgRemoveEnable = document.getElementById('tile-bg-remove-enable');
+      var tileBgSwatch = document.getElementById('tile-bg-swatch');
+      var tileBgToleranceInput = document.getElementById('tile-bg-tolerance');
+      var tileBgResetBtn = document.getElementById('tile-bg-reset');
       var modalTileIndex = -1;
       var modalBatchIndex = -1;
+      var pipetteMode = false;
+
+      function ensureBgDefaults(info) {
+        if (info.bgRemoveEnabled == null) info.bgRemoveEnabled = false;
+        if (info.bgColor == null) info.bgColor = null;
+        if (info.bgTolerance == null) info.bgTolerance = 32;
+      }
+
+      function syncBgUiFromInfo(info) {
+        ensureBgDefaults(info);
+        if (tileBgRemoveEnable) tileBgRemoveEnable.checked = !!info.bgRemoveEnabled;
+        if (tileBgToleranceInput) tileBgToleranceInput.value = Math.max(0, Math.min(255, info.bgTolerance || 32));
+        if (tileBgSwatch) {
+          var c = info.bgColor;
+          if (c && typeof c.r === 'number' && typeof c.g === 'number' && typeof c.b === 'number') {
+            tileBgSwatch.style.backgroundColor = 'rgb(' + c.r + ',' + c.g + ',' + c.b + ')';
+            tileBgSwatch.style.display = 'block';
+          } else {
+            tileBgSwatch.style.backgroundColor = '';
+            tileBgSwatch.style.display = 'block';
+          }
+        }
+        if (tilePipetteBtn) tilePipetteBtn.classList.toggle('active', pipetteMode);
+      }
+
+      function setPipetteMode(on) {
+        pipetteMode = !!on;
+        if (tilePipetteBtn) tilePipetteBtn.classList.toggle('active', pipetteMode);
+      }
+
+      function applyBgRemoveToImageData(ctx, x, y, w, h, bgColor, tolerance) {
+        var data = ctx.getImageData(x, y, w, h);
+        var d = data.data;
+        var r0 = bgColor.r;
+        var g0 = bgColor.g;
+        var b0 = bgColor.b;
+        var tol = Math.max(0, Math.min(255, tolerance || 0));
+        for (var i = 0; i < d.length; i += 4) {
+          var dr = Math.abs(d[i] - r0);
+          var dg = Math.abs(d[i + 1] - g0);
+          var db = Math.abs(d[i + 2] - b0);
+          if (dr <= tol && dg <= tol && db <= tol) d[i + 3] = 0;
+        }
+        ctx.putImageData(data, x, y);
+      }
 
       function renderModalTile(index) {
         if (!tileSrcImage || index < 0 || index >= tileCropInfos.length) return;
         var info = tileCropInfos[index];
+        ensureBgDefaults(info);
         var sx = info.sx + info.trimLeft;
         var sy = info.sy + info.trimTop;
         var sw = info.sw - info.trimLeft - info.trimRight;
@@ -4164,11 +4344,15 @@
         var ctx = tileModalCanvas.getContext('2d');
         ctx.clearRect(0, 0, sw, sh);
         ctx.drawImage(tileSrcImage, sx, sy, sw, sh, 0, 0, sw, sh);
+        if (info.bgRemoveEnabled && info.bgColor && typeof info.bgColor.r === 'number') {
+          applyBgRemoveToImageData(ctx, 0, 0, sw, sh, info.bgColor, info.bgTolerance);
+        }
       }
 
       function regenerateTileBlob(index) {
         if (!tileSrcImage || index < 0 || index >= tileCropInfos.length) return Promise.resolve();
         var info = tileCropInfos[index];
+        ensureBgDefaults(info);
         var sx = info.sx + info.trimLeft;
         var sy = info.sy + info.trimTop;
         var sw = info.sw - info.trimLeft - info.trimRight;
@@ -4178,6 +4362,9 @@
         c.width = sw; c.height = sh;
         var ctx = c.getContext('2d');
         ctx.drawImage(tileSrcImage, sx, sy, sw, sh, 0, 0, sw, sh);
+        if (info.bgRemoveEnabled && info.bgColor && typeof info.bgColor.r === 'number') {
+          applyBgRemoveToImageData(ctx, 0, 0, sw, sh, info.bgColor, info.bgTolerance);
+        }
         return new Promise(function (resolve) {
           c.toBlob(function (blob) {
             if (blob) {
@@ -4204,10 +4391,12 @@
         if (index < 0 || index >= tileCropInfos.length) return;
         modalBatchIndex = -1;
         modalTileIndex = index;
+        setPipetteMode(false);
         var inputs = previewGrid.querySelectorAll('.tile-name');
         var name = inputs[index] ? inputs[index].value : ('Tile ' + (index + 1));
         tileModalTitle.textContent = name + '  (' + (index + 1) + '/' + tileCropInfos.length + ')';
         var info = tileCropInfos[index];
+        ensureBgDefaults(info);
         trimTopInput.value = info.trimTop;
         trimRightInput.value = info.trimRight;
         trimBottomInput.value = info.trimBottom;
@@ -4216,6 +4405,7 @@
         trimRightInput.max = Math.floor(info.sw / 2) - 1;
         trimBottomInput.max = Math.floor(info.sh / 2) - 1;
         trimLeftInput.max = Math.floor(info.sw / 2) - 1;
+        syncBgUiFromInfo(info);
         tileModalPrevBtn.disabled = index <= 0;
         tileModalNextBtn.disabled = index >= tileCropInfos.length - 1;
         renderModalTile(index);
@@ -4223,6 +4413,7 @@
       }
 
       function closeTileModal() {
+        setPipetteMode(false);
         tileModalOverlay.classList.remove('open');
         modalTileIndex = -1;
         modalBatchIndex = -1;
@@ -4291,6 +4482,61 @@
       trimRightInput.addEventListener('input', handleTrimInput);
       trimBottomInput.addEventListener('input', handleTrimInput);
       trimLeftInput.addEventListener('input', handleTrimInput);
+
+      tileModalCanvas.addEventListener('click', function (e) {
+        if (!pipetteMode || modalTileIndex < 0 || modalTileIndex >= tileCropInfos.length) return;
+        var rect = tileModalCanvas.getBoundingClientRect();
+        var scaleX = tileModalCanvas.width / rect.width;
+        var scaleY = tileModalCanvas.height / rect.height;
+        var px = Math.floor((e.clientX - rect.left) * scaleX);
+        var py = Math.floor((e.clientY - rect.top) * scaleY);
+        if (px < 0 || py < 0 || px >= tileModalCanvas.width || py >= tileModalCanvas.height) return;
+        var ctx = tileModalCanvas.getContext('2d');
+        var data = ctx.getImageData(px, py, 1, 1).data;
+        var info = tileCropInfos[modalTileIndex];
+        info.bgColor = { r: data[0], g: data[1], b: data[2] };
+        syncBgUiFromInfo(info);
+        setPipetteMode(false);
+        renderModalTile(modalTileIndex);
+        regenerateTileBlob(modalTileIndex);
+      });
+
+      if (tilePipetteBtn) {
+        tilePipetteBtn.addEventListener('click', function () {
+          setPipetteMode(!pipetteMode);
+        });
+      }
+      if (tileBgRemoveEnable) {
+        tileBgRemoveEnable.addEventListener('change', function () {
+          if (modalTileIndex < 0 || modalTileIndex >= tileCropInfos.length) return;
+          var info = tileCropInfos[modalTileIndex];
+          info.bgRemoveEnabled = tileBgRemoveEnable.checked;
+          renderModalTile(modalTileIndex);
+          regenerateTileBlob(modalTileIndex);
+        });
+      }
+      if (tileBgToleranceInput) {
+        tileBgToleranceInput.addEventListener('input', function () {
+          if (modalTileIndex < 0 || modalTileIndex >= tileCropInfos.length) return;
+          var info = tileCropInfos[modalTileIndex];
+          info.bgTolerance = Math.max(0, Math.min(255, parseInt(tileBgToleranceInput.value, 10) || 32));
+          renderModalTile(modalTileIndex);
+          regenerateTileBlob(modalTileIndex);
+        });
+      }
+      if (tileBgResetBtn) {
+        tileBgResetBtn.addEventListener('click', function () {
+          if (modalTileIndex < 0 || modalTileIndex >= tileCropInfos.length) return;
+          var info = tileCropInfos[modalTileIndex];
+          info.bgRemoveEnabled = false;
+          info.bgColor = null;
+          info.bgTolerance = 32;
+          syncBgUiFromInfo(info);
+          if (tileBgToleranceInput) tileBgToleranceInput.value = 32;
+          renderModalTile(modalTileIndex);
+          regenerateTileBlob(modalTileIndex);
+        });
+      }
 
       function downloadSingleTile(index) {
         if (index < 0 || index >= tileBlobs.length) return;
