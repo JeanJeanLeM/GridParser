@@ -1,4 +1,4 @@
-# Grid2icon
+# Grid2icons
 
 Split a single image that contains a grid (e.g. 4×4 from ChatGPT) into separate tile images. All processing runs in your browser: upload, adjust cutting lines, then download tiles as a ZIP.
 

@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Grid2icon</title>
+  <title>Grid2icons</title>
   <link rel="stylesheet" href="css/shared.css">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
   <script src="lib/tesseract.min.js"></script>
@@ -73,6 +73,12 @@
       background: var(--input-bg);
       transition: background 0.15s, border-color 0.15s;
       position: relative;
+      width: 100%;
+      max-width: 320px;
+      margin-left: auto;
+      margin-right: auto;
+      aspect-ratio: 1;
+      box-sizing: border-box;
     }
     .drop-zone:hover, .drop-zone.dragover {
       background: #eee;
@@ -335,14 +341,33 @@
       padding: 1rem 1.25rem;
       gap: 1rem;
     }
-    .tile-modal__canvas-wrap {
+    .tile-modal__main-row {
+      display: flex;
+      flex-direction: row;
+      align-items: flex-start;
+      gap: 1rem;
+      flex-wrap: wrap;
+    }
+    .tile-modal__crop-col {
       flex: 0 0 auto;
+      padding: 0;
+    }
+    .tile-modal__crop-col .tile-modal__section-title {
+      margin-bottom: 0.5rem;
+    }
+    .tile-modal__trim-row--vertical {
+      flex-direction: column;
+      gap: 0.4rem;
+      align-items: flex-start;
+    }
+    .tile-modal__canvas-wrap {
+      flex: 1 1 200px;
+      min-width: 0;
       display: flex;
       align-items: center;
       justify-content: center;
       min-height: 160px;
       max-height: 50vh;
-      width: 100%;
       position: relative;
     }
     .tile-modal__canvas-wrap canvas {
@@ -351,19 +376,17 @@
       border-radius: 6px;
       background: repeating-conic-gradient(#e0e0e0 0% 25%, #fff 0% 50%) 50% / 16px 16px;
     }
-    .tile-modal__sections {
+    .tile-modal__tools {
       display: flex;
       flex-direction: column;
-      gap: 0.85rem;
+      gap: 0.6rem;
       width: 100%;
-      max-width: 640px;
-      margin: 0 auto;
+      padding: 0;
     }
-    .tile-modal__section {
-      background: var(--input-bg);
-      border: 1px solid var(--border-light);
-      border-radius: 8px;
-      padding: 0.6rem 0.9rem;
+    .tile-modal__tools .tile-modal__section-title {
+      display: inline;
+      margin-right: 0.5rem;
+      margin-bottom: 0;
     }
     .tile-modal__section-title {
       display: block;
@@ -440,11 +463,6 @@
       border-radius: var(--radius-input);
       font-size: var(--text-xs);
       text-align: center;
-    }
-    .tile-modal__trim-hint {
-      margin: 0.35rem 0 0;
-      font-size: 0.7rem;
-      color: var(--text-subtle);
     }
     .tile-modal__bg-scope-row {
       display: flex;
@@ -528,12 +546,6 @@
       transition: background 0.15s;
     }
     .tile-modal__bg-reset-btn:hover { background: var(--input-bg); }
-    .tile-modal__bg-hint {
-      margin: 0.4rem 0 0;
-      font-size: 0.65rem;
-      color: var(--text-subtle);
-      line-height: 1.35;
-    }
     .tile-modal__footer {
       display: flex;
       gap: 0.5rem;
@@ -1020,15 +1032,14 @@
 <body>
   <header class="app-header">
     <div class="app-header__inner">
-      <a href="index.html" class="app-header__logo">Grid<span class="app-header__logo-num">2</span>Icons</a>
-      <a href="index.html" class="app-header__nav">Grid2icon</a>
+      <a href="index.html" class="app-header__logo">Grid<span class="app-header__logo-num">2</span>icons</a>
     </div>
   </header>
 
   <main class="main-content">
     <div class="hero">
       <p class="hero__label" aria-hidden="true">IMAGE UTILITY</p>
-      <h1>Grid2icon</h1>
+      <h1>Grid2icons</h1>
       <p class="intro">Upload one or more grid images. This grid parser splits them into clean tiles — no borders — then download as a single ZIP.</p>
     </div>
 
@@ -1189,55 +1200,50 @@
         <button type="button" class="tile-modal__close" id="tile-modal-close" title="Close">&times;</button>
       </div>
       <div class="tile-modal__body">
-        <div class="tile-modal__canvas-wrap">
-          <canvas id="tile-modal-canvas"></canvas>
-          <div class="tile-modal__pipette-loupe" id="tile-pipette-loupe" aria-hidden="true">
-            <canvas class="tile-modal__pipette-loupe-zoom" id="tile-pipette-loupe-zoom" width="102" height="102"></canvas>
-            <div class="tile-modal__pipette-loupe-color">
-              <span class="tile-modal__pipette-loupe-swatch" id="tile-pipette-loupe-swatch"></span>
-              <span class="tile-modal__pipette-loupe-rgb" id="tile-pipette-loupe-rgb">—</span>
-            </div>
-          </div>
-        </div>
-        <div class="tile-modal__sections">
-          <div class="tile-modal__section">
+        <div class="tile-modal__main-row">
+          <div class="tile-modal__crop-col">
             <span class="tile-modal__section-title">Crop</span>
-            <div class="tile-modal__trim-row">
+            <div class="tile-modal__trim-row tile-modal__trim-row--vertical">
               <label>Top <input type="number" id="tile-trim-top" min="0" step="1" value="0"></label>
               <label>Right <input type="number" id="tile-trim-right" min="0" step="1" value="0"></label>
               <label>Bottom <input type="number" id="tile-trim-bottom" min="0" step="1" value="0"></label>
               <label>Left <input type="number" id="tile-trim-left" min="0" step="1" value="0"></label>
             </div>
-            <p class="tile-modal__trim-hint">Per-side trim to fine-tune cropping.</p>
           </div>
-          <div class="tile-modal__section">
+          <div class="tile-modal__canvas-wrap">
+            <canvas id="tile-modal-canvas"></canvas>
+            <div class="tile-modal__pipette-loupe" id="tile-pipette-loupe" aria-hidden="true">
+              <canvas class="tile-modal__pipette-loupe-zoom" id="tile-pipette-loupe-zoom" width="102" height="102"></canvas>
+              <div class="tile-modal__pipette-loupe-color">
+                <span class="tile-modal__pipette-loupe-swatch" id="tile-pipette-loupe-swatch"></span>
+                <span class="tile-modal__pipette-loupe-rgb" id="tile-pipette-loupe-rgb">—</span>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="tile-modal__tools">
+          <div class="tile-modal__bg-scope-row" id="tile-bg-scope-row">
             <span class="tile-modal__section-title">Apply to</span>
-            <div class="tile-modal__bg-scope-row" id="tile-bg-scope-row">
-              <label class="tile-modal__bg-scope-opt"><input type="radio" name="tile-bg-scope" value="tile" checked> This tile</label>
-              <label class="tile-modal__bg-scope-opt"><input type="radio" name="tile-bg-scope" value="image"> All in image</label>
-              <label class="tile-modal__bg-scope-opt tile-modal__bg-scope-opt--batch" id="tile-bg-scope-batch-wrap" style="display: none;"><input type="radio" name="tile-bg-scope" value="batch"> All (batch)</label>
-            </div>
+            <label class="tile-modal__bg-scope-opt"><input type="radio" name="tile-bg-scope" value="tile" checked> This tile</label>
+            <label class="tile-modal__bg-scope-opt"><input type="radio" name="tile-bg-scope" value="image"> All in image</label>
+            <label class="tile-modal__bg-scope-opt tile-modal__bg-scope-opt--batch" id="tile-bg-scope-batch-wrap" style="display: none;"><input type="radio" name="tile-bg-scope" value="batch"> All (batch)</label>
           </div>
-          <div class="tile-modal__section">
-            <span class="tile-modal__section-title">Background &amp; edges</span>
-            <div class="tile-modal__bg-row">
-              <label class="tile-modal__bg-check">
-                <input type="checkbox" id="tile-bg-remove-enable" aria-label="Remove background color"> Remove bg
-              </label>
-              <button type="button" class="tile-modal__pipette-btn" id="tile-pipette-btn" title="Click tile to sample background color">
-                <svg class="tile-modal__pipette-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20l8-8"/><path d="M10 14l-4 4"/><path d="M20 4l-8 8"/><path d="M14 10l4-4"/></svg>
-                Pipette
-              </button>
-              <span class="tile-modal__bg-swatch-wrap" title="Sampled color">
-                <span class="tile-modal__bg-swatch" id="tile-bg-swatch" aria-hidden="true"></span>
-              </span>
-              <label class="tile-modal__tolerance-label">Outline <input type="number" id="tile-bg-edge-px" min="0" max="8" step="1" value="1" aria-label="Outline trim in pixels"></label>
-              <label class="tile-modal__bg-check">
-                <input type="checkbox" id="tile-bg-smooth-edges" aria-label="Smooth edges" checked> Smooth
-              </label>
-              <button type="button" class="tile-modal__bg-reset-btn" id="tile-bg-reset">Reset</button>
-            </div>
-            <p class="tile-modal__bg-hint">Pipette → Remove bg → increase Outline to clean edges. Smooth uses border colors for a natural outline.</p>
+          <div class="tile-modal__bg-row">
+            <label class="tile-modal__bg-check">
+              <input type="checkbox" id="tile-bg-remove-enable" aria-label="Remove background color"> Remove bg
+            </label>
+            <button type="button" class="tile-modal__pipette-btn" id="tile-pipette-btn" title="Click tile to sample background color">
+              <svg class="tile-modal__pipette-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20l8-8"/><path d="M10 14l-4 4"/><path d="M20 4l-8 8"/><path d="M14 10l4-4"/></svg>
+              Pipette
+            </button>
+            <span class="tile-modal__bg-swatch-wrap" title="Sampled color">
+              <span class="tile-modal__bg-swatch" id="tile-bg-swatch" aria-hidden="true"></span>
+            </span>
+            <label class="tile-modal__tolerance-label">Outline <input type="number" id="tile-bg-edge-px" min="0" max="8" step="1" value="1" aria-label="Outline trim in pixels"></label>
+            <label class="tile-modal__bg-check">
+              <input type="checkbox" id="tile-bg-smooth-edges" aria-label="Smooth edges" checked> Smooth
+            </label>
+            <button type="button" class="tile-modal__bg-reset-btn" id="tile-bg-reset">Reset</button>
           </div>
         </div>
       </div>
