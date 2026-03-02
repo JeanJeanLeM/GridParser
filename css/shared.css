@@ -43,11 +43,10 @@
   --content-max: min(720px, 92vw);
 }
 
-/* App header: full-width dark bar */
+/* App header: logo + name only, no banner */
 .app-header {
-  background: var(--header-bg);
-  padding: 0.85rem 1.5rem;
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.15);
+  background: transparent;
+  padding: 0.85rem 1.5rem 0.5rem;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -70,7 +69,7 @@
   align-items: center;
   gap: 0.75rem;
   text-decoration: none;
-  color: #fff;
+  color: var(--text-primary);
   transition: color 0.2s ease, transform 0.2s ease;
 }
 
@@ -81,8 +80,10 @@
   object-fit: contain;
   image-rendering: -webkit-optimize-contrast;
   image-rendering: crisp-edges;
-  filter: drop-shadow(0 2px 8px rgba(0, 0, 0, 0.35)) drop-shadow(0 0 20px rgba(91, 124, 186, 0.25));
+  filter: drop-shadow(0 1px 3px rgba(0, 0, 0, 0.12));
   transition: filter 0.2s ease, transform 0.2s ease;
+  background: none;
+  border: none;
 }
 
 .app-header__logo-text {
@@ -91,15 +92,14 @@
   font-size: 1.25rem;
   letter-spacing: 0.04em;
   color: inherit;
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
 }
 
 .app-header__logo:hover {
-  color: #fff;
+  color: var(--accent);
 }
 
 .app-header__logo:hover .app-header__logo-img {
-  filter: drop-shadow(0 2px 12px rgba(0, 0, 0, 0.4)) drop-shadow(0 0 28px rgba(91, 124, 186, 0.4));
+  filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.18));
   transform: scale(1.03);
 }
 
