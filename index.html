@@ -1183,9 +1183,12 @@
             <span class="tile-modal__bg-swatch" id="tile-bg-swatch" aria-hidden="true"></span>
           </span>
           <label class="tile-modal__tolerance-label">Outline trim <input type="number" id="tile-bg-edge-px" min="0" max="8" step="1" value="1" aria-label="Outline trim in pixels"></label>
+          <label class="tile-modal__bg-check">
+            <input type="checkbox" id="tile-bg-smooth-edges" aria-label="Smooth edges" checked> Smooth edges
+          </label>
           <button type="button" class="tile-modal__bg-reset-btn" id="tile-bg-reset">Reset</button>
         </div>
-        <p class="tile-modal__bg-hint">Use Pipette to sample background, enable Remove background, then increase Outline trim to clean edge leftovers while keeping smoother round outlines.</p>
+        <p class="tile-modal__bg-hint">Use Pipette to sample background, enable Remove background, then increase Outline trim to clean edge leftovers. Toggle Smooth edges on/off for round vs hard pixel edges.</p>
       </div>
       <div class="tile-modal__footer">
         <button type="button" class="btn" id="tile-modal-download">Download this tile</button>
@@ -3193,7 +3196,7 @@
               cropInfos.push({
                 sx: Math.round(cell.x), sy: Math.round(cell.y), sw: Math.round(cell.w), sh: Math.round(cell.h),
                 trimTop: globalTrim, trimRight: globalTrim, trimBottom: globalTrim, trimLeft: globalTrim,
-                bgRemoveEnabled: false, bgColor: cloneRgbColor(dominantBgColor), bgTolerance: 32, bgEdgeTrimPx: 1
+                bgRemoveEnabled: false, bgColor: cloneRgbColor(dominantBgColor), bgTolerance: 32, bgEdgeTrimPx: 1, bgSmoothEdges: true
               });
             }
           } else {
@@ -3208,7 +3211,7 @@
                   sx: Math.round(xClamped[ci]), sy: Math.round(yClamped[ri]),
                   sw: Math.round(xClamped[ci + 1] - xClamped[ci]), sh: Math.round(yClamped[ri + 1] - yClamped[ri]),
                   trimTop: tTop, trimRight: tRight, trimBottom: tBottom, trimLeft: tLeft,
-                  bgRemoveEnabled: false, bgColor: cloneRgbColor(dominantBgColor), bgTolerance: 32, bgEdgeTrimPx: 1
+                  bgRemoveEnabled: false, bgColor: cloneRgbColor(dominantBgColor), bgTolerance: 32, bgEdgeTrimPx: 1, bgSmoothEdges: true
                 });
               }
             }
@@ -3267,6 +3270,7 @@
                 entry.bgRemoveEnabled = false;
                 entry.bgTolerance = 32;
                 entry.bgEdgeTrimPx = 1;
+                entry.bgSmoothEdges = true;
                 entry.bgColor = cloneRgbColor(r.dominantBgColor);
                 entry.bgUserEdited = false;
                 entry.processed = true;
@@ -3304,6 +3308,7 @@
           imageBgSettings.bgRemoveEnabled = false;
           imageBgSettings.bgTolerance = 32;
           imageBgSettings.bgEdgeTrimPx = 1;
+          imageBgSettings.bgSmoothEdges = true;
           imageBgSettings.bgColor = cloneRgbColor(r.dominantBgColor);
           imageBgSettings.bgUserEdited = false;
           var mode = r.mode;
@@ -4439,13 +4444,14 @@
       var tileBgRemoveEnable = document.getElementById('tile-bg-remove-enable');
       var tileBgSwatch = document.getElementById('tile-bg-swatch');
       var tileBgEdgePxInput = document.getElementById('tile-bg-edge-px');
+      var tileBgSmoothEdgesInput = document.getElementById('tile-bg-smooth-edges');
       var tileBgResetBtn = document.getElementById('tile-bg-reset');
       var modalTileIndex = -1;
       var modalBatchIndex = -1;
       var pipetteMode = false;
       var bgRemoveScope = 'tile';
-      var imageBgSettings = { bgRemoveEnabled: false, bgColor: null, bgTolerance: 32, bgEdgeTrimPx: 1, bgUserEdited: false };
-      var batchBgSettings = { bgRemoveEnabled: false, bgColor: null, bgTolerance: 32, bgEdgeTrimPx: 1, bgUserEdited: false };
+      var imageBgSettings = { bgRemoveEnabled: false, bgColor: null, bgTolerance: 32, bgEdgeTrimPx: 1, bgSmoothEdges: true, bgUserEdited: false };
+      var batchBgSettings = { bgRemoveEnabled: false, bgColor: null, bgTolerance: 32, bgEdgeTrimPx: 1, bgSmoothEdges: true, bgUserEdited: false };
       var tileBgScopeRadios = document.querySelectorAll('input[name="tile-bg-scope"]');
       var tileBgScopeBatchWrap = document.getElementById('tile-bg-scope-batch-wrap');
       var tilePipetteLoupe = document.getElementById('tile-pipette-loupe');
@@ -4461,6 +4467,7 @@
         if (info.bgColor == null) info.bgColor = null;
         if (info.bgTolerance == null) info.bgTolerance = 32;
         if (info.bgEdgeTrimPx == null) info.bgEdgeTrimPx = 1;
+        if (info.bgSmoothEdges == null) info.bgSmoothEdges = true;
         if (info.bgUserEdited == null) info.bgUserEdited = false;
       }
 
@@ -4470,6 +4477,7 @@
         if (entry.bgColor == null) entry.bgColor = null;
         if (entry.bgTolerance == null) entry.bgTolerance = 32;
         if (entry.bgEdgeTrimPx == null) entry.bgEdgeTrimPx = 1;
+        if (entry.bgSmoothEdges == null) entry.bgSmoothEdges = true;
         if (entry.bgUserEdited == null) entry.bgUserEdited = false;
       }
 
@@ -4539,6 +4547,7 @@
         var edgePx = parseInt(settings.bgEdgeTrimPx, 10);
         if (isNaN(edgePx)) edgePx = 1;
         if (tileBgEdgePxInput) tileBgEdgePxInput.value = Math.max(0, Math.min(8, edgePx));
+        if (tileBgSmoothEdgesInput) tileBgSmoothEdgesInput.checked = settings.bgSmoothEdges !== false;
         if (tileBgSwatch) {
           var c = settings.bgColor;
           if (c && typeof c.r === 'number' && typeof c.g === 'number' && typeof c.b === 'number') {
@@ -4640,9 +4649,10 @@
         ctx.putImageData(data, x, y);
       }
 
-      function applyAlphaEdgeTrimToImageData(ctx, x, y, w, h, edgePx) {
+      function applyAlphaEdgeTrimToImageData(ctx, x, y, w, h, edgePx, smoothEdges) {
         var px = Math.max(0, Math.min(8, parseInt(edgePx, 10) || 0));
         if (px <= 0) return;
+        var useSmooth = smoothEdges !== false;
         var imageData = ctx.getImageData(x, y, w, h);
         var d = imageData.data;
         var src = new Uint8ClampedArray(d);
@@ -4705,6 +4715,10 @@
         for (var k = 0; k < size; k++) {
           if (mask[k]) continue;
           var out = k * 4;
+          if (!useSmooth) {
+            d[out + 3] = 0;
+            continue;
+          }
           if (!removedAt[k]) {
             d[out + 3] = 0;
             continue;
@@ -4745,7 +4759,7 @@
         var eff = getEffectiveBgSettings(index, modalBatchIndex);
         if (eff && eff.bgRemoveEnabled && eff.bgColor && typeof eff.bgColor.r === 'number') {
           applyBgRemoveToImageData(ctx, 0, 0, sw, sh, eff.bgColor, eff.bgTolerance);
-          applyAlphaEdgeTrimToImageData(ctx, 0, 0, sw, sh, eff.bgEdgeTrimPx);
+          applyAlphaEdgeTrimToImageData(ctx, 0, 0, sw, sh, eff.bgEdgeTrimPx, eff.bgSmoothEdges);
         }
       }
 
@@ -4765,7 +4779,7 @@
         ctx.drawImage(tileSrcImage, sx, sy, sw, sh, 0, 0, sw, sh);
         if (eff && eff.bgRemoveEnabled && eff.bgColor && typeof eff.bgColor.r === 'number') {
           applyBgRemoveToImageData(ctx, 0, 0, sw, sh, eff.bgColor, eff.bgTolerance);
-          applyAlphaEdgeTrimToImageData(ctx, 0, 0, sw, sh, eff.bgEdgeTrimPx);
+          applyAlphaEdgeTrimToImageData(ctx, 0, 0, sw, sh, eff.bgEdgeTrimPx, eff.bgSmoothEdges);
         }
         return new Promise(function (resolve) {
           c.toBlob(function (blob) {
@@ -4825,7 +4839,7 @@
                     ctx.drawImage(tileSrcImage, sx, sy, sw, sh, 0, 0, sw, sh);
                     if (eff && eff.bgRemoveEnabled && eff.bgColor && typeof eff.bgColor.r === 'number') {
                       applyBgRemoveToImageData(ctx, 0, 0, sw, sh, eff.bgColor, eff.bgTolerance);
-                      applyAlphaEdgeTrimToImageData(ctx, 0, 0, sw, sh, eff.bgEdgeTrimPx);
+                      applyAlphaEdgeTrimToImageData(ctx, 0, 0, sw, sh, eff.bgEdgeTrimPx, eff.bgSmoothEdges);
                     }
                     return new Promise(function (resolve) {
                       c.toBlob(function (blob) {
@@ -5044,6 +5058,17 @@
           applyBgChangeAndRegenerate();
         });
       }
+      if (tileBgSmoothEdgesInput) {
+        tileBgSmoothEdgesInput.addEventListener('change', function () {
+          if (modalTileIndex < 0 || modalTileIndex >= tileCropInfos.length) return;
+          var target = getTargetBgSettings();
+          if (target) {
+            target.bgSmoothEdges = !!tileBgSmoothEdgesInput.checked;
+            target.bgUserEdited = true;
+          }
+          applyBgChangeAndRegenerate();
+        });
+      }
       if (tileBgResetBtn) {
         tileBgResetBtn.addEventListener('click', function () {
           if (modalTileIndex < 0 || modalTileIndex >= tileCropInfos.length) return;
@@ -5053,9 +5078,11 @@
             target.bgColor = null;
             target.bgTolerance = 32;
             target.bgEdgeTrimPx = 1;
+            target.bgSmoothEdges = true;
             target.bgUserEdited = true;
           }
           if (tileBgEdgePxInput) tileBgEdgePxInput.value = 1;
+          if (tileBgSmoothEdgesInput) tileBgSmoothEdgesInput.checked = true;
           syncBgUiFromSettings(target);
           applyBgChangeAndRegenerate();
         });
@@ -5135,8 +5162,9 @@
           if (color && typeof color.r === 'number') {
             var tol = Math.max(0, Math.min(255, parseInt(settings.bgTolerance, 10) || 32));
             var edge = Math.max(0, Math.min(8, parseInt(settings.bgEdgeTrimPx, 10) || 1));
+            var smooth = settings.bgSmoothEdges !== false;
             applyBgRemoveToImageData(ctx, 0, 0, sw, sh, color, tol);
-            applyAlphaEdgeTrimToImageData(ctx, 0, 0, sw, sh, edge);
+            applyAlphaEdgeTrimToImageData(ctx, 0, 0, sw, sh, edge, smooth);
           }
         }
         return new Promise(function (resolve) {
