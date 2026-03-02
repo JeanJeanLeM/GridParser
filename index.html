@@ -2998,6 +2998,63 @@
         if (typeof updateFreeformCellsVisual === 'function') updateFreeformCellsVisual();
       }
 
+      function cloneRgbColor(color) {
+        if (!color || typeof color.r !== 'number' || typeof color.g !== 'number' || typeof color.b !== 'number') return null;
+        return { r: color.r, g: color.g, b: color.b };
+      }
+
+      function detectMostPresentColor(image) {
+        if (!image) return null;
+        var w = image.naturalWidth || image.width;
+        var h = image.naturalHeight || image.height;
+        if (!w || !h) return null;
+        var maxSide = 256;
+        var scale = Math.min(1, maxSide / Math.max(w, h));
+        var sw = Math.max(1, Math.round(w * scale));
+        var sh = Math.max(1, Math.round(h * scale));
+        var canvas = typeof document !== 'undefined' && document.createElement('canvas');
+        if (!canvas) return null;
+        canvas.width = sw;
+        canvas.height = sh;
+        var ctx = canvas.getContext('2d');
+        if (!ctx) return null;
+        ctx.drawImage(image, 0, 0, sw, sh);
+        var data = ctx.getImageData(0, 0, sw, sh).data;
+        var binCount = 16 * 16 * 16;
+        var counts = new Uint32Array(binCount);
+        var sumR = new Uint32Array(binCount);
+        var sumG = new Uint32Array(binCount);
+        var sumB = new Uint32Array(binCount);
+        for (var i = 0; i < data.length; i += 4) {
+          var a = data[i + 3] / 255;
+          var r = Math.round(data[i] * a + 255 * (1 - a));
+          var g = Math.round(data[i + 1] * a + 255 * (1 - a));
+          var b = Math.round(data[i + 2] * a + 255 * (1 - a));
+          var rq = r >> 4;
+          var gq = g >> 4;
+          var bq = b >> 4;
+          var key = (rq << 8) | (gq << 4) | bq;
+          counts[key]++;
+          sumR[key] += r;
+          sumG[key] += g;
+          sumB[key] += b;
+        }
+        var bestKey = -1;
+        var bestCount = 0;
+        for (var k = 0; k < counts.length; k++) {
+          if (counts[k] > bestCount) {
+            bestCount = counts[k];
+            bestKey = k;
+          }
+        }
+        if (bestKey < 0 || bestCount <= 0) return null;
+        return {
+          r: Math.round(sumR[bestKey] / bestCount),
+          g: Math.round(sumG[bestKey] / bestCount),
+          b: Math.round(sumB[bestKey] / bestCount)
+        };
+      }
+
       function renderBatchStrip() {
         var strip = document.getElementById('batch-strip');
         if (!strip) return;
@@ -3084,6 +3141,7 @@
         var mode = getEditorMode();
         var fmt = getGridFormat();
         var expectedCount = fmt.rows * fmt.cols;
+        var dominantBgColor = detectMostPresentColor(currentImage);
         var splitPromise;
         if (isFormsMode(mode)) {
           if (typeof segmentSplit === 'undefined' || !segmentSplit.splitByCells) return Promise.reject(new Error('Freeform splitter not loaded.'));
@@ -3113,7 +3171,11 @@
             for (var ci = 0; ci < freeformCells.length; ci++) {
               if (excludedCellIds && excludedCellIds[ci]) continue;
               var cell = freeformCells[ci];
-              cropInfos.push({ sx: Math.round(cell.x), sy: Math.round(cell.y), sw: Math.round(cell.w), sh: Math.round(cell.h), trimTop: globalTrim, trimRight: globalTrim, trimBottom: globalTrim, trimLeft: globalTrim, bgRemoveEnabled: false, bgColor: null, bgTolerance: 32 });
+              cropInfos.push({
+                sx: Math.round(cell.x), sy: Math.round(cell.y), sw: Math.round(cell.w), sh: Math.round(cell.h),
+                trimTop: globalTrim, trimRight: globalTrim, trimBottom: globalTrim, trimLeft: globalTrim,
+                bgRemoveEnabled: false, bgColor: cloneRgbColor(dominantBgColor), bgTolerance: 32
+              });
             }
           } else {
             var usePerBound = xTrim.length === xClamped.length && yTrim.length === yClamped.length;
@@ -3127,12 +3189,12 @@
                   sx: Math.round(xClamped[ci]), sy: Math.round(yClamped[ri]),
                   sw: Math.round(xClamped[ci + 1] - xClamped[ci]), sh: Math.round(yClamped[ri + 1] - yClamped[ri]),
                   trimTop: tTop, trimRight: tRight, trimBottom: tBottom, trimLeft: tLeft,
-                  bgRemoveEnabled: false, bgColor: null, bgTolerance: 32
+                  bgRemoveEnabled: false, bgColor: cloneRgbColor(dominantBgColor), bgTolerance: 32
                 });
               }
             }
           }
-          return { blobs: blobs, cropInfos: cropInfos, mode: mode, fmt: fmt };
+          return { blobs: blobs, cropInfos: cropInfos, mode: mode, fmt: fmt, dominantBgColor: cloneRgbColor(dominantBgColor) };
         });
       }
 
@@ -3183,6 +3245,9 @@
                 var entry = batchImages[idx];
                 entry.tileBlobs = r.blobs;
                 entry.tileCropInfos = r.cropInfos;
+                entry.bgRemoveEnabled = false;
+                entry.bgTolerance = 32;
+                entry.bgColor = cloneRgbColor(r.dominantBgColor);
                 entry.processed = true;
                 entry.tileNames = [];
                 var prefix = entry.name + '_';
@@ -3215,6 +3280,9 @@
           tileBlobs = r.blobs;
           tileCropInfos = r.cropInfos;
           tileSrcImage = currentImage;
+          imageBgSettings.bgRemoveEnabled = false;
+          imageBgSettings.bgTolerance = 32;
+          imageBgSettings.bgColor = cloneRgbColor(r.dominantBgColor);
           var mode = r.mode;
           var fmt = r.fmt;
           var blobs = r.blobs;
