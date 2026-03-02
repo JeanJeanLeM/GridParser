@@ -351,8 +351,10 @@
       display: flex;
       flex-direction: row;
       align-items: flex-start;
+      justify-content: flex-start;
       gap: 1rem;
       flex-wrap: wrap;
+      width: 100%;
     }
     .tile-modal__crop-col {
       flex: 0 0 auto;
@@ -362,6 +364,7 @@
     }
     .tile-modal__crop-col .tile-modal__section-title {
       margin-bottom: 0.5rem;
+      text-align: left;
     }
     .tile-modal__trim-row--vertical {
       flex-direction: column;
@@ -4694,7 +4697,8 @@
         var g = srcData.data[i + 1];
         var b = srcData.data[i + 2];
         var a = srcData.data[i + 3];
-        loupeCtx.strokeStyle = 'rgba(255, 255, 255, 0.9)';
+        var luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+        loupeCtx.strokeStyle = luminance > 0.55 ? 'rgba(45, 50, 80, 0.95)' : 'rgba(255, 248, 200, 0.95)';
         loupeCtx.lineWidth = 1;
         loupeCtx.setLineDash([2, 2]);
         var cx = (centerPx + 0.5) * scale;
