@@ -378,7 +378,6 @@
     .grid-editor .grid-editor-intro,
     .grid-editor-legend,
     .grid-editor-toolbar__row--controls,
-    .grid-editor-actions,
     #add-form-btn, #increase-form-btn, #decrease-form-btn,
     #delete-form-btn, #exclude-cell-btn,
     .loupe-container { display: none !important; }
@@ -1055,8 +1054,22 @@
       var autoNameRunId = 0;
       var cutInProgress = false;
       var pendingAutoCut = false;
+      var debugUiLogCount = 0;
+      var debugClickLogCount = 0;
+      var debugLogRetryAt = 0;
+      var debugLogBackoffMs = 3000;
       function hasOcrSupport() {
         return typeof Tesseract !== 'undefined' && !!Tesseract.recognize && !!Tesseract.createWorker;
+      }
+      function sendAgentDebugLog(hypothesisId, location, message, data, runId) {
+        if (Date.now() < debugLogRetryAt) return;
+        fetch('http://127.0.0.1:7259/ingest/4e86ec95-c090-4163-bab8-8321b4a7442a',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'ef7076'},body:JSON.stringify({sessionId:'ef7076',runId:runId || 'run1',hypothesisId:hypothesisId,location:location,message:message,data:data || {},timestamp:Date.now()})}).then(function () {
+          debugLogRetryAt = 0;
+          debugLogBackoffMs = 3000;
+        }).catch(function () {
+          debugLogRetryAt = Date.now() + debugLogBackoffMs;
+          debugLogBackoffMs = Math.min(60000, debugLogBackoffMs * 2);
+        });
       }
       function logAutoName(message, data) {
         if (typeof console === 'undefined' || !console.log) return;
@@ -2549,6 +2562,12 @@
         function onOneLoaded() {
           pending--;
           if (pending > 0) return;
+          // #region agent log
+          sendAgentDebugLog('H2', 'index.html:handleFiles:onOneLoaded', 'All files reached load completion gate', {
+            pending: pending,
+            batchCount: batchImages.length
+          }, 'run1');
+          // #endregion
           finishBatchLoad();
         }
         for (var j = 0; j < files.length; j++) {
@@ -2693,7 +2712,14 @@
       }
 
       function finishBatchLoad() {
-        if (!batchImages.length) return;
+        if (!batchImages.length) {
+          // #region agent log
+          sendAgentDebugLog('H2', 'index.html:finishBatchLoad', 'finishBatchLoad aborted due empty batch', {
+            batchCount: batchImages.length
+          }, 'run1');
+          // #endregion
+          return;
+        }
         currentBatchIndex = 0;
         loadImageState(0);
         renderBatchStrip();
@@ -2705,6 +2731,20 @@
           countEl.textContent = batchImages.length === 1 ? '1 image loaded' : batchImages.length + ' images loaded';
         }
         gridEditor.classList.add('visible');
+        var cutBtn = document.getElementById('cut-btn');
+        var actionsEl = document.querySelector('.grid-editor-actions');
+        // #region agent log
+        sendAgentDebugLog('H1', 'index.html:finishBatchLoad', 'finishBatchLoad completed and UI visibility checked', {
+          batchCount: batchImages.length,
+          currentBatchIndex: currentBatchIndex,
+          gridEditorVisible: gridEditor.classList.contains('visible'),
+          cutBtnExists: !!cutBtn,
+          cutBtnDisabled: cutBtn ? !!cutBtn.disabled : null,
+          cutBtnDisplay: cutBtn ? window.getComputedStyle(cutBtn).display : 'missing',
+          cutBtnVisibility: cutBtn ? window.getComputedStyle(cutBtn).visibility : 'missing',
+          actionsDisplay: actionsEl ? window.getComputedStyle(actionsEl).display : 'missing'
+        }, 'run1');
+        // #endregion
       }
 
       function saveCurrentImageState() {
@@ -2919,6 +2959,18 @@
       }
 
       function runCut(quiet) {
+        if (debugClickLogCount < 8) {
+          debugClickLogCount++;
+          // #region agent log
+          sendAgentDebugLog('H4', 'index.html:runCut', 'runCut invoked', {
+            quiet: !!quiet,
+            cutInProgress: cutInProgress,
+            pendingAutoCut: pendingAutoCut,
+            batchCount: batchImages.length,
+            currentBatchIndex: currentBatchIndex
+          }, 'run1');
+          // #endregion
+        }
         if (cutInProgress) {
           pendingAutoCut = pendingAutoCut || !!quiet;
           return;
@@ -3484,6 +3536,19 @@
       function updateCutButtonLabel() {
         var btn = document.getElementById('cut-btn');
         if (!btn) return;
+        if (debugUiLogCount < 8) {
+          debugUiLogCount++;
+          var actionsEl = document.querySelector('.grid-editor-actions');
+          // #region agent log
+          sendAgentDebugLog('H3', 'index.html:updateCutButtonLabel', 'Cut button state snapshot', {
+            batchCount: batchImages.length,
+            buttonDisabled: !!btn.disabled,
+            buttonText: btn.textContent || '',
+            buttonDisplay: window.getComputedStyle(btn).display,
+            actionsDisplay: actionsEl ? window.getComputedStyle(actionsEl).display : 'missing'
+          }, 'run1');
+          // #endregion
+        }
         if (batchImages.length > 1) {
           var total = 0;
           for (var i = 0; i < batchImages.length; i++) {
