@@ -1,7 +1,7 @@
 {
   "name": "imageparser",
   "version": "1.0.0",
-  "description": "4x4 grid image splitter",
+  "description": "Grid to Icon — split grid images into tiles in the browser",
   "private": true,
   "scripts": {
     "dev": "npx serve .",
@@ -9,10 +9,7 @@
     "test:grid": "node scripts/test-grid-split.js"
   },
   "dependencies": {
-    "@auth0/auth0-spa-js": "^2.0.3",
-    "jimp": "^0.22.12",
-    "jsonwebtoken": "^9.0.2",
-    "jwks-rsa": "^3.1.0"
+    "jimp": "^0.22.12"
   },
   "devDependencies": {
     "tesseract.js": "^5.1.0",
