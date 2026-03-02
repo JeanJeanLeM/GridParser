@@ -294,11 +294,15 @@
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
+      flex: 1;
+      text-align: center;
     }
     .tile-modal__nav {
       display: flex;
-      gap: 0.25rem;
-      flex-shrink: 0;
+      align-items: center;
+      gap: 0.5rem;
+      flex: 1;
+      min-width: 0;
     }
     .tile-modal__nav-btn {
       width: 28px;
@@ -363,6 +367,14 @@
       flex-direction: column;
       gap: 0.4rem;
       align-items: flex-start;
+    }
+    .tile-modal__trim-row--vertical label {
+      display: flex;
+      align-items: center;
+      min-width: 5.5em;
+    }
+    .tile-modal__trim-row--vertical label input {
+      margin-left: 0.35rem;
     }
     .tile-modal__canvas-wrap {
       flex: 1 1 200px;
@@ -515,7 +527,7 @@
     .tile-modal__pipette-icon { width: 1rem; height: 1rem; }
     .tile-modal--pipette-active .tile-modal__canvas-wrap,
     .tile-modal--pipette-active .tile-modal__canvas-wrap canvas {
-      cursor: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 32" width="24" height="32"><path fill="%23333" stroke="%23fff" stroke-width="1.5" d="M12 2v6l-4 4 3 3 4-4h5l-4-9h-4z"/><path fill="%23333" d="M8 16l-4 4v6h6l4-4-6-6z"/></svg>') 4 28, crosshair;
+      cursor: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24"><line x1="12" y1="0" x2="12" y2="24" stroke="%23333" stroke-width="2"/><line x1="0" y1="12" x2="24" y2="12" stroke="%23333" stroke-width="2"/></svg>') 12 12, crosshair;
     }
     .tile-modal__bg-swatch-wrap {
       display: inline-flex;
