@@ -43,6 +43,26 @@
   --content-max: min(720px, 92vw);
 }
 
+/* Top navigation banner (empty, for future nav items) */
+.nav-banner {
+  background: #fff;
+  border-bottom: 1px solid var(--border-light);
+  padding: 0.75rem 1.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.nav-banner__inner {
+  width: 100%;
+  max-width: var(--content-max);
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 1rem;
+  min-height: 2rem;
+}
+
 /* App header: centered brand, no banner */
 .app-header {
   background: transparent;
@@ -83,22 +103,22 @@
   margin: 0 0 0.35em;
   font-family: var(--font-serif);
   font-weight: 700;
-  font-size: clamp(1.85rem, 5vw, 2.5rem);
+  font-size: clamp(2.4rem, 6vw, 3.25rem);
   letter-spacing: 0.02em;
   line-height: 1.1;
 }
 
 .app-header__title--grid {
-  color: var(--accent);
+  color: #1d4ed8;
 }
 
 .app-header__title--num {
-  color: var(--accent-purple);
+  color: #6d28d9;
   font-size: 1.15em;
 }
 
 .app-header__title--icons {
-  color: #2d4a7c;
+  color: #1e3a8a;
 }
 
 .app-header__tagline {
@@ -123,24 +143,24 @@
 }
 
 .app-header__kw--upload {
-  color: var(--accent);
+  color: #2563eb;
 }
 
 .app-header__kw--parse {
-  color: var(--accent-purple);
+  color: #7c3aed;
 }
 
 .app-header__kw--personalise {
-  color: #2d4a7c;
+  color: #5b21b6;
 }
 
 .app-header__kw--download {
-  color: var(--success);
+  color: #1d4ed8;
 }
 
 @media (max-width: 480px) {
   .app-header__title {
-    font-size: 1.65rem;
+    font-size: 2rem;
   }
   .app-header__tagline {
     font-size: var(--text-sm);
