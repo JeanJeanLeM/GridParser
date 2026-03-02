@@ -1188,7 +1188,7 @@
           </label>
           <button type="button" class="tile-modal__bg-reset-btn" id="tile-bg-reset">Reset</button>
         </div>
-        <p class="tile-modal__bg-hint">Use Pipette to sample background, enable Remove background, then increase Outline trim to clean edge leftovers. Toggle Smooth edges on/off for round vs hard pixel edges.</p>
+        <p class="tile-modal__bg-hint">Use Pipette to sample background, enable Remove background, then increase Outline trim to clean edge leftovers. Smooth edges blends inner edge toward object color and outer edge toward sampled background color.</p>
       </div>
       <div class="tile-modal__footer">
         <button type="button" class="btn" id="tile-modal-download">Download this tile</button>
@@ -4649,10 +4649,11 @@
         ctx.putImageData(data, x, y);
       }
 
-      function applyAlphaEdgeTrimToImageData(ctx, x, y, w, h, edgePx, smoothEdges) {
+      function applyAlphaEdgeTrimToImageData(ctx, x, y, w, h, edgePx, smoothEdges, outerColor) {
         var px = Math.max(0, Math.min(8, parseInt(edgePx, 10) || 0));
         if (px <= 0) return;
         var useSmooth = smoothEdges !== false;
+        var hasOuterColor = !!(outerColor && typeof outerColor.r === 'number' && typeof outerColor.g === 'number' && typeof outerColor.b === 'number');
         var imageData = ctx.getImageData(x, y, w, h);
         var d = imageData.data;
         var src = new Uint8ClampedArray(d);
@@ -4726,16 +4727,38 @@
           var ky = Math.floor(k / w);
           var kx = k - ky * w;
           var nearest = findNearestCorePixel(kx, ky, px + 2);
-          if (nearest < 0) {
+          var stepIdx = removedAt[k];
+          var t = px <= 1 ? 0.35 : (stepIdx - 1) / (px - 1); // inner ring -> border color, outer ring -> bg color
+          t = Math.max(0, Math.min(1, t));
+          if (nearest < 0 && !hasOuterColor) {
             d[out + 3] = 0;
             continue;
           }
-          var nOut = nearest * 4;
-          d[out] = src[nOut];
-          d[out + 1] = src[nOut + 1];
-          d[out + 2] = src[nOut + 2];
-          var stepIdx = removedAt[k];
-          var fade = (px - stepIdx + 1) / (px + 1);
+          var coreR = 0;
+          var coreG = 0;
+          var coreB = 0;
+          if (nearest >= 0) {
+            var nOut = nearest * 4;
+            coreR = src[nOut];
+            coreG = src[nOut + 1];
+            coreB = src[nOut + 2];
+          } else {
+            coreR = outerColor.r;
+            coreG = outerColor.g;
+            coreB = outerColor.b;
+          }
+          var outR = coreR;
+          var outG = coreG;
+          var outB = coreB;
+          if (hasOuterColor) {
+            outR = Math.round(coreR * (1 - t) + outerColor.r * t);
+            outG = Math.round(coreG * (1 - t) + outerColor.g * t);
+            outB = Math.round(coreB * (1 - t) + outerColor.b * t);
+          }
+          d[out] = outR;
+          d[out + 1] = outG;
+          d[out + 2] = outB;
+          var fade = Math.pow((px - stepIdx + 1) / (px + 1), 1.2) * (1 - 0.35 * t);
           var srcAlpha = src[out + 3];
           d[out + 3] = Math.max(0, Math.min(255, Math.round(srcAlpha * fade)));
         }
@@ -4759,7 +4782,7 @@
         var eff = getEffectiveBgSettings(index, modalBatchIndex);
         if (eff && eff.bgRemoveEnabled && eff.bgColor && typeof eff.bgColor.r === 'number') {
           applyBgRemoveToImageData(ctx, 0, 0, sw, sh, eff.bgColor, eff.bgTolerance);
-          applyAlphaEdgeTrimToImageData(ctx, 0, 0, sw, sh, eff.bgEdgeTrimPx, eff.bgSmoothEdges);
+          applyAlphaEdgeTrimToImageData(ctx, 0, 0, sw, sh, eff.bgEdgeTrimPx, eff.bgSmoothEdges, eff.bgColor);
         }
       }
 
@@ -4779,7 +4802,7 @@
         ctx.drawImage(tileSrcImage, sx, sy, sw, sh, 0, 0, sw, sh);
         if (eff && eff.bgRemoveEnabled && eff.bgColor && typeof eff.bgColor.r === 'number') {
           applyBgRemoveToImageData(ctx, 0, 0, sw, sh, eff.bgColor, eff.bgTolerance);
-          applyAlphaEdgeTrimToImageData(ctx, 0, 0, sw, sh, eff.bgEdgeTrimPx, eff.bgSmoothEdges);
+          applyAlphaEdgeTrimToImageData(ctx, 0, 0, sw, sh, eff.bgEdgeTrimPx, eff.bgSmoothEdges, eff.bgColor);
         }
         return new Promise(function (resolve) {
           c.toBlob(function (blob) {
@@ -4839,7 +4862,7 @@
                     ctx.drawImage(tileSrcImage, sx, sy, sw, sh, 0, 0, sw, sh);
                     if (eff && eff.bgRemoveEnabled && eff.bgColor && typeof eff.bgColor.r === 'number') {
                       applyBgRemoveToImageData(ctx, 0, 0, sw, sh, eff.bgColor, eff.bgTolerance);
-                      applyAlphaEdgeTrimToImageData(ctx, 0, 0, sw, sh, eff.bgEdgeTrimPx, eff.bgSmoothEdges);
+                      applyAlphaEdgeTrimToImageData(ctx, 0, 0, sw, sh, eff.bgEdgeTrimPx, eff.bgSmoothEdges, eff.bgColor);
                     }
                     return new Promise(function (resolve) {
                       c.toBlob(function (blob) {
@@ -5164,7 +5187,7 @@
             var edge = Math.max(0, Math.min(8, parseInt(settings.bgEdgeTrimPx, 10) || 1));
             var smooth = settings.bgSmoothEdges !== false;
             applyBgRemoveToImageData(ctx, 0, 0, sw, sh, color, tol);
-            applyAlphaEdgeTrimToImageData(ctx, 0, 0, sw, sh, edge, smooth);
+            applyAlphaEdgeTrimToImageData(ctx, 0, 0, sw, sh, edge, smooth, color);
           }
         }
         return new Promise(function (resolve) {
