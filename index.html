@@ -3268,6 +3268,7 @@
                 entry.bgTolerance = 32;
                 entry.bgEdgeTrimPx = 1;
                 entry.bgColor = cloneRgbColor(r.dominantBgColor);
+                entry.bgUserEdited = false;
                 entry.processed = true;
                 entry.tileNames = [];
                 var prefix = entry.name + '_';
@@ -3304,6 +3305,7 @@
           imageBgSettings.bgTolerance = 32;
           imageBgSettings.bgEdgeTrimPx = 1;
           imageBgSettings.bgColor = cloneRgbColor(r.dominantBgColor);
+          imageBgSettings.bgUserEdited = false;
           var mode = r.mode;
           var fmt = r.fmt;
           var blobs = r.blobs;
@@ -4442,8 +4444,8 @@
       var modalBatchIndex = -1;
       var pipetteMode = false;
       var bgRemoveScope = 'tile';
-      var imageBgSettings = { bgRemoveEnabled: false, bgColor: null, bgTolerance: 32, bgEdgeTrimPx: 1 };
-      var batchBgSettings = { bgRemoveEnabled: false, bgColor: null, bgTolerance: 32, bgEdgeTrimPx: 1 };
+      var imageBgSettings = { bgRemoveEnabled: false, bgColor: null, bgTolerance: 32, bgEdgeTrimPx: 1, bgUserEdited: false };
+      var batchBgSettings = { bgRemoveEnabled: false, bgColor: null, bgTolerance: 32, bgEdgeTrimPx: 1, bgUserEdited: false };
       var tileBgScopeRadios = document.querySelectorAll('input[name="tile-bg-scope"]');
       var tileBgScopeBatchWrap = document.getElementById('tile-bg-scope-batch-wrap');
       var tilePipetteLoupe = document.getElementById('tile-pipette-loupe');
@@ -4459,6 +4461,7 @@
         if (info.bgColor == null) info.bgColor = null;
         if (info.bgTolerance == null) info.bgTolerance = 32;
         if (info.bgEdgeTrimPx == null) info.bgEdgeTrimPx = 1;
+        if (info.bgUserEdited == null) info.bgUserEdited = false;
       }
 
       function ensureEntryBgDefaults(entry) {
@@ -4467,6 +4470,7 @@
         if (entry.bgColor == null) entry.bgColor = null;
         if (entry.bgTolerance == null) entry.bgTolerance = 32;
         if (entry.bgEdgeTrimPx == null) entry.bgEdgeTrimPx = 1;
+        if (entry.bgUserEdited == null) entry.bgUserEdited = false;
       }
 
       function getEffectiveBgSettings(tileIndex, batchIndex) {
@@ -4505,6 +4509,28 @@
         var info = tileCropInfos[modalTileIndex];
         if (info) ensureBgDefaults(info);
         return info;
+      }
+
+      function getMostSpecificEditedBgSettings(tileIndex, batchIndex) {
+        ensureBgDefaults(batchBgSettings);
+        if (batchIndex >= 0 && batchIndex < batchImages.length) {
+          var entry = batchImages[batchIndex];
+          ensureEntryBgDefaults(entry);
+          var infos = entry.tileCropInfos;
+          var tileInfo = infos && infos[tileIndex] ? infos[tileIndex] : null;
+          if (tileInfo) ensureBgDefaults(tileInfo);
+          if (tileInfo && tileInfo.bgUserEdited) return tileInfo;
+          if (entry.bgUserEdited) return entry;
+          if (batchBgSettings.bgUserEdited) return batchBgSettings;
+          return entry;
+        }
+        ensureBgDefaults(imageBgSettings);
+        var singleTileInfo = tileCropInfos && tileCropInfos[tileIndex] ? tileCropInfos[tileIndex] : null;
+        if (singleTileInfo) ensureBgDefaults(singleTileInfo);
+        if (singleTileInfo && singleTileInfo.bgUserEdited) return singleTileInfo;
+        if (imageBgSettings.bgUserEdited) return imageBgSettings;
+        if (batchBgSettings.bgUserEdited) return batchBgSettings;
+        return imageBgSettings;
       }
 
       function syncBgUiFromSettings(settings) {
@@ -4981,7 +5007,10 @@
         var ctx = tileModalCanvas.getContext('2d');
         var data = ctx.getImageData(px, py, 1, 1).data;
         var target = getTargetBgSettings();
-        if (target) target.bgColor = { r: data[0], g: data[1], b: data[2] };
+        if (target) {
+          target.bgColor = { r: data[0], g: data[1], b: data[2] };
+          target.bgUserEdited = true;
+        }
         syncBgUiFromSettings(target);
         setPipetteMode(false);
         applyBgChangeAndRegenerate();
@@ -4996,7 +5025,10 @@
         tileBgRemoveEnable.addEventListener('change', function () {
           if (modalTileIndex < 0 || modalTileIndex >= tileCropInfos.length) return;
           var target = getTargetBgSettings();
-          if (target) target.bgRemoveEnabled = tileBgRemoveEnable.checked;
+          if (target) {
+            target.bgRemoveEnabled = tileBgRemoveEnable.checked;
+            target.bgUserEdited = true;
+          }
           applyBgChangeAndRegenerate();
         });
       }
@@ -5005,7 +5037,10 @@
           if (modalTileIndex < 0 || modalTileIndex >= tileCropInfos.length) return;
           var target = getTargetBgSettings();
           var val = Math.max(0, Math.min(8, parseInt(tileBgEdgePxInput.value, 10) || 0));
-          if (target) target.bgEdgeTrimPx = val;
+          if (target) {
+            target.bgEdgeTrimPx = val;
+            target.bgUserEdited = true;
+          }
           applyBgChangeAndRegenerate();
         });
       }
@@ -5018,6 +5053,7 @@
             target.bgColor = null;
             target.bgTolerance = 32;
             target.bgEdgeTrimPx = 1;
+            target.bgUserEdited = true;
           }
           if (tileBgEdgePxInput) tileBgEdgePxInput.value = 1;
           syncBgUiFromSettings(target);
@@ -5071,7 +5107,7 @@
         URL.revokeObjectURL(a.href);
       }
 
-      function renderTileVariantBlob(sourceImage, info, eff, variant) {
+      function renderTileVariantBlob(sourceImage, info, eff, variant, fallbackBgColor) {
         if (!sourceImage || !info) return Promise.resolve(null);
         var sx = info.sx + info.trimLeft;
         var sy = info.sy + info.trimTop;
@@ -5084,9 +5120,24 @@
         var ctx = c.getContext('2d');
         if (!ctx) return Promise.resolve(null);
         ctx.drawImage(sourceImage, sx, sy, sw, sh, 0, 0, sw, sh);
-        if (variant === 'removed' && eff && eff.bgRemoveEnabled && eff.bgColor && typeof eff.bgColor.r === 'number') {
-          applyBgRemoveToImageData(ctx, 0, 0, sw, sh, eff.bgColor, eff.bgTolerance);
-          applyAlphaEdgeTrimToImageData(ctx, 0, 0, sw, sh, eff.bgEdgeTrimPx);
+        if (variant === 'removed') {
+          var settings = eff || info || {};
+          var color = settings.bgColor;
+          if ((!color || typeof color.r !== 'number') && info && info.bgColor && typeof info.bgColor.r === 'number') {
+            color = info.bgColor;
+          }
+          if ((!color || typeof color.r !== 'number') && fallbackBgColor && typeof fallbackBgColor.r === 'number') {
+            color = fallbackBgColor;
+          }
+          if ((!color || typeof color.r !== 'number')) {
+            color = detectMostPresentColor(sourceImage);
+          }
+          if (color && typeof color.r === 'number') {
+            var tol = Math.max(0, Math.min(255, parseInt(settings.bgTolerance, 10) || 32));
+            var edge = Math.max(0, Math.min(8, parseInt(settings.bgEdgeTrimPx, 10) || 1));
+            applyBgRemoveToImageData(ctx, 0, 0, sw, sh, color, tol);
+            applyAlphaEdgeTrimToImageData(ctx, 0, 0, sw, sh, edge);
+          }
         }
         return new Promise(function (resolve) {
           c.toBlob(function (blob) { resolve(blob || null); }, 'image/png');
@@ -5099,10 +5150,10 @@
         var any = false;
         var chain = Promise.resolve();
 
-        function queueTile(sourceImage, info, eff, baseName) {
+        function queueTile(sourceImage, info, eff, baseName, fallbackBgColor) {
           if (variant === 'raw' || variant === 'both') {
             chain = chain.then(function () {
-              return renderTileVariantBlob(sourceImage, info, eff, 'raw').then(function (blob) {
+              return renderTileVariantBlob(sourceImage, info, eff, 'raw', fallbackBgColor).then(function (blob) {
                 if (!blob) return;
                 var rawName = sanitizeZipName(baseName);
                 zip.file(uniqueZipName(rawName, used), blob, { binary: true });
@@ -5112,7 +5163,7 @@
           }
           if (variant === 'removed' || variant === 'both') {
             chain = chain.then(function () {
-              return renderTileVariantBlob(sourceImage, info, eff, 'removed').then(function (blob) {
+              return renderTileVariantBlob(sourceImage, info, eff, 'removed', fallbackBgColor).then(function (blob) {
                 if (!blob) return;
                 var removedName = applyNameSuffix(baseName, '_nobg');
                 zip.file(uniqueZipName(removedName, used), blob, { binary: true });
@@ -5126,21 +5177,27 @@
           for (var bi = 0; bi < batchImages.length; bi++) {
             var entry = batchImages[bi];
             if (!entry || !entry.img || !entry.tileCropInfos || !entry.tileCropInfos.length) continue;
+            var entryFallbackBg = (entry.bgColor && typeof entry.bgColor.r === 'number')
+              ? entry.bgColor
+              : detectMostPresentColor(entry.img);
             for (var ti = 0; ti < entry.tileCropInfos.length; ti++) {
               var defaultName = entry.name + '_tile_' + (ti + 1) + '.png';
               var baseName = sanitizeZipName((entry.tileNames && entry.tileNames[ti]) ? entry.tileNames[ti] : defaultName);
-              var eff = getEffectiveBgSettings(ti, bi);
-              queueTile(entry.img, entry.tileCropInfos[ti], eff, baseName);
+              var eff = getMostSpecificEditedBgSettings(ti, bi);
+              queueTile(entry.img, entry.tileCropInfos[ti], eff, baseName, entryFallbackBg);
             }
           }
         } else {
           if (!tileSrcImage || !tileCropInfos || !tileCropInfos.length) return Promise.resolve(null);
           var inputs = previewGrid.querySelectorAll('.tile-name');
+          var singleFallbackBg = (imageBgSettings.bgColor && typeof imageBgSettings.bgColor.r === 'number')
+            ? imageBgSettings.bgColor
+            : detectMostPresentColor(tileSrcImage);
           for (var i = 0; i < tileCropInfos.length; i++) {
             var singleDefault = 'tile_' + (i + 1) + '.png';
             var singleBase = sanitizeZipName(inputs[i] ? inputs[i].value : singleDefault);
-            var singleEff = getEffectiveBgSettings(i, -1);
-            queueTile(tileSrcImage, tileCropInfos[i], singleEff, singleBase);
+            var singleEff = getMostSpecificEditedBgSettings(i, -1);
+            queueTile(tileSrcImage, tileCropInfos[i], singleEff, singleBase, singleFallbackBg);
           }
         }
 
