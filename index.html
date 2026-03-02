@@ -1052,27 +1052,11 @@
       var MARGIN = 10;
       var workerErrorLogCount = 0;
       var ocrCatchLogCount = 0;
-      var autoNameCancelLogCount = 0;
       var autoNameRunId = 0;
       var cutInProgress = false;
       var pendingAutoCut = false;
-      var autoCutSkipLogCount = 0;
-      var debugLogRetryAt = 0;
-      var debugLogBackoffMs = 5000;
       function hasOcrSupport() {
         return typeof Tesseract !== 'undefined' && !!Tesseract.recognize && !!Tesseract.createWorker;
-      }
-      function sendAgentDebugLog(hypothesisId, loc, message, data, runId) {
-        var host = typeof location !== 'undefined' ? location.hostname : '';
-        if (host !== 'localhost' && host !== '127.0.0.1') return;
-        if (Date.now() < debugLogRetryAt) return;
-        fetch('http://127.0.0.1:7259/ingest/4e86ec95-c090-4163-bab8-8321b4a7442a',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'ef7076'},body:JSON.stringify({sessionId:'ef7076',runId:runId || 'pre-fix',hypothesisId:hypothesisId,location:loc,message:message,data:data || {},timestamp:Date.now()})}).then(function () {
-          debugLogRetryAt = 0;
-          debugLogBackoffMs = 5000;
-        }).catch(function () {
-          debugLogRetryAt = Date.now() + debugLogBackoffMs;
-          debugLogBackoffMs = Math.min(60000, debugLogBackoffMs * 2);
-        });
       }
       function logAutoName(message, data) {
         if (typeof console === 'undefined' || !console.log) return;
@@ -1138,56 +1122,14 @@
 
       var autoCutTimer = null;
       function scheduleAutoCut() {
-        if (batchImages.length > 1) {
-          if (autoCutSkipLogCount < 25) {
-            autoCutSkipLogCount++;
-            // #region agent log
-            sendAgentDebugLog('H8', 'index.html:scheduleAutoCut', 'scheduleAutoCut skipped in batch mode', {
-              batchSize: batchImages.length,
-              currentBatchIndex: currentBatchIndex
-            }, 'pre-fix');
-            // #endregion
-          }
-          return;
-        }
+        if (batchImages.length > 1) return;
         if (cutInProgress) {
           pendingAutoCut = true;
-          if (autoCutSkipLogCount < 25) {
-            autoCutSkipLogCount++;
-            // #region agent log
-            sendAgentDebugLog('H8', 'index.html:scheduleAutoCut', 'scheduleAutoCut deferred while cut in progress', {
-              batchSize: batchImages.length,
-              currentBatchIndex: currentBatchIndex
-            }, 'pre-fix');
-            // #endregion
-          }
           return;
         }
-        var scheduleCaller = 'unknown';
-        try {
-          var stack = new Error().stack || '';
-          var stackLines = stack.split('\n');
-          scheduleCaller = stackLines.length > 2 ? String(stackLines[2]).trim() : (stackLines[1] ? String(stackLines[1]).trim() : 'unknown');
-        } catch (e) {}
-        // #region agent log
-        sendAgentDebugLog('H3', 'index.html:scheduleAutoCut', 'scheduleAutoCut invoked', {
-          hasTimer: !!autoCutTimer,
-          hasCurrentImage: !!currentImage,
-          batchSize: batchImages.length,
-          currentBatchIndex: currentBatchIndex,
-          caller: scheduleCaller
-        }, 'pre-fix');
-        // #endregion
         if (autoCutTimer) clearTimeout(autoCutTimer);
         autoCutTimer = setTimeout(function () {
           autoCutTimer = null;
-          // #region agent log
-          sendAgentDebugLog('H3', 'index.html:scheduleAutoCut:timer', 'autoCut timer fired', {
-            hasCurrentImage: !!currentImage,
-            batchSize: batchImages.length,
-            currentBatchIndex: currentBatchIndex
-          }, 'pre-fix');
-          // #endregion
           if (currentImage) runCut(true);
         }, 350);
       }
@@ -2791,15 +2733,6 @@
         excludedCellIds = {};
         for (var k in (entry.excludedCellIds || {})) { excludedCellIds[k] = true; }
         editorMode = entry.mode || 'uniform';
-        // #region agent log
-        sendAgentDebugLog('H1', 'index.html:loadImageState:beforeSetEditorMode', 'loadImageState before setEditorMode', {
-          index: index,
-          silent: !!silent,
-          entryMode: editorMode,
-          batchSize: batchImages.length,
-          currentBatchIndex: currentBatchIndex
-        }, 'pre-fix');
-        // #endregion
         setEditorModeRadio(editorMode);
         setEditorMode(editorMode, { suppressAutoDetect: true, suppressAutoCut: true });
         setGridFormatFromBounds(xBounds, yBounds);
@@ -2986,27 +2919,8 @@
       }
 
       function runCut(quiet) {
-        // #region agent log
-        sendAgentDebugLog('H4', 'index.html:runCut:entry', 'runCut entered', {
-          quiet: !!quiet,
-          hasCurrentImage: !!currentImage,
-          batchSize: batchImages.length,
-          currentBatchIndex: currentBatchIndex,
-          autoNameRunId: autoNameRunId
-        }, 'pre-fix');
-        // #endregion
         if (cutInProgress) {
           pendingAutoCut = pendingAutoCut || !!quiet;
-          if (autoCutSkipLogCount < 25) {
-            autoCutSkipLogCount++;
-            // #region agent log
-            sendAgentDebugLog('H8', 'index.html:runCut:entry', 'runCut ignored because one is already active', {
-              quiet: !!quiet,
-              pendingAutoCut: pendingAutoCut,
-              batchSize: batchImages.length
-            }, 'pre-fix');
-            // #endregion
-          }
           return;
         }
         if (!currentImage) {
@@ -3251,14 +3165,6 @@
         var thumbs = section.querySelectorAll('.tile-img-wrap img');
         var inputs = section.querySelectorAll('.tile-name');
         if (!thumbs.length || thumbs.length !== inputs.length) return Promise.resolve();
-        // #region agent log
-        sendAgentDebugLog('H2', 'index.html:runBatchAutoName:invoke', 'runBatchAutoName invoking OCR', {
-          thumbs: thumbs.length,
-          inputs: inputs.length,
-          batchPreviewPage: batchPreviewPage,
-          totalBatchPreviewTiles: batchPreviewTiles.length
-        }, 'pre-fix');
-        // #endregion
         return runAutoNameForInputs(
           thumbs,
           inputs,
@@ -3280,13 +3186,6 @@
         var thumbs = previewGrid.querySelectorAll('.tile-img-wrap img');
         var inputs = previewGrid.querySelectorAll('.tile-name');
         if (!thumbs.length || thumbs.length !== inputs.length) return Promise.resolve();
-        // #region agent log
-        sendAgentDebugLog('H6', 'index.html:runSinglePreviewAutoName:invoke', 'runSinglePreviewAutoName invoking OCR', {
-          thumbs: thumbs.length,
-          inputs: inputs.length,
-          currentBatchIndex: currentBatchIndex
-        }, 'pre-fix');
-        // #endregion
         return runAutoNameForInputs(
           thumbs,
           inputs,
@@ -3300,13 +3199,6 @@
 
       function runAutoNameFromPreview() {
         var isBatchPreview = !!previewGrid.querySelector('.preview-batch-group');
-        // #region agent log
-        sendAgentDebugLog('H6', 'index.html:runAutoNameFromPreview', 'Manual auto-name requested', {
-          isBatchPreview: isBatchPreview,
-          tileInputs: previewGrid.querySelectorAll('.tile-name').length,
-          currentBatchIndex: currentBatchIndex
-        }, 'pre-fix');
-        // #endregion
         if (isBatchPreview) return runBatchAutoName();
         return runSinglePreviewAutoName();
       }
@@ -3758,16 +3650,6 @@
           }
         }
         if (!suppressAutoCut) {
-          // #region agent log
-          sendAgentDebugLog('H1', 'index.html:setEditorMode:beforeScheduleAutoCut', 'setEditorMode scheduling auto cut', {
-            mode: mode,
-            isFormMode: isFormMode,
-            isGeometrical: isGeometrical,
-            hasCurrentImage: !!currentImage,
-            batchSize: batchImages.length,
-            currentBatchIndex: currentBatchIndex
-          }, 'pre-fix');
-          // #endregion
           scheduleAutoCut();
         }
       }
@@ -3891,13 +3773,6 @@
       if (runAutoNameBtn) {
         runAutoNameBtn.addEventListener('click', function () {
           var hasTiles = previewGrid.querySelectorAll('.tile-name').length > 0;
-          // #region agent log
-          sendAgentDebugLog('H6', 'index.html:run-auto-name-btn:click', 'Run auto-name button clicked', {
-            hasTiles: hasTiles,
-            outputVisible: outputEl.classList.contains('visible'),
-            currentBatchIndex: currentBatchIndex
-          }, 'pre-fix');
-          // #endregion
           if (!hasTiles) {
             setDetectingLabelsMessage('Auto-name skipped: create preview tiles first.', true);
             clearDetectingLabelsMessage(2200);
@@ -3907,12 +3782,6 @@
         });
       }
       setRunAutoNameButtonEnabled(false);
-      // #region agent log
-      sendAgentDebugLog('H7', 'index.html:init:autoNameMode', 'Auto-name mode initialized', {
-        mode: 'manual-preview-button',
-        hasRunAutoNameButton: !!runAutoNameBtn
-      }, 'pre-fix');
-      // #endregion
       var trimMain = document.getElementById('trim-pixels');
       var trimInline = document.getElementById('trim-pixels-inline');
       var lineThicknessEl = document.getElementById('line-thickness');
@@ -4137,31 +4006,9 @@
         var bases = new Array(total);
         setDetectingLabelsMessage('Auto-name: preparing OCR…');
         logAutoName('Starting OCR run', { tiles: total, labelPct: labelPct });
-        var source = (inputs[0] && inputs[0].getAttribute && inputs[0].getAttribute('data-batch-index') !== null) ? 'batch-preview' : 'single-preview';
-        // #region agent log
-        sendAgentDebugLog('H5', 'index.html:runAutoNameForInputs:start', 'runAutoNameForInputs started', {
-          autoNameRunId: runId,
-          tiles: total,
-          labelPct: labelPct,
-          source: source,
-          currentBatchIndex: currentBatchIndex
-        }, 'pre-fix');
-        // #endregion
 
         function runTile(index) {
-          if (runId !== autoNameRunId) {
-            if (autoNameCancelLogCount < 30) {
-              autoNameCancelLogCount++;
-              // #region agent log
-              sendAgentDebugLog('H4', 'index.html:runAutoNameForInputs:runTile', 'runTile cancelled because newer run started', {
-                runId: runId,
-                activeAutoNameRunId: autoNameRunId,
-                index: index
-              }, 'pre-fix');
-              // #endregion
-            }
-            return Promise.resolve();
-          }
+          if (runId !== autoNameRunId) return Promise.resolve();
           if (index >= total) return Promise.resolve();
           var defaultBase = defaultBaseForIndex(index);
           setDetectingLabelsMessage('Auto-name: reading tile ' + (index + 1) + '/' + total + '…');
