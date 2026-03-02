@@ -382,24 +382,18 @@
     #add-form-btn, #increase-form-btn, #decrease-form-btn,
     #delete-form-btn, #exclude-cell-btn,
     .loupe-container { display: none !important; }
-    /* Top row: grid + dimensions left, editor mode right */
+    /* Top row: dimensions and editor mode on same line */
     .grid-editor-top-row {
       display: flex;
       flex-wrap: wrap;
-      align-items: flex-start;
+      align-items: center;
       gap: 1rem;
       margin-bottom: 1rem;
     }
-    .grid-and-dimensions {
-      display: flex;
-      align-items: center;
-      flex: 0 0 auto;
-    }
     .grid-format-dimensions {
-      display: flex;
+      display: inline-flex;
       align-items: center;
       gap: 0.35rem;
-      margin-left: 0.5rem;
     }
     .grid-format-dimensions__label {
       font-size: var(--text-xs);
@@ -874,24 +868,16 @@
       <span class="parser-status" id="parser-status" aria-live="polite" style="margin-left: auto; font-size: 0.85em; color: var(--text-subtle, #666);"></span>
     </div>
     <div class="grid-editor-top-row">
-      <div class="grid-and-dimensions">
-        <div class="grid-format-picker" role="group" aria-labelledby="grid-format-picker-label">
-          <span class="grid-format-picker__label" id="grid-format-picker-label">Grid</span>
-          <div class="grid-format-picker__grid" id="grid-format-visual" aria-hidden="true">
-            <!-- 10×10 cells filled by initGridFormatPicker -->
-          </div>
-          <div class="grid-format-dimensions">
-            <label for="grid-format-rows" class="grid-format-dimensions__label">Rows</label>
-            <input type="number" id="grid-format-rows" min="1" max="10" value="4" aria-label="Grid rows" class="grid-format-dimensions__input">
-            <span class="grid-format-dimensions__times" aria-hidden="true">×</span>
-            <label for="grid-format-cols" class="grid-format-dimensions__label">Cols</label>
-            <input type="number" id="grid-format-cols" min="1" max="10" value="4" aria-label="Grid columns" class="grid-format-dimensions__input">
-          </div>
-          <select id="grid-format" aria-label="Grid format (rows × columns)" class="visually-hidden">
-            <option value="4_4" selected>4×4</option>
-          </select>
-        </div>
+      <div class="grid-format-dimensions" role="group" aria-label="Grid dimensions">
+        <label for="grid-format-rows" class="grid-format-dimensions__label">Rows</label>
+        <input type="number" id="grid-format-rows" min="1" max="10" value="4" aria-label="Grid rows" class="grid-format-dimensions__input">
+        <span class="grid-format-dimensions__times" aria-hidden="true">×</span>
+        <label for="grid-format-cols" class="grid-format-dimensions__label">Cols</label>
+        <input type="number" id="grid-format-cols" min="1" max="10" value="4" aria-label="Grid columns" class="grid-format-dimensions__input">
       </div>
+      <select id="grid-format" aria-label="Grid format (rows × columns)" class="visually-hidden">
+        <option value="4_4" selected>4×4</option>
+      </select>
       <div class="editor-mode-row">
         <span class="editor-mode-label">Editor:</span>
         <label class="editor-mode-option"><input type="radio" name="editor-mode" value="uniform" checked>Grid</label>
@@ -3536,18 +3522,20 @@
         var gridEl = document.getElementById('grid-format-visual');
         var rowsEl = document.getElementById('grid-format-rows');
         var colsEl = document.getElementById('grid-format-cols');
-        if (!sel || !gridEl) return;
+        if (!sel) return;
         var v = (sel.value || '4_4').split('_');
         var rows = Math.max(1, Math.min(10, parseInt(v[0], 10) || 4));
         var cols = Math.max(1, Math.min(10, parseInt(v[1], 10) || 4));
         if (rowsEl) rowsEl.value = String(rows);
         if (colsEl) colsEl.value = String(cols);
-        var cells = gridEl.querySelectorAll('.grid-format-picker__cell');
-        for (var i = 0; i < cells.length; i++) {
-          var r = parseInt(cells[i].getAttribute('data-row'), 10);
-          var c = parseInt(cells[i].getAttribute('data-col'), 10);
-          cells[i].classList.toggle('in-selection', r < rows && c < cols);
-          cells[i].classList.remove('out-of-preview');
+        if (gridEl) {
+          var cells = gridEl.querySelectorAll('.grid-format-picker__cell');
+          for (var i = 0; i < cells.length; i++) {
+            var r = parseInt(cells[i].getAttribute('data-row'), 10);
+            var c = parseInt(cells[i].getAttribute('data-col'), 10);
+            cells[i].classList.toggle('in-selection', r < rows && c < cols);
+            cells[i].classList.remove('out-of-preview');
+          }
         }
       }
       function updateGridFormatHoverPreview(hoverR, hoverC) {
@@ -3563,9 +3551,8 @@
         }
       }
       function initGridFormatPicker() {
-        var gridEl = document.getElementById('grid-format-visual');
         var sel = document.getElementById('grid-format');
-        if (!gridEl || !sel) return;
+        if (!sel) return;
         var maxGrid = 10;
         sel.innerHTML = '';
         for (var r = 1; r <= maxGrid; r++) {
@@ -3577,32 +3564,6 @@
             sel.appendChild(opt);
           }
         }
-        gridEl.innerHTML = '';
-        for (var r = 0; r < maxGrid; r++) {
-          for (var c = 0; c < maxGrid; c++) {
-            var cell = document.createElement('button');
-            cell.type = 'button';
-            cell.className = 'grid-format-picker__cell';
-            cell.setAttribute('data-row', r);
-            cell.setAttribute('data-col', c);
-            cell.setAttribute('aria-label', (r + 1) + ' by ' + (c + 1) + ' grid');
-            (function (row, col) {
-              cell.addEventListener('click', function () {
-                sel.value = (row + 1) + '_' + (col + 1);
-                sel.dispatchEvent(new Event('change', { bubbles: true }));
-              });
-              cell.addEventListener('mouseenter', function () {
-                gridFormatHover = { r: row, c: col };
-                updateGridFormatHoverPreview(row, col);
-              });
-            })(r, c);
-            gridEl.appendChild(cell);
-          }
-        }
-        gridEl.addEventListener('mouseleave', function () {
-          gridFormatHover = null;
-          syncGridFormatVisual();
-        });
         sel.addEventListener('change', syncGridFormatVisual);
         function applyDimensionInputs() {
           var rowsEl = document.getElementById('grid-format-rows');
