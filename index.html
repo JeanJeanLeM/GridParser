@@ -112,6 +112,13 @@
     .trim-row .trim-input { width: 4em; padding: 0.25rem 0.35rem; border: 1px solid var(--border-input); border-radius: var(--radius-input); font-size: var(--text-sm); }
     .trim-hint { color: var(--border-input); font-size: var(--text-xs); }
     .trim-hint-block { display: block; width: 100%; margin-top: 0.25rem; }
+    .download-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      margin-top: 0.25rem;
+      margin-bottom: 0.25rem;
+    }
     .download-hint { font-size: var(--text-xs); color: var(--text-subtle); margin-top: 0.5rem; margin-bottom: 0; }
     .error { color: var(--error); margin-top: 0.5rem; font-size: var(--text-sm); }
     .output {
@@ -1121,7 +1128,11 @@
     </div>
     <p class="detecting-labels" id="detecting-labels" aria-live="polite" style="display: none;">Detecting labels…</p>
     <div class="preview-grid" id="preview-grid"></div>
-    <button type="button" class="btn btn-primary" id="download-zip">Download all as ZIP</button>
+    <div class="download-actions">
+      <button type="button" class="btn btn-secondary" id="download-zip-raw">Download raw</button>
+      <button type="button" class="btn btn-secondary" id="download-zip-removed">Download removebg</button>
+      <button type="button" class="btn btn-primary" id="download-zip-both">Download both</button>
+    </div>
     <p class="download-hint">If Windows blocks the file, right-click it → Properties → Unblock → OK. Downloaded tiles contain only your image—no overlay or guide lines.</p>
   </section>
 
@@ -1174,7 +1185,7 @@
           <label class="tile-modal__tolerance-label">Outline trim <input type="number" id="tile-bg-edge-px" min="0" max="8" step="1" value="1" aria-label="Outline trim in pixels"></label>
           <button type="button" class="tile-modal__bg-reset-btn" id="tile-bg-reset">Reset</button>
         </div>
-        <p class="tile-modal__bg-hint">Use Pipette to sample background, enable Remove background, then increase Outline trim to delete leftover edge pixels around the isolated shape.</p>
+        <p class="tile-modal__bg-hint">Use Pipette to sample background, enable Remove background, then increase Outline trim to clean edge leftovers while keeping smoother round outlines.</p>
       </div>
       <div class="tile-modal__footer">
         <button type="button" class="btn" id="tile-modal-download">Download this tile</button>
@@ -1191,7 +1202,9 @@
       var errorEl = document.getElementById('error');
       var outputEl = document.getElementById('output');
       var previewGrid = document.getElementById('preview-grid');
-      var downloadBtn = document.getElementById('download-zip');
+      var downloadRawBtn = document.getElementById('download-zip-raw');
+      var downloadRemovedBtn = document.getElementById('download-zip-removed');
+      var downloadBothBtn = document.getElementById('download-zip-both');
       var runAutoNameBtn = document.getElementById('run-auto-name-btn');
 
       var tileBlobs = [];
@@ -1279,6 +1292,12 @@
         if (!runAutoNameBtn) return;
         runAutoNameBtn.disabled = !enabled;
       }
+      function setDownloadButtonsEnabled(enabled) {
+        if (downloadRawBtn) downloadRawBtn.disabled = !enabled;
+        if (downloadRemovedBtn) downloadRemovedBtn.disabled = !enabled;
+        if (downloadBothBtn) downloadBothBtn.disabled = !enabled;
+      }
+      setDownloadButtonsEnabled(false);
       function clearDetectingLabelsMessage(delayMs) {
         var wait = Math.max(0, parseInt(delayMs, 10) || 0);
         setTimeout(function () { setDetectingLabelsMessage(''); }, wait);
@@ -3115,7 +3134,7 @@
           outputEl.classList.remove('visible');
           previewGrid.innerHTML = '';
           previewGrid.style.display = '';
-          downloadBtn.disabled = true;
+          setDownloadButtonsEnabled(false);
           setRunAutoNameButtonEnabled(false);
           gridEditor.classList.remove('visible');
           var nav = document.getElementById('batch-navigator');
@@ -3334,7 +3353,7 @@
             previewGrid.appendChild(wrap);
           });
           outputEl.classList.add('visible');
-          downloadBtn.disabled = false;
+          setDownloadButtonsEnabled(true);
           setRunAutoNameButtonEnabled(true);
         }).catch(function (err) {
           if (!quiet) showError(err && err.message ? err.message : 'Failed to create tiles.');
@@ -3464,7 +3483,7 @@
         }
 
         outputEl.classList.add('visible');
-        downloadBtn.disabled = false;
+        setDownloadButtonsEnabled(true);
         setRunAutoNameButtonEnabled(true);
       }
 
@@ -4600,12 +4619,14 @@
         if (px <= 0) return;
         var imageData = ctx.getImageData(x, y, w, h);
         var d = imageData.data;
+        var src = new Uint8ClampedArray(d);
         var size = w * h;
         var mask = new Uint8Array(size);
+        var removedAt = new Uint8Array(size);
         for (var i = 0; i < size; i++) {
           mask[i] = d[i * 4 + 3] > 10 ? 1 : 0;
         }
-        for (var step = 0; step < px; step++) {
+        for (var step = 1; step <= px; step++) {
           var next = new Uint8Array(size);
           for (var yy = 0; yy < h; yy++) {
             var row = yy * w;
@@ -4613,7 +4634,7 @@
               var idx = row + xx;
               if (!mask[idx]) continue;
               if (xx === 0 || yy === 0 || xx === w - 1 || yy === h - 1) {
-                next[idx] = 0;
+                removedAt[idx] = step;
                 continue;
               }
               var keep =
@@ -4622,12 +4643,61 @@
                 mask[idx - w - 1] && mask[idx - w + 1] &&
                 mask[idx + w - 1] && mask[idx + w + 1];
               if (keep) next[idx] = 1;
+              else removedAt[idx] = step;
             }
           }
           mask = next;
         }
+
+        function findNearestCorePixel(xp, yp, maxRadius) {
+          var best = -1;
+          var bestDist2 = Infinity;
+          for (var r = 1; r <= maxRadius; r++) {
+            var minX = Math.max(0, xp - r);
+            var maxX = Math.min(w - 1, xp + r);
+            var minY = Math.max(0, yp - r);
+            var maxY = Math.min(h - 1, yp + r);
+            for (var ny = minY; ny <= maxY; ny++) {
+              for (var nx = minX; nx <= maxX; nx++) {
+                if (nx !== minX && nx !== maxX && ny !== minY && ny !== maxY) continue;
+                var nIdx = ny * w + nx;
+                if (!mask[nIdx]) continue;
+                var dx = nx - xp;
+                var dy = ny - yp;
+                var dist2 = dx * dx + dy * dy;
+                if (dist2 < bestDist2) {
+                  bestDist2 = dist2;
+                  best = nIdx;
+                }
+              }
+            }
+            if (best >= 0) return best;
+          }
+          return -1;
+        }
+
         for (var k = 0; k < size; k++) {
-          if (!mask[k]) d[k * 4 + 3] = 0;
+          if (mask[k]) continue;
+          var out = k * 4;
+          if (!removedAt[k]) {
+            d[out + 3] = 0;
+            continue;
+          }
+          var ky = Math.floor(k / w);
+          var kx = k - ky * w;
+          var nearest = findNearestCorePixel(kx, ky, px + 2);
+          if (nearest < 0) {
+            d[out + 3] = 0;
+            continue;
+          }
+          var nOut = nearest * 4;
+          d[out] = src[nOut];
+          d[out + 1] = src[nOut + 1];
+          d[out + 2] = src[nOut + 2];
+          var stepIdx = removedAt[k];
+          var fade = (px - stepIdx + 1) / (px + 1);
+          var srcAlpha = src[out + 3];
+          d[out + 3] = Math.max(0, Math.min(255, Math.round(srcAlpha * fade)));
         }
         ctx.putImageData(imageData, x, y);
       }
@@ -4973,59 +5043,141 @@
         downloadSingleTile(modalTileIndex);
       });
 
-      downloadBtn.addEventListener('click', function () {
+      function applyNameSuffix(name, suffix) {
+        var safe = sanitizeZipName(name);
+        var base = safe.replace(/\.png$/i, '');
+        return base + suffix + '.png';
+      }
+
+      function uniqueZipName(name, used) {
+        var candidate = sanitizeZipName(name);
+        if (!used[candidate]) {
+          used[candidate] = true;
+          return candidate;
+        }
+        var base = candidate.replace(/\.png$/i, '');
+        var n = 1;
+        while (used[base + '_' + n + '.png']) n++;
+        candidate = base + '_' + n + '.png';
+        used[candidate] = true;
+        return candidate;
+      }
+
+      function triggerDownload(blob, filename) {
+        var a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = filename;
+        a.click();
+        URL.revokeObjectURL(a.href);
+      }
+
+      function renderTileVariantBlob(sourceImage, info, eff, variant) {
+        if (!sourceImage || !info) return Promise.resolve(null);
+        var sx = info.sx + info.trimLeft;
+        var sy = info.sy + info.trimTop;
+        var sw = info.sw - info.trimLeft - info.trimRight;
+        var sh = info.sh - info.trimTop - info.trimBottom;
+        if (sw <= 0 || sh <= 0) return Promise.resolve(null);
+        var c = document.createElement('canvas');
+        c.width = sw;
+        c.height = sh;
+        var ctx = c.getContext('2d');
+        if (!ctx) return Promise.resolve(null);
+        ctx.drawImage(sourceImage, sx, sy, sw, sh, 0, 0, sw, sh);
+        if (variant === 'removed' && eff && eff.bgRemoveEnabled && eff.bgColor && typeof eff.bgColor.r === 'number') {
+          applyBgRemoveToImageData(ctx, 0, 0, sw, sh, eff.bgColor, eff.bgTolerance);
+          applyAlphaEdgeTrimToImageData(ctx, 0, 0, sw, sh, eff.bgEdgeTrimPx);
+        }
+        return new Promise(function (resolve) {
+          c.toBlob(function (blob) { resolve(blob || null); }, 'image/png');
+        });
+      }
+
+      function buildZipBlobForVariant(variant) {
         var zip = new JSZip();
         var used = {};
-        if (batchImages.length > 1) {
-          var hasAny = false;
-          for (var bi = 0; bi < batchImages.length; bi++) {
-            var entry = batchImages[bi];
-            if (!entry.tileBlobs || !entry.tileBlobs.length) continue;
-            hasAny = true;
-            for (var ti = 0; ti < entry.tileBlobs.length; ti++) {
-              var defaultName = entry.name + '_tile_' + (ti + 1) + '.png';
-              var name = sanitizeZipName((entry.tileNames && entry.tileNames[ti]) ? entry.tileNames[ti] : defaultName);
-              if (used[name]) {
-                var base = name.replace(/\.png$/i, '');
-                var n = 1;
-                while (used[base + '_' + n + '.png']) n++;
-                name = base + '_' + n + '.png';
-              }
-              used[name] = true;
-              zip.file(name, entry.tileBlobs[ti], { binary: true });
-            }
+        var any = false;
+        var chain = Promise.resolve();
+
+        function queueTile(sourceImage, info, eff, baseName) {
+          if (variant === 'raw' || variant === 'both') {
+            chain = chain.then(function () {
+              return renderTileVariantBlob(sourceImage, info, eff, 'raw').then(function (blob) {
+                if (!blob) return;
+                var rawName = sanitizeZipName(baseName);
+                zip.file(uniqueZipName(rawName, used), blob, { binary: true });
+                any = true;
+              });
+            });
           }
-          if (!hasAny) return;
-        } else {
-          if (!tileBlobs.length) return;
-          var inputs = previewGrid.querySelectorAll('.tile-name');
-          for (var i = 0; i < tileBlobs.length; i++) {
-            var name = sanitizeZipName(inputs[i] ? inputs[i].value : '');
-            if (used[name]) {
-              var base = name.replace(/\.png$/i, '');
-              var n = 1;
-              while (used[base + '_' + n + '.png']) n++;
-              name = base + '_' + n + '.png';
-              used[name] = true;
-            } else {
-              used[name] = true;
-            }
-            zip.file(name, tileBlobs[i], { binary: true });
+          if (variant === 'removed' || variant === 'both') {
+            chain = chain.then(function () {
+              return renderTileVariantBlob(sourceImage, info, eff, 'removed').then(function (blob) {
+                if (!blob) return;
+                var removedName = applyNameSuffix(baseName, '_nobg');
+                zip.file(uniqueZipName(removedName, used), blob, { binary: true });
+                any = true;
+              });
+            });
           }
         }
-        downloadBtn.disabled = true;
-        zip.generateAsync({ type: 'blob' }).then(function (blob) {
-          var a = document.createElement('a');
-          a.href = URL.createObjectURL(blob);
-          a.download = 'grid-tiles.zip';
-          a.click();
-          URL.revokeObjectURL(a.href);
-          downloadBtn.disabled = false;
+
+        if (batchImages.length > 1) {
+          for (var bi = 0; bi < batchImages.length; bi++) {
+            var entry = batchImages[bi];
+            if (!entry || !entry.img || !entry.tileCropInfos || !entry.tileCropInfos.length) continue;
+            for (var ti = 0; ti < entry.tileCropInfos.length; ti++) {
+              var defaultName = entry.name + '_tile_' + (ti + 1) + '.png';
+              var baseName = sanitizeZipName((entry.tileNames && entry.tileNames[ti]) ? entry.tileNames[ti] : defaultName);
+              var eff = getEffectiveBgSettings(ti, bi);
+              queueTile(entry.img, entry.tileCropInfos[ti], eff, baseName);
+            }
+          }
+        } else {
+          if (!tileSrcImage || !tileCropInfos || !tileCropInfos.length) return Promise.resolve(null);
+          var inputs = previewGrid.querySelectorAll('.tile-name');
+          for (var i = 0; i < tileCropInfos.length; i++) {
+            var singleDefault = 'tile_' + (i + 1) + '.png';
+            var singleBase = sanitizeZipName(inputs[i] ? inputs[i].value : singleDefault);
+            var singleEff = getEffectiveBgSettings(i, -1);
+            queueTile(tileSrcImage, tileCropInfos[i], singleEff, singleBase);
+          }
+        }
+
+        return chain.then(function () {
+          if (!any) return null;
+          return zip.generateAsync({ type: 'blob' });
+        });
+      }
+
+      function downloadVariantZip(variant) {
+        var filename = variant === 'raw'
+          ? 'grid-tiles-raw.zip'
+          : (variant === 'removed' ? 'grid-tiles-removebg.zip' : 'grid-tiles-both.zip');
+        setDownloadButtonsEnabled(false);
+        buildZipBlobForVariant(variant).then(function (blob) {
+          if (!blob) {
+            showError('No tiles available to download.');
+            setDownloadButtonsEnabled(true);
+            return;
+          }
+          triggerDownload(blob, filename);
+          setDownloadButtonsEnabled(true);
         }).catch(function () {
           showError('Failed to create ZIP.');
-          downloadBtn.disabled = false;
+          setDownloadButtonsEnabled(true);
         });
-      });
+      }
+
+      if (downloadRawBtn) {
+        downloadRawBtn.addEventListener('click', function () { downloadVariantZip('raw'); });
+      }
+      if (downloadRemovedBtn) {
+        downloadRemovedBtn.addEventListener('click', function () { downloadVariantZip('removed'); });
+      }
+      if (downloadBothBtn) {
+        downloadBothBtn.addEventListener('click', function () { downloadVariantZip('both'); });
+      }
     })();
   </script>
 </body>
