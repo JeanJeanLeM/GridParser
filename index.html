@@ -1188,7 +1188,7 @@
           </label>
           <button type="button" class="tile-modal__bg-reset-btn" id="tile-bg-reset">Reset</button>
         </div>
-        <p class="tile-modal__bg-hint">Use Pipette to sample background, enable Remove background, then increase Outline trim to clean edge leftovers. Smooth edges blends inner edge toward object color and outer edge toward sampled background color.</p>
+        <p class="tile-modal__bg-hint">Use Pipette to sample background, enable Remove background, then increase Outline trim to clean edge leftovers. Smooth edges uses two nearby object-border colors (not background color) for a more natural outline.</p>
       </div>
       <div class="tile-modal__footer">
         <button type="button" class="btn" id="tile-modal-download">Download this tile</button>
@@ -4653,7 +4653,6 @@
         var px = Math.max(0, Math.min(8, parseInt(edgePx, 10) || 0));
         if (px <= 0) return;
         var useSmooth = smoothEdges !== false;
-        var hasOuterColor = !!(outerColor && typeof outerColor.r === 'number' && typeof outerColor.g === 'number' && typeof outerColor.b === 'number');
         var imageData = ctx.getImageData(x, y, w, h);
         var d = imageData.data;
         var src = new Uint8ClampedArray(d);
@@ -4686,7 +4685,7 @@
           mask = next;
         }
 
-        function findNearestCorePixel(xp, yp, maxRadius) {
+        function findNearestCorePixel(xp, yp, maxRadius, excludeIdx) {
           var best = -1;
           var bestDist2 = Infinity;
           for (var r = 1; r <= maxRadius; r++) {
@@ -4698,6 +4697,7 @@
               for (var nx = minX; nx <= maxX; nx++) {
                 if (nx !== minX && nx !== maxX && ny !== minY && ny !== maxY) continue;
                 var nIdx = ny * w + nx;
+                if (nIdx === excludeIdx) continue;
                 if (!mask[nIdx]) continue;
                 var dx = nx - xp;
                 var dy = ny - yp;
@@ -4726,41 +4726,25 @@
           }
           var ky = Math.floor(k / w);
           var kx = k - ky * w;
-          var nearest = findNearestCorePixel(kx, ky, px + 2);
-          var stepIdx = removedAt[k];
-          var t = px <= 1 ? 0.35 : (stepIdx - 1) / (px - 1); // inner ring -> border color, outer ring -> bg color
-          t = Math.max(0, Math.min(1, t));
-          if (nearest < 0 && !hasOuterColor) {
+          var n1 = findNearestCorePixel(kx, ky, px + 2, -1);
+          if (n1 < 0) {
             d[out + 3] = 0;
             continue;
           }
-          var coreR = 0;
-          var coreG = 0;
-          var coreB = 0;
-          if (nearest >= 0) {
-            var nOut = nearest * 4;
-            coreR = src[nOut];
-            coreG = src[nOut + 1];
-            coreB = src[nOut + 2];
-          } else {
-            coreR = outerColor.r;
-            coreG = outerColor.g;
-            coreB = outerColor.b;
-          }
-          var outR = coreR;
-          var outG = coreG;
-          var outB = coreB;
-          if (hasOuterColor) {
-            outR = Math.round(coreR * (1 - t) + outerColor.r * t);
-            outG = Math.round(coreG * (1 - t) + outerColor.g * t);
-            outB = Math.round(coreB * (1 - t) + outerColor.b * t);
-          }
-          d[out] = outR;
-          d[out + 1] = outG;
-          d[out + 2] = outB;
-          var fade = Math.pow((px - stepIdx + 1) / (px + 1), 1.2) * (1 - 0.35 * t);
+          var n2 = findNearestCorePixel(kx, ky, px + 3, n1);
+          if (n2 < 0) n2 = n1;
+          var n1o = n1 * 4;
+          var n2o = n2 * 4;
+          var stepIdx = removedAt[k];
+          var t = px <= 1 ? 0.5 : (stepIdx - 1) / (px - 1);
+          t = Math.max(0, Math.min(1, t));
+          // Two object-driven colors: inner ring ~ nearest border color, outer ring ~ second nearby border color.
+          d[out] = Math.round(src[n1o] * (1 - t) + src[n2o] * t);
+          d[out + 1] = Math.round(src[n1o + 1] * (1 - t) + src[n2o + 1] * t);
+          d[out + 2] = Math.round(src[n1o + 2] * (1 - t) + src[n2o + 2] * t);
           var srcAlpha = src[out + 3];
-          d[out + 3] = Math.max(0, Math.min(255, Math.round(srcAlpha * fade)));
+          var alphaScale = 0.9 - 0.35 * t; // keep ring visible enough to avoid washed-out/light look
+          d[out + 3] = Math.max(0, Math.min(255, Math.round(srcAlpha * alphaScale)));
         }
         ctx.putImageData(imageData, x, y);
       }
