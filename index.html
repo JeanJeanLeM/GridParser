@@ -64,7 +64,9 @@
       box-shadow: 0 1px 3px rgba(0,0,0,0.06);
     }
     .drop-zone {
-      display: block;
+      display: flex;
+      align-items: center;
+      justify-content: center;
       border: 2px dashed var(--border-input);
       border-radius: 8px;
       padding: 2.5rem 2rem;
@@ -351,6 +353,8 @@
     .tile-modal__crop-col {
       flex: 0 0 auto;
       padding: 0;
+      text-align: left;
+      align-self: flex-start;
     }
     .tile-modal__crop-col .tile-modal__section-title {
       margin-bottom: 0.5rem;
@@ -502,8 +506,17 @@
       transition: background 0.15s, border-color 0.15s;
     }
     .tile-modal__pipette-btn:hover { background: #e8e8e8; border-color: var(--text-secondary); }
-    .tile-modal__pipette-btn.active { background: #e0e8f0; border-color: var(--text-secondary); }
+    .tile-modal__pipette-btn.active {
+      background: #c8d8ec;
+      border-color: var(--accent, #c49b5a);
+      box-shadow: 0 0 0 2px rgba(196, 155, 90, 0.4);
+      font-weight: 600;
+    }
     .tile-modal__pipette-icon { width: 1rem; height: 1rem; }
+    .tile-modal--pipette-active .tile-modal__canvas-wrap,
+    .tile-modal--pipette-active .tile-modal__canvas-wrap canvas {
+      cursor: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 32" width="24" height="32"><path fill="%23333" stroke="%23fff" stroke-width="1.5" d="M12 2v6l-4 4 3 3 4-4h5l-4-9h-4z"/><path fill="%23333" d="M8 16l-4 4v6h6l4-4-6-6z"/></svg>') 4 28, crosshair;
+    }
     .tile-modal__bg-swatch-wrap {
       display: inline-flex;
       align-items: center;
@@ -1192,9 +1205,9 @@
   <div class="tile-modal-overlay" id="tile-modal-overlay">
     <div class="tile-modal" role="dialog" aria-label="Tile detail">
       <div class="tile-modal__header">
-        <span class="tile-modal__title" id="tile-modal-title">Tile 1</span>
         <div class="tile-modal__nav">
           <button type="button" class="tile-modal__nav-btn" id="tile-modal-prev" title="Previous tile">&#8249;</button>
+          <span class="tile-modal__title" id="tile-modal-title">Tile 1</span>
           <button type="button" class="tile-modal__nav-btn" id="tile-modal-next" title="Next tile">&#8250;</button>
         </div>
         <button type="button" class="tile-modal__close" id="tile-modal-close" title="Close">&times;</button>
@@ -1225,8 +1238,8 @@
           <div class="tile-modal__bg-scope-row" id="tile-bg-scope-row">
             <span class="tile-modal__section-title">Apply to</span>
             <label class="tile-modal__bg-scope-opt"><input type="radio" name="tile-bg-scope" value="tile" checked> This tile</label>
-            <label class="tile-modal__bg-scope-opt"><input type="radio" name="tile-bg-scope" value="image"> All in image</label>
-            <label class="tile-modal__bg-scope-opt tile-modal__bg-scope-opt--batch" id="tile-bg-scope-batch-wrap" style="display: none;"><input type="radio" name="tile-bg-scope" value="batch"> All (batch)</label>
+            <label class="tile-modal__bg-scope-opt"><input type="radio" name="tile-bg-scope" value="image"> All tiles of this image</label>
+            <label class="tile-modal__bg-scope-opt tile-modal__bg-scope-opt--batch" id="tile-bg-scope-batch-wrap" style="display: none;"><input type="radio" name="tile-bg-scope" value="batch"> All tiles of this batch</label>
           </div>
           <div class="tile-modal__bg-row">
             <label class="tile-modal__bg-check">
@@ -4621,7 +4634,12 @@
       function setPipetteMode(on) {
         pipetteMode = !!on;
         if (tilePipetteBtn) tilePipetteBtn.classList.toggle('active', pipetteMode);
-        if (!pipetteMode && tilePipetteLoupe) tilePipetteLoupe.classList.remove('visible');
+        var tileModal = document.querySelector('.tile-modal');
+        if (tileModal) tileModal.classList.toggle('tile-modal--pipette-active', pipetteMode);
+        if (!pipetteMode) {
+          if (tilePipetteLoupe) tilePipetteLoupe.classList.remove('visible');
+          syncBgUiFromSettings(getTargetBgSettings());
+        }
       }
 
       function updatePipetteLoupe(clientX, clientY) {
@@ -4678,6 +4696,10 @@
         loupeCtx.setLineDash([]);
         if (tilePipetteLoupeSwatch) {
           tilePipetteLoupeSwatch.style.backgroundColor = a < 255 ? 'rgba(' + r + ',' + g + ',' + b + ',' + (a / 255) + ')' : 'rgb(' + r + ',' + g + ',' + b + ')';
+        }
+        if (tileBgSwatch) {
+          tileBgSwatch.style.backgroundColor = 'rgb(' + r + ',' + g + ',' + b + ')';
+          tileBgSwatch.style.display = 'block';
         }
         if (tilePipetteLoupeRgb) {
           tilePipetteLoupeRgb.textContent = a < 255 ? 'R' + r + ' G' + g + ' B' + b + ' A' + a : 'R' + r + ' G' + g + ' B' + b;
