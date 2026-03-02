@@ -368,22 +368,28 @@
       text-align: left;
       display: block;
     }
-    .tile-modal__trim-row--vertical {
-      flex-direction: column;
-      gap: 0.4rem;
-      align-items: flex-start;
-      justify-content: flex-start;
-    }
-    .tile-modal__trim-row--vertical label {
-      display: flex;
+    .tile-modal__crop-grid {
+      display: grid;
+      grid-template-columns: max-content 4em;
+      column-gap: 0.55rem;
+      row-gap: 0.45rem;
       align-items: center;
-      justify-content: flex-start;
-      min-width: 5.5em;
-      text-align: left;
-      margin: 0;
+      justify-content: start;
+      justify-items: start;
     }
-    .tile-modal__trim-row--vertical label input {
-      margin-left: 0.35rem;
+    .tile-modal__crop-label {
+      text-align: left;
+      color: var(--text-muted);
+      margin: 0;
+      white-space: nowrap;
+    }
+    .tile-modal__crop-input {
+      width: 3.2em;
+      padding: 0.25rem 0.35rem;
+      border: 1px solid var(--border-input);
+      border-radius: var(--radius-input);
+      font-size: var(--text-xs);
+      text-align: center;
     }
     .tile-modal__canvas-wrap {
       flex: 1 1 200px;
@@ -1071,12 +1077,6 @@
   </header>
 
   <main class="main-content">
-    <div class="hero">
-      <p class="hero__label" aria-hidden="true">IMAGE UTILITY</p>
-      <h1>Grid2icons</h1>
-      <p class="intro">Upload one or more grid images. This grid parser splits them into clean tiles — no borders — then download as a single ZIP.</p>
-    </div>
-
   <section class="drop-section" aria-labelledby="step1-title">
     <div class="section-title-row">
       <span class="step-badge" aria-hidden="true">1</span>
@@ -1237,11 +1237,15 @@
         <div class="tile-modal__main-row">
           <div class="tile-modal__crop-col">
             <span class="tile-modal__section-title">Crop</span>
-            <div class="tile-modal__trim-row tile-modal__trim-row--vertical">
-              <label>Top <input type="number" id="tile-trim-top" min="0" step="1" value="0"></label>
-              <label>Right <input type="number" id="tile-trim-right" min="0" step="1" value="0"></label>
-              <label>Bottom <input type="number" id="tile-trim-bottom" min="0" step="1" value="0"></label>
-              <label>Left <input type="number" id="tile-trim-left" min="0" step="1" value="0"></label>
+            <div class="tile-modal__crop-grid">
+              <label for="tile-trim-top" class="tile-modal__crop-label">Top</label>
+              <input class="tile-modal__crop-input" type="number" id="tile-trim-top" min="0" step="1" value="0">
+              <label for="tile-trim-right" class="tile-modal__crop-label">Right</label>
+              <input class="tile-modal__crop-input" type="number" id="tile-trim-right" min="0" step="1" value="0">
+              <label for="tile-trim-bottom" class="tile-modal__crop-label">Bottom</label>
+              <input class="tile-modal__crop-input" type="number" id="tile-trim-bottom" min="0" step="1" value="0">
+              <label for="tile-trim-left" class="tile-modal__crop-label">Left</label>
+              <input class="tile-modal__crop-input" type="number" id="tile-trim-left" min="0" step="1" value="0">
             </div>
           </div>
           <div class="tile-modal__canvas-wrap">
