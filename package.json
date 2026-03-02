@@ -1,7 +1,7 @@
 {
   "name": "imageparser",
   "version": "1.0.0",
-  "description": "Grid to Icon — split grid images into tiles in the browser",
+  "description": "Grid2icon — split grid images into tiles in the browser",
   "private": true,
   "scripts": {
     "dev": "npx serve .",
