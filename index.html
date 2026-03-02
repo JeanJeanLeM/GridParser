@@ -1171,10 +1171,10 @@
           <span class="tile-modal__bg-swatch-wrap" title="Sampled color">
             <span class="tile-modal__bg-swatch" id="tile-bg-swatch" aria-hidden="true"></span>
           </span>
-          <label class="tile-modal__tolerance-label">Tolerance <input type="number" id="tile-bg-tolerance" min="0" max="255" step="1" value="32" aria-label="Color match tolerance"></label>
+          <label class="tile-modal__tolerance-label">Outline trim <input type="number" id="tile-bg-edge-px" min="0" max="8" step="1" value="1" aria-label="Outline trim in pixels"></label>
           <button type="button" class="tile-modal__bg-reset-btn" id="tile-bg-reset">Reset</button>
         </div>
-        <p class="tile-modal__bg-hint">Use Pipette, then click on the tile to sample the background color. Enable &quot;Remove background&quot; to make that color transparent.</p>
+        <p class="tile-modal__bg-hint">Use Pipette to sample background, enable Remove background, then increase Outline trim to delete leftover edge pixels around the isolated shape.</p>
       </div>
       <div class="tile-modal__footer">
         <button type="button" class="btn" id="tile-modal-download">Download this tile</button>
@@ -3174,7 +3174,7 @@
               cropInfos.push({
                 sx: Math.round(cell.x), sy: Math.round(cell.y), sw: Math.round(cell.w), sh: Math.round(cell.h),
                 trimTop: globalTrim, trimRight: globalTrim, trimBottom: globalTrim, trimLeft: globalTrim,
-                bgRemoveEnabled: false, bgColor: cloneRgbColor(dominantBgColor), bgTolerance: 32
+                bgRemoveEnabled: false, bgColor: cloneRgbColor(dominantBgColor), bgTolerance: 32, bgEdgeTrimPx: 1
               });
             }
           } else {
@@ -3189,7 +3189,7 @@
                   sx: Math.round(xClamped[ci]), sy: Math.round(yClamped[ri]),
                   sw: Math.round(xClamped[ci + 1] - xClamped[ci]), sh: Math.round(yClamped[ri + 1] - yClamped[ri]),
                   trimTop: tTop, trimRight: tRight, trimBottom: tBottom, trimLeft: tLeft,
-                  bgRemoveEnabled: false, bgColor: cloneRgbColor(dominantBgColor), bgTolerance: 32
+                  bgRemoveEnabled: false, bgColor: cloneRgbColor(dominantBgColor), bgTolerance: 32, bgEdgeTrimPx: 1
                 });
               }
             }
@@ -3247,6 +3247,7 @@
                 entry.tileCropInfos = r.cropInfos;
                 entry.bgRemoveEnabled = false;
                 entry.bgTolerance = 32;
+                entry.bgEdgeTrimPx = 1;
                 entry.bgColor = cloneRgbColor(r.dominantBgColor);
                 entry.processed = true;
                 entry.tileNames = [];
@@ -3282,6 +3283,7 @@
           tileSrcImage = currentImage;
           imageBgSettings.bgRemoveEnabled = false;
           imageBgSettings.bgTolerance = 32;
+          imageBgSettings.bgEdgeTrimPx = 1;
           imageBgSettings.bgColor = cloneRgbColor(r.dominantBgColor);
           var mode = r.mode;
           var fmt = r.fmt;
@@ -4415,14 +4417,14 @@
       var tilePipetteBtn = document.getElementById('tile-pipette-btn');
       var tileBgRemoveEnable = document.getElementById('tile-bg-remove-enable');
       var tileBgSwatch = document.getElementById('tile-bg-swatch');
-      var tileBgToleranceInput = document.getElementById('tile-bg-tolerance');
+      var tileBgEdgePxInput = document.getElementById('tile-bg-edge-px');
       var tileBgResetBtn = document.getElementById('tile-bg-reset');
       var modalTileIndex = -1;
       var modalBatchIndex = -1;
       var pipetteMode = false;
       var bgRemoveScope = 'tile';
-      var imageBgSettings = { bgRemoveEnabled: false, bgColor: null, bgTolerance: 32 };
-      var batchBgSettings = { bgRemoveEnabled: false, bgColor: null, bgTolerance: 32 };
+      var imageBgSettings = { bgRemoveEnabled: false, bgColor: null, bgTolerance: 32, bgEdgeTrimPx: 1 };
+      var batchBgSettings = { bgRemoveEnabled: false, bgColor: null, bgTolerance: 32, bgEdgeTrimPx: 1 };
       var tileBgScopeRadios = document.querySelectorAll('input[name="tile-bg-scope"]');
       var tileBgScopeBatchWrap = document.getElementById('tile-bg-scope-batch-wrap');
       var tilePipetteLoupe = document.getElementById('tile-pipette-loupe');
@@ -4437,6 +4439,7 @@
         if (info.bgRemoveEnabled == null) info.bgRemoveEnabled = false;
         if (info.bgColor == null) info.bgColor = null;
         if (info.bgTolerance == null) info.bgTolerance = 32;
+        if (info.bgEdgeTrimPx == null) info.bgEdgeTrimPx = 1;
       }
 
       function ensureEntryBgDefaults(entry) {
@@ -4444,6 +4447,7 @@
         if (entry.bgRemoveEnabled == null) entry.bgRemoveEnabled = false;
         if (entry.bgColor == null) entry.bgColor = null;
         if (entry.bgTolerance == null) entry.bgTolerance = 32;
+        if (entry.bgEdgeTrimPx == null) entry.bgEdgeTrimPx = 1;
       }
 
       function getEffectiveBgSettings(tileIndex, batchIndex) {
@@ -4487,7 +4491,9 @@
       function syncBgUiFromSettings(settings) {
         if (!settings) return;
         if (tileBgRemoveEnable) tileBgRemoveEnable.checked = !!settings.bgRemoveEnabled;
-        if (tileBgToleranceInput) tileBgToleranceInput.value = Math.max(0, Math.min(255, settings.bgTolerance || 32));
+        var edgePx = parseInt(settings.bgEdgeTrimPx, 10);
+        if (isNaN(edgePx)) edgePx = 1;
+        if (tileBgEdgePxInput) tileBgEdgePxInput.value = Math.max(0, Math.min(8, edgePx));
         if (tileBgSwatch) {
           var c = settings.bgColor;
           if (c && typeof c.r === 'number' && typeof c.g === 'number' && typeof c.b === 'number') {
@@ -4589,6 +4595,43 @@
         ctx.putImageData(data, x, y);
       }
 
+      function applyAlphaEdgeTrimToImageData(ctx, x, y, w, h, edgePx) {
+        var px = Math.max(0, Math.min(8, parseInt(edgePx, 10) || 0));
+        if (px <= 0) return;
+        var imageData = ctx.getImageData(x, y, w, h);
+        var d = imageData.data;
+        var size = w * h;
+        var mask = new Uint8Array(size);
+        for (var i = 0; i < size; i++) {
+          mask[i] = d[i * 4 + 3] > 10 ? 1 : 0;
+        }
+        for (var step = 0; step < px; step++) {
+          var next = new Uint8Array(size);
+          for (var yy = 0; yy < h; yy++) {
+            var row = yy * w;
+            for (var xx = 0; xx < w; xx++) {
+              var idx = row + xx;
+              if (!mask[idx]) continue;
+              if (xx === 0 || yy === 0 || xx === w - 1 || yy === h - 1) {
+                next[idx] = 0;
+                continue;
+              }
+              var keep =
+                mask[idx - 1] && mask[idx + 1] &&
+                mask[idx - w] && mask[idx + w] &&
+                mask[idx - w - 1] && mask[idx - w + 1] &&
+                mask[idx + w - 1] && mask[idx + w + 1];
+              if (keep) next[idx] = 1;
+            }
+          }
+          mask = next;
+        }
+        for (var k = 0; k < size; k++) {
+          if (!mask[k]) d[k * 4 + 3] = 0;
+        }
+        ctx.putImageData(imageData, x, y);
+      }
+
       function renderModalTile(index) {
         if (!tileSrcImage || index < 0 || index >= tileCropInfos.length) return;
         var info = tileCropInfos[index];
@@ -4606,6 +4649,7 @@
         var eff = getEffectiveBgSettings(index, modalBatchIndex);
         if (eff && eff.bgRemoveEnabled && eff.bgColor && typeof eff.bgColor.r === 'number') {
           applyBgRemoveToImageData(ctx, 0, 0, sw, sh, eff.bgColor, eff.bgTolerance);
+          applyAlphaEdgeTrimToImageData(ctx, 0, 0, sw, sh, eff.bgEdgeTrimPx);
         }
       }
 
@@ -4625,6 +4669,7 @@
         ctx.drawImage(tileSrcImage, sx, sy, sw, sh, 0, 0, sw, sh);
         if (eff && eff.bgRemoveEnabled && eff.bgColor && typeof eff.bgColor.r === 'number') {
           applyBgRemoveToImageData(ctx, 0, 0, sw, sh, eff.bgColor, eff.bgTolerance);
+          applyAlphaEdgeTrimToImageData(ctx, 0, 0, sw, sh, eff.bgEdgeTrimPx);
         }
         return new Promise(function (resolve) {
           c.toBlob(function (blob) {
@@ -4684,6 +4729,7 @@
                     ctx.drawImage(tileSrcImage, sx, sy, sw, sh, 0, 0, sw, sh);
                     if (eff && eff.bgRemoveEnabled && eff.bgColor && typeof eff.bgColor.r === 'number') {
                       applyBgRemoveToImageData(ctx, 0, 0, sw, sh, eff.bgColor, eff.bgTolerance);
+                      applyAlphaEdgeTrimToImageData(ctx, 0, 0, sw, sh, eff.bgEdgeTrimPx);
                     }
                     return new Promise(function (resolve) {
                       c.toBlob(function (blob) {
@@ -4884,12 +4930,12 @@
           applyBgChangeAndRegenerate();
         });
       }
-      if (tileBgToleranceInput) {
-        tileBgToleranceInput.addEventListener('input', function () {
+      if (tileBgEdgePxInput) {
+        tileBgEdgePxInput.addEventListener('input', function () {
           if (modalTileIndex < 0 || modalTileIndex >= tileCropInfos.length) return;
           var target = getTargetBgSettings();
-          var val = Math.max(0, Math.min(255, parseInt(tileBgToleranceInput.value, 10) || 32));
-          if (target) target.bgTolerance = val;
+          var val = Math.max(0, Math.min(8, parseInt(tileBgEdgePxInput.value, 10) || 0));
+          if (target) target.bgEdgeTrimPx = val;
           applyBgChangeAndRegenerate();
         });
       }
@@ -4901,8 +4947,9 @@
             target.bgRemoveEnabled = false;
             target.bgColor = null;
             target.bgTolerance = 32;
+            target.bgEdgeTrimPx = 1;
           }
-          if (tileBgToleranceInput) tileBgToleranceInput.value = 32;
+          if (tileBgEdgePxInput) tileBgEdgePxInput.value = 1;
           syncBgUiFromSettings(target);
           applyBgChangeAndRegenerate();
         });
