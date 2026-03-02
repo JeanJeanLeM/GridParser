@@ -859,8 +859,7 @@
     <p class="grid-editor-intro" id="grid-editor-intro">Grid and outer borders are auto-detected on upload. Drag <strong style="color: rgba(50,100,220,0.95);">blue</strong> (outer) and <strong style="color: rgba(220,50,50,0.9);">red</strong> (inner) lines to set where tiles are cut. These lines are guides only—they are not drawn on your image and do not appear in the downloaded tiles.</p>
     <p class="grid-editor-intro grid-editor-intro--freeform" id="grid-editor-intro-freeform" style="display: none;">Freeform mode: auto-detect prioritizes uncommon form layouts first (panel/segment forms), then falls back to black-line grid only if needed. Click a form to select it; drag inside to move; drag corners/sides to resize; add or delete forms; exclude cells from export.</p>
     <p class="grid-editor-intro grid-editor-intro--freeform" id="grid-editor-intro-lineform" style="display: none;">Straight-line mode: detect forms from black border segments (panel borders) first, even when lines are not perfectly continuous. Falls back to classic black-line grid only when border-shape detection is weak.</p>
-    <p class="grid-editor-intro grid-editor-intro--freeform" id="grid-editor-intro-adjacent" style="display: none;">Adjacent tiles: for images with tiles directly next to each other separated by thin black lines or on a black background. Use when tiles touch with minimal or black separators.</p>
-    <p class="grid-editor-intro grid-editor-intro--freeform" id="grid-editor-intro-blackbg" style="display: none;">Black BG shapes: for dark-background images. Long thin black lines are removed; tiles are the isolated content shapes. Use when adjacent or grid modes underperform.</p>
+    <p class="grid-editor-intro grid-editor-intro--freeform" id="grid-editor-intro-blackbg" style="display: none;">Black BG shapes: for dark-background images. Long thin black lines are removed; tiles are the isolated content shapes. Use when grid or line modes underperform.</p>
     <p class="grid-editor-intro" id="grid-editor-intro-geometrical" style="display: none;">Simple geometrical mode: select grid format and fine-tune the image corners. The image is split into equal-sized cells within the defined rectangle. Drag corners and outer lines to set the shape, and drag inner red cutlines if the generated grid is not perfectly symmetrical.</p>
     <div class="grid-editor-legend" id="grid-editor-legend">
       <span><span class="legend-dot legend-dot--blue" aria-hidden="true"></span> Outer border lines</span>
@@ -883,7 +882,6 @@
         <label class="editor-mode-option"><input type="radio" name="editor-mode" value="uniform" checked>Grid</label>
         <label class="editor-mode-option"><input type="radio" name="editor-mode" value="freeform">Freeform</label>
         <label class="editor-mode-option"><input type="radio" name="editor-mode" value="lineform">Lines</label>
-        <label class="editor-mode-option"><input type="radio" name="editor-mode" value="adjacent">Adjacent</label>
         <label class="editor-mode-option"><input type="radio" name="editor-mode" value="blackbg">Black BG</label>
         <label class="editor-mode-option"><input type="radio" name="editor-mode" value="geometrical">Simple Grid</label>
       </div>
@@ -1030,6 +1028,10 @@
       var batchPreviewTiles = [];
       var batchPreviewPage = 0;
       var BATCH_PREVIEW_PAGE_SIZE = 16;
+      var MAX_BATCH_IMAGES = 20;
+      var MAX_FILE_SIZE_BYTES = 15 * 1024 * 1024;
+      var MAX_IMAGE_DIMENSION = 4096;
+      var MAX_IMAGE_PIXELS = 16 * 1024 * 1024;
       var selectedCellIndex = null;
       var drag = { active: false, axis: null, index: null };
       var formDrag = { active: false, mode: null, handle: null, cellIndex: null, startX: 0, startY: 0, origX: 0, origY: 0, origW: 0, origH: 0 };
@@ -1052,11 +1054,25 @@
       var ocrCatchLogCount = 0;
       var autoNameCancelLogCount = 0;
       var autoNameRunId = 0;
+      var cutInProgress = false;
+      var pendingAutoCut = false;
+      var autoCutSkipLogCount = 0;
+      var debugLogRetryAt = 0;
+      var debugLogBackoffMs = 5000;
       function hasOcrSupport() {
         return typeof Tesseract !== 'undefined' && !!Tesseract.recognize && !!Tesseract.createWorker;
       }
-      function sendAgentDebugLog(hypothesisId, location, message, data, runId) {
-        fetch('http://127.0.0.1:7259/ingest/4e86ec95-c090-4163-bab8-8321b4a7442a',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'ef7076'},body:JSON.stringify({sessionId:'ef7076',runId:runId || 'pre-fix',hypothesisId:hypothesisId,location:location,message:message,data:data || {},timestamp:Date.now()})}).catch(function () {});
+      function sendAgentDebugLog(hypothesisId, loc, message, data, runId) {
+        var host = typeof location !== 'undefined' ? location.hostname : '';
+        if (host !== 'localhost' && host !== '127.0.0.1') return;
+        if (Date.now() < debugLogRetryAt) return;
+        fetch('http://127.0.0.1:7259/ingest/4e86ec95-c090-4163-bab8-8321b4a7442a',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'ef7076'},body:JSON.stringify({sessionId:'ef7076',runId:runId || 'pre-fix',hypothesisId:hypothesisId,location:loc,message:message,data:data || {},timestamp:Date.now()})}).then(function () {
+          debugLogRetryAt = 0;
+          debugLogBackoffMs = 5000;
+        }).catch(function () {
+          debugLogRetryAt = Date.now() + debugLogBackoffMs;
+          debugLogBackoffMs = Math.min(60000, debugLogBackoffMs * 2);
+        });
       }
       function logAutoName(message, data) {
         if (typeof console === 'undefined' || !console.log) return;
@@ -1122,6 +1138,31 @@
 
       var autoCutTimer = null;
       function scheduleAutoCut() {
+        if (batchImages.length > 1) {
+          if (autoCutSkipLogCount < 25) {
+            autoCutSkipLogCount++;
+            // #region agent log
+            sendAgentDebugLog('H8', 'index.html:scheduleAutoCut', 'scheduleAutoCut skipped in batch mode', {
+              batchSize: batchImages.length,
+              currentBatchIndex: currentBatchIndex
+            }, 'pre-fix');
+            // #endregion
+          }
+          return;
+        }
+        if (cutInProgress) {
+          pendingAutoCut = true;
+          if (autoCutSkipLogCount < 25) {
+            autoCutSkipLogCount++;
+            // #region agent log
+            sendAgentDebugLog('H8', 'index.html:scheduleAutoCut', 'scheduleAutoCut deferred while cut in progress', {
+              batchSize: batchImages.length,
+              currentBatchIndex: currentBatchIndex
+            }, 'pre-fix');
+            // #endregion
+          }
+          return;
+        }
         var scheduleCaller = 'unknown';
         try {
           var stack = new Error().stack || '';
@@ -1677,8 +1718,6 @@
             geoCornersToBounds();
           } else if (mode === 'lineform') {
             runLineFormAutoDetect();
-          } else if (mode === 'adjacent') {
-            runAdjacentAutoDetect();
           } else if (mode === 'blackbg') {
             runBlackBgAutoDetect();
           } else {
@@ -1708,13 +1747,18 @@
         var radio = document.querySelector('input[name="editor-mode"]:checked');
         if (!radio) return 'uniform';
         if (radio.value === 'geometrical') return 'geometrical';
-        if (['freeform', 'lineform', 'adjacent', 'blackbg'].indexOf(radio.value) !== -1) return radio.value;
+        if (['freeform', 'lineform', 'blackbg'].indexOf(radio.value) !== -1) return radio.value;
         return 'uniform';
+      }
+      function setEditorModeRadio(mode) {
+        var selector = 'input[name="editor-mode"][value="' + mode + '"]';
+        var radio = document.querySelector(selector);
+        if (radio) radio.checked = true;
       }
 
       function isFormsMode(mode) {
         var m = mode || getEditorMode();
-        return m === 'freeform' || m === 'lineform' || m === 'adjacent' || m === 'blackbg';
+        return m === 'freeform' || m === 'lineform' || m === 'blackbg';
       }
 
       function runAutoDetect() {
@@ -2147,12 +2191,6 @@
           maxCells: 64,
           getCandidate: function (w, h) { return getLineformCandidate(w, h); }
         },
-        adjacent: {
-          label: 'Adjacent',
-          minCells: 2,
-          maxCells: 64,
-          getCandidate: function (w, h) { return getAdjacentCandidate(w, h); }
-        },
         blackbg: {
           label: 'Black BG',
           minCells: 2,
@@ -2382,13 +2420,13 @@
       }
 
       function prioritizeModesFromSignals(signals, w, h) {
-        if (!signals || typeof signals.darkRatio !== 'number') return ['uniform', 'freeform', 'lineform', 'adjacent'];
+        if (!signals || typeof signals.darkRatio !== 'number') return ['uniform', 'freeform', 'lineform'];
         var d = signals.darkRatio;
         var l = signals.lightRatio;
-        if (d > 0.4) return ['blackbg', 'adjacent', 'lineform', 'uniform', 'freeform'];
-        if (l > 0.5) return ['freeform', 'uniform', 'lineform', 'adjacent'];
-        if (d >= 0.15 && d <= 0.35 && l >= 0.25 && l <= 0.45) return ['uniform', 'freeform', 'lineform', 'adjacent', 'blackbg'];
-        return ['uniform', 'lineform', 'adjacent', 'blackbg', 'freeform'];
+        if (d > 0.4) return ['blackbg', 'lineform', 'uniform', 'freeform'];
+        if (l > 0.5) return ['freeform', 'uniform', 'lineform'];
+        if (d >= 0.15 && d <= 0.35 && l >= 0.25 && l <= 0.45) return ['uniform', 'freeform', 'lineform', 'blackbg'];
+        return ['uniform', 'lineform', 'blackbg', 'freeform'];
       }
 
       function scoreAndSelectBest(candidates, w, h) {
@@ -2549,6 +2587,16 @@
           showError('Please drop or select image file(s).');
           return;
         }
+        if (files.length > MAX_BATCH_IMAGES) {
+          showError('Too many images. Maximum ' + MAX_BATCH_IMAGES + ' at a time.');
+          return;
+        }
+        for (var fi = 0; fi < files.length; fi++) {
+          if (files[fi].size > MAX_FILE_SIZE_BYTES) {
+            showError('File too large: ' + (files[fi].name || 'image') + '. Max ' + (MAX_FILE_SIZE_BYTES / 1024 / 1024) + ' MB per file.');
+            return;
+          }
+        }
         if (objectUrl) URL.revokeObjectURL(objectUrl);
         objectUrl = null;
         for (var i = 0; i < batchImages.length; i++) {
@@ -2585,9 +2633,16 @@
             batchImages.push(entry);
             var img = new Image();
             img.onload = function () {
-              currentImage = img;
               var w = img.naturalWidth;
               var h = img.naturalHeight;
+              if (w > MAX_IMAGE_DIMENSION || h > MAX_IMAGE_DIMENSION || w * h > MAX_IMAGE_PIXELS) {
+                showError('Image too large: ' + (file.name || '') + '. Max ' + MAX_IMAGE_DIMENSION + ' px per side and ' + (MAX_IMAGE_PIXELS / 1e6) + ' MP.');
+                batchImages.splice(batchImages.indexOf(entry), 1);
+                if (entry.objectURL) URL.revokeObjectURL(entry.objectURL);
+                onOneLoaded();
+                return;
+              }
+              currentImage = img;
               initBounds(w, h);
               runAutoDetect();
               entry.img = img;
@@ -2617,6 +2672,16 @@
           if (file && file.type && file.type.startsWith('image/')) files.push(file);
         }
         if (!files.length) return;
+        if (batchImages.length + files.length > MAX_BATCH_IMAGES) {
+          showError('Too many images. Maximum ' + MAX_BATCH_IMAGES + ' total. You have ' + batchImages.length + ', adding ' + files.length + ' would exceed the limit.');
+          return;
+        }
+        for (var fi = 0; fi < files.length; fi++) {
+          if (files[fi].size > MAX_FILE_SIZE_BYTES) {
+            showError('File too large: ' + (files[fi].name || 'image') + '. Max ' + (MAX_FILE_SIZE_BYTES / 1024 / 1024) + ' MB per file.');
+            return;
+          }
+        }
         var startLen = batchImages.length;
         var pending = files.length;
         function onOneLoaded() {
@@ -2650,9 +2715,18 @@
             batchImages.push(entry);
             var img = new Image();
             img.onload = function () {
-              currentImage = img;
               var w = img.naturalWidth;
               var h = img.naturalHeight;
+              if (w > MAX_IMAGE_DIMENSION || h > MAX_IMAGE_DIMENSION || w * h > MAX_IMAGE_PIXELS) {
+                showError('Image too large: ' + (file.name || '') + '. Max ' + MAX_IMAGE_DIMENSION + ' px per side and ' + (MAX_IMAGE_PIXELS / 1e6) + ' MP.');
+                batchImages.splice(batchImages.indexOf(entry), 1);
+                if (entry.objectURL) URL.revokeObjectURL(entry.objectURL);
+                if (currentBatchIndex >= batchImages.length && batchImages.length) currentBatchIndex = batchImages.length - 1;
+                loadImageState(currentBatchIndex);
+                onOneLoaded();
+                return;
+              }
+              currentImage = img;
               initBounds(w, h);
               runAutoDetect();
               entry.img = img;
@@ -2726,7 +2800,8 @@
           currentBatchIndex: currentBatchIndex
         }, 'pre-fix');
         // #endregion
-        setEditorMode(editorMode);
+        setEditorModeRadio(editorMode);
+        setEditorMode(editorMode, { suppressAutoDetect: true, suppressAutoCut: true });
         setGridFormatFromBounds(xBounds, yBounds);
         updateFreeformButtons();
         updateCutButtonLabel();
@@ -2768,7 +2843,7 @@
         var strip = document.getElementById('batch-strip');
         if (!strip) return;
         strip.innerHTML = '';
-        var modeLabels = { uniform: 'Grid', freeform: 'Freeform', lineform: 'Lines', adjacent: 'Adjacent', blackbg: 'Black BG', geometrical: 'Simple Grid' };
+        var modeLabels = { uniform: 'Grid', freeform: 'Freeform', lineform: 'Lines', blackbg: 'Black BG', geometrical: 'Simple Grid' };
         for (var i = 0; i < batchImages.length; i++) {
           var entry = batchImages[i];
           var thumb = document.createElement('button');
@@ -2854,7 +2929,7 @@
         if (isFormsMode(mode)) {
           if (typeof segmentSplit === 'undefined' || !segmentSplit.splitByCells) return Promise.reject(new Error('Freeform splitter not loaded.'));
           if (!freeformCells.length) {
-            var autoDetected = (mode === 'lineform' ? runLineFormAutoDetect() : (mode === 'adjacent' ? runAdjacentAutoDetect() : (mode === 'blackbg' ? runBlackBgAutoDetect() : runFreeformAutoDetect())));
+            var autoDetected = (mode === 'lineform' ? runLineFormAutoDetect() : (mode === 'blackbg' ? runBlackBgAutoDetect() : runFreeformAutoDetect()));
             if (!autoDetected) return Promise.reject(new Error('No forms detected.'));
           }
           splitPromise = segmentSplit.splitByCells(currentImage, freeformCells, { trimPixels: getTrimPixels(), excludedCellIds: excludedCellIds });
@@ -2901,6 +2976,15 @@
         });
       }
 
+      function finishCutRun() {
+        if (!cutInProgress) return;
+        cutInProgress = false;
+        if (pendingAutoCut) {
+          pendingAutoCut = false;
+          scheduleAutoCut();
+        }
+      }
+
       function runCut(quiet) {
         // #region agent log
         sendAgentDebugLog('H4', 'index.html:runCut:entry', 'runCut entered', {
@@ -2911,10 +2995,26 @@
           autoNameRunId: autoNameRunId
         }, 'pre-fix');
         // #endregion
+        if (cutInProgress) {
+          pendingAutoCut = pendingAutoCut || !!quiet;
+          if (autoCutSkipLogCount < 25) {
+            autoCutSkipLogCount++;
+            // #region agent log
+            sendAgentDebugLog('H8', 'index.html:runCut:entry', 'runCut ignored because one is already active', {
+              quiet: !!quiet,
+              pendingAutoCut: pendingAutoCut,
+              batchSize: batchImages.length
+            }, 'pre-fix');
+            // #endregion
+          }
+          return;
+        }
         if (!currentImage) {
           if (!quiet) showError('Load an image first.');
           return;
         }
+        cutInProgress = true;
+        pendingAutoCut = false;
         if (!quiet) clearError();
         if (batchImages.length > 1) {
           saveCurrentImageState();
@@ -2953,6 +3053,8 @@
             if (cutBtn) cutBtn.disabled = false;
           }).catch(function () {
             if (cutBtn) cutBtn.disabled = false;
+          }).then(function () {
+            finishCutRun();
           });
           return;
         }
@@ -3013,6 +3115,8 @@
           setRunAutoNameButtonEnabled(true);
         }).catch(function (err) {
           if (!quiet) showError(err && err.message ? err.message : 'Failed to create tiles.');
+        }).then(function () {
+          finishCutRun();
         });
       }
 
@@ -3585,7 +3689,10 @@
       }
       initGridFormatPicker();
       updateCutButtonLabel();
-      function setEditorMode(mode) {
+      function setEditorMode(mode, options) {
+        options = options || {};
+        var suppressAutoDetect = !!options.suppressAutoDetect;
+        var suppressAutoCut = !!options.suppressAutoCut;
         var previousMode = editorMode;
         editorMode = mode;
         var uniformToolbar = document.getElementById('uniform-grid-toolbar');
@@ -3599,14 +3706,12 @@
         var introEl = document.getElementById('grid-editor-intro');
         var introFreeform = document.getElementById('grid-editor-intro-freeform');
         var introLineform = document.getElementById('grid-editor-intro-lineform');
-        var introAdjacent = document.getElementById('grid-editor-intro-adjacent');
         var introBlackbg = document.getElementById('grid-editor-intro-blackbg');
         var introGeometrical = document.getElementById('grid-editor-intro-geometrical');
         var isFormMode = isFormsMode(mode);
         var isGeometrical = (mode === 'geometrical');
         var isFreeform = (mode === 'freeform');
         var isLineform = (mode === 'lineform');
-        var isAdjacent = (mode === 'adjacent');
         var isBlackbg = (mode === 'blackbg');
         if (uniformToolbar) uniformToolbar.style.display = isFormMode ? 'none' : '';
         if (freeformToolbar) freeformToolbar.style.display = isFormMode ? '' : 'none';
@@ -3619,50 +3724,52 @@
         if (introEl) introEl.style.display = (!isFormMode && !isGeometrical) ? 'block' : 'none';
         if (introFreeform) introFreeform.style.display = isFreeform ? 'block' : 'none';
         if (introLineform) introLineform.style.display = isLineform ? 'block' : 'none';
-        if (introAdjacent) introAdjacent.style.display = isAdjacent ? 'block' : 'none';
         if (introBlackbg) introBlackbg.style.display = isBlackbg ? 'block' : 'none';
         if (introGeometrical) introGeometrical.style.display = isGeometrical ? 'block' : 'none';
         updateFreeformButtons();
         updateCutButtonLabel();
         if (isFormMode) updateFreeformCellsVisual();
-        if (currentImage && isFormMode) {
-          if (isLineform) runLineFormAutoDetect();
-          else if (isAdjacent) runAdjacentAutoDetect();
-          else if (isBlackbg) runBlackBgAutoDetect();
-          else runFreeformAutoDetect();
-        } else if (currentImage && isGeometrical) {
-          // Entering Simple Grid should start from full image rectangle (0/0/0/0 insets),
-          // not from the previously detected Grid mode bounds.
-          var shouldResetGeoRect = previousMode !== 'geometrical';
-          if (shouldResetGeoRect || xBounds.length <= 1 || yBounds.length <= 1) {
-            initGeoCorners(currentImage.naturalWidth, currentImage.naturalHeight);
-            geoCornersToBounds();
-          } else if (xBounds.length > 1 && yBounds.length > 1) {
-            var gxLast = xBounds.length - 1;
-            var gyLast = yBounds.length - 1;
-            setGeoRectFromInsets(
-              xBounds[0],
-              yBounds[0],
-              currentImage.naturalWidth - xBounds[gxLast],
-              currentImage.naturalHeight - yBounds[gyLast]
-            );
-            geoAlignBoundsToCorners(true);
+        if (!suppressAutoDetect) {
+          if (currentImage && isFormMode) {
+            if (isLineform) runLineFormAutoDetect();
+            else if (isBlackbg) runBlackBgAutoDetect();
+            else runFreeformAutoDetect();
+          } else if (currentImage && isGeometrical) {
+            // Entering Simple Grid should start from full image rectangle (0/0/0/0 insets),
+            // not from the previously detected Grid mode bounds.
+            var shouldResetGeoRect = previousMode !== 'geometrical';
+            if (shouldResetGeoRect || xBounds.length <= 1 || yBounds.length <= 1) {
+              initGeoCorners(currentImage.naturalWidth, currentImage.naturalHeight);
+              geoCornersToBounds();
+            } else if (xBounds.length > 1 && yBounds.length > 1) {
+              var gxLast = xBounds.length - 1;
+              var gyLast = yBounds.length - 1;
+              setGeoRectFromInsets(
+                xBounds[0],
+                yBounds[0],
+                currentImage.naturalWidth - xBounds[gxLast],
+                currentImage.naturalHeight - yBounds[gyLast]
+              );
+              geoAlignBoundsToCorners(true);
+            }
+            drawOverlay();
+          } else if (currentImage) {
+            runAutoDetect();
           }
-          drawOverlay();
-        } else if (currentImage) {
-          runAutoDetect();
         }
-        // #region agent log
-        sendAgentDebugLog('H1', 'index.html:setEditorMode:beforeScheduleAutoCut', 'setEditorMode scheduling auto cut', {
-          mode: mode,
-          isFormMode: isFormMode,
-          isGeometrical: isGeometrical,
-          hasCurrentImage: !!currentImage,
-          batchSize: batchImages.length,
-          currentBatchIndex: currentBatchIndex
-        }, 'pre-fix');
-        // #endregion
-        scheduleAutoCut();
+        if (!suppressAutoCut) {
+          // #region agent log
+          sendAgentDebugLog('H1', 'index.html:setEditorMode:beforeScheduleAutoCut', 'setEditorMode scheduling auto cut', {
+            mode: mode,
+            isFormMode: isFormMode,
+            isGeometrical: isGeometrical,
+            hasCurrentImage: !!currentImage,
+            batchSize: batchImages.length,
+            currentBatchIndex: currentBatchIndex
+          }, 'pre-fix');
+          // #endregion
+          scheduleAutoCut();
+        }
       }
       var editorModeRadios = document.querySelectorAll('input[name="editor-mode"]');
       for (var r = 0; r < editorModeRadios.length; r++) {
@@ -3730,7 +3837,7 @@
           return;
         }
         var mode = getEditorMode();
-        var ok = (mode === 'lineform') ? runLineFormAutoDetect() : (mode === 'adjacent' ? runAdjacentAutoDetect() : (mode === 'blackbg' ? runBlackBgAutoDetect() : runFreeformAutoDetect()));
+        var ok = (mode === 'lineform') ? runLineFormAutoDetect() : (mode === 'blackbg' ? runBlackBgAutoDetect() : runFreeformAutoDetect());
         if (!ok) showError('Could not detect forms. Try adding a form manually.');
       });
       document.getElementById('freeform-reset-btn').addEventListener('click', function () {
