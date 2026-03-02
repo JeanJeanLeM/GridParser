@@ -4,6 +4,8 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Grid2icons</title>
+  <link rel="icon" type="image/png" href="assets/preview/LogoG2i.png">
+  <link rel="apple-touch-icon" href="assets/preview/LogoG2i.png">
   <link rel="stylesheet" href="css/shared.css">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
   <script src="lib/tesseract.min.js"></script>
@@ -214,7 +216,7 @@
     .preview-tile .tile-name:focus {
       border-color: var(--text-secondary);
       outline: none;
-      box-shadow: 0 0 0 2px rgba(229, 161, 82, 0.25);
+      box-shadow: 0 0 0 2px rgba(91, 124, 186, 0.25);
     }
     .preview-tile .tile-actions {
       display: flex;
@@ -535,8 +537,8 @@
     .tile-modal__pipette-btn:hover { background: #e8e8e8; border-color: var(--text-secondary); }
     .tile-modal__pipette-btn.active {
       background: #c8d8ec;
-      border-color: var(--accent, #c49b5a);
-      box-shadow: 0 0 0 2px rgba(196, 155, 90, 0.4);
+      border-color: var(--accent);
+      box-shadow: 0 0 0 2px rgba(91, 124, 186, 0.35);
       font-weight: 600;
     }
     .tile-modal__pipette-icon { width: 1rem; height: 1rem; }
@@ -656,7 +658,7 @@
     .grid-format-dimensions__input:focus {
       outline: none;
       border-color: var(--accent);
-      box-shadow: 0 0 0 2px rgba(229, 161, 82, 0.2);
+      box-shadow: 0 0 0 2px rgba(91, 124, 186, 0.2);
     }
     .grid-format-dimensions__times {
       font-size: 1rem;
@@ -737,7 +739,7 @@
     }
     .grid-format-picker:focus-within {
       border-color: var(--accent);
-      box-shadow: 0 0 0 2px rgba(229, 161, 82, 0.25);
+      box-shadow: 0 0 0 2px rgba(91, 124, 186, 0.25);
     }
     .grid-format-picker__label {
       font-size: var(--text-xs);
@@ -773,7 +775,7 @@
       box-shadow: 0 1px 2px rgba(0,0,0,0.08);
     }
     .grid-format-picker__cell.in-selection:hover {
-      background: #e09a38;
+      background: var(--btn-primary-hover);
       filter: brightness(1.08);
     }
     .grid-format-picker__cell.out-of-preview {
@@ -853,7 +855,7 @@
       color: var(--text-muted);
     }
     .loupe-btn:hover { background: #f0f0f0; color: var(--text-secondary); }
-    .loupe-btn.active { background: #e0e8f0; border-color: var(--text-secondary); color: var(--text-primary); }
+    .loupe-btn.active { background: #dce4f4; border-color: var(--text-secondary); color: var(--text-primary); }
     .loupe-btn svg { width: 20px; height: 20px; }
     .loupe-container {
       position: fixed;
@@ -938,7 +940,7 @@
     .trim-inline input:focus {
       outline: none;
       border-color: var(--accent);
-      box-shadow: 0 0 0 2px rgba(229, 161, 82, 0.2);
+      box-shadow: 0 0 0 2px rgba(91, 124, 186, 0.2);
     }
     .auto-name-label {
       display: inline-flex;
@@ -1072,7 +1074,10 @@
 <body>
   <header class="app-header">
     <div class="app-header__inner">
-      <a href="index.html" class="app-header__logo">Grid<span class="app-header__logo-num">2</span>icons</a>
+      <a href="index.html" class="app-header__logo" aria-label="Grid2icons home">
+        <img src="assets/preview/LogoG2i.png" alt="" class="app-header__logo-img">
+        <span class="app-header__logo-text">Grid2icons</span>
+      </a>
     </div>
   </header>
 
