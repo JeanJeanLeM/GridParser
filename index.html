@@ -310,11 +310,60 @@
       max-height: 62vh;
       width: 100%;
     }
+    .tile-modal__canvas-wrap {
+      position: relative;
+    }
     .tile-modal__canvas-wrap canvas {
       max-width: 100%;
       max-height: 62vh;
       border-radius: 4px;
       background: repeating-conic-gradient(#e0e0e0 0% 25%, #fff 0% 50%) 50% / 16px 16px;
+    }
+    .tile-modal__pipette-loupe {
+      display: none;
+      position: absolute;
+      bottom: 0.5rem;
+      left: 0.5rem;
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 0.35rem;
+      padding: 0.4rem;
+      background: var(--card-bg);
+      border: 1px solid var(--border-input);
+      border-radius: 6px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+      font-size: var(--text-xs);
+      color: var(--text-muted);
+      z-index: 2;
+    }
+    .tile-modal__pipette-loupe.visible {
+      display: flex;
+    }
+    .tile-modal__pipette-loupe-zoom {
+      display: block;
+      width: 102px;
+      height: 102px;
+      border: 1px solid var(--border-input);
+      border-radius: 4px;
+      image-rendering: pixelated;
+      image-rendering: crisp-edges;
+    }
+    .tile-modal__pipette-loupe-color {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    .tile-modal__pipette-loupe-swatch {
+      display: inline-block;
+      width: 1.25rem;
+      height: 1.25rem;
+      border: 1px solid var(--border-input);
+      border-radius: 3px;
+      background: var(--input-bg);
+    }
+    .tile-modal__pipette-loupe-rgb {
+      font-family: ui-monospace, monospace;
+      font-size: 0.7rem;
     }
     .tile-modal__trim-row {
       display: flex;
@@ -344,6 +393,19 @@
       font-size: 0.75rem;
       color: var(--text-subtle);
     }
+    .tile-modal__bg-scope-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem 1rem;
+      align-items: center;
+      justify-content: center;
+      margin-top: 0.5rem;
+      font-size: var(--text-xs);
+      color: var(--text-muted);
+    }
+    .tile-modal__bg-scope-label { margin-right: 0.25rem; }
+    .tile-modal__bg-scope-opt { display: inline-flex; align-items: center; gap: 0.25rem; cursor: pointer; }
+    .tile-modal__bg-scope-opt input { cursor: pointer; }
     .tile-modal__bg-row {
       display: flex;
       flex-wrap: wrap;
@@ -972,7 +1034,6 @@
       <select id="grid-format" aria-label="Grid format (rows × columns)" class="visually-hidden">
         <option value="4_4" selected>4×4</option>
       </select>
-      <button type="button" class="btn btn-secondary" id="grid-redetect-btn" title="Re-run grid line detection for current rows × cols">Re-detect grid</button>
       <div class="editor-mode-row">
         <span class="editor-mode-label">Editor:</span>
         <label class="editor-mode-option"><input type="radio" name="editor-mode" value="uniform" checked>Grid</label>
@@ -1078,6 +1139,13 @@
       <div class="tile-modal__body">
         <div class="tile-modal__canvas-wrap">
           <canvas id="tile-modal-canvas"></canvas>
+          <div class="tile-modal__pipette-loupe" id="tile-pipette-loupe" aria-hidden="true">
+            <canvas class="tile-modal__pipette-loupe-zoom" id="tile-pipette-loupe-zoom" width="102" height="102"></canvas>
+            <div class="tile-modal__pipette-loupe-color">
+              <span class="tile-modal__pipette-loupe-swatch" id="tile-pipette-loupe-swatch"></span>
+              <span class="tile-modal__pipette-loupe-rgb" id="tile-pipette-loupe-rgb">—</span>
+            </div>
+          </div>
         </div>
         <div class="tile-modal__trim-row">
           <label>Top <input type="number" id="tile-trim-top" min="0" step="1" value="0"></label>
@@ -1086,6 +1154,12 @@
           <label>Left <input type="number" id="tile-trim-left" min="0" step="1" value="0"></label>
         </div>
         <p class="tile-modal__trim-hint">Adjust per-side trim to fine-tune this tile's cropping.</p>
+        <div class="tile-modal__bg-scope-row" id="tile-bg-scope-row">
+          <span class="tile-modal__bg-scope-label">Apply to:</span>
+          <label class="tile-modal__bg-scope-opt"><input type="radio" name="tile-bg-scope" value="tile" checked> This tile</label>
+          <label class="tile-modal__bg-scope-opt"><input type="radio" name="tile-bg-scope" value="image"> All tiles in this image</label>
+          <label class="tile-modal__bg-scope-opt tile-modal__bg-scope-opt--batch" id="tile-bg-scope-batch-wrap" style="display: none;"><input type="radio" name="tile-bg-scope" value="batch"> All tiles (batch)</label>
+        </div>
         <div class="tile-modal__bg-row">
           <label class="tile-modal__bg-check">
             <input type="checkbox" id="tile-bg-remove-enable" aria-label="Remove background color"> Remove background
@@ -3378,6 +3452,12 @@
         tileCropInfos = entry.tileCropInfos;
         modalTileIndex = tileIndex;
         setPipetteMode(false);
+        if (tileBgScopeBatchWrap) tileBgScopeBatchWrap.style.display = batchImages.length > 1 ? '' : 'none';
+        if (tileBgScopeRadios && tileBgScopeRadios.length) {
+          for (var r = 0; r < tileBgScopeRadios.length; r++) {
+            tileBgScopeRadios[r].checked = tileBgScopeRadios[r].value === bgRemoveScope;
+          }
+        }
         var name = (entry.tileNames && entry.tileNames[tileIndex]) ? entry.tileNames[tileIndex] : (entry.name + '_tile_' + (tileIndex + 1) + '.png');
         tileModalTitle.textContent = name + '  (' + (tileIndex + 1) + '/' + entry.tileCropInfos.length + ')';
         var info = entry.tileCropInfos[tileIndex];
@@ -3390,7 +3470,7 @@
         trimRightInput.max = Math.floor(info.sw / 2) - 1;
         trimBottomInput.max = Math.floor(info.sh / 2) - 1;
         trimLeftInput.max = Math.floor(info.sw / 2) - 1;
-        syncBgUiFromInfo(info);
+        syncBgUiFromSettings(getTargetBgSettings());
         tileModalPrevBtn.disabled = tileIndex <= 0;
         tileModalNextBtn.disabled = tileIndex >= entry.tileCropInfos.length - 1;
         renderModalTile(tileIndex);
@@ -3789,8 +3869,6 @@
         if (uniformToolbar) uniformToolbar.style.display = isFormMode ? 'none' : '';
         if (freeformToolbar) freeformToolbar.style.display = isFormMode ? '' : 'none';
         if (autoDetectBtn) { autoDetectBtn.style.display = (isFormMode || isGeometrical) ? 'none' : ''; autoDetectBtn.textContent = 'Auto-detect grid'; }
-        var gridRedetectBtn = document.getElementById('grid-redetect-btn');
-        if (gridRedetectBtn) gridRedetectBtn.style.display = (mode === 'uniform') ? '' : 'none';
         if (resetLinesBtn) resetLinesBtn.style.display = (isFormMode || isGeometrical) ? 'none' : '';
         if (resetCornersBtn) resetCornersBtn.style.display = isGeometrical ? '' : 'none';
         if (geoInsetControls) geoInsetControls.style.display = isGeometrical ? 'inline-flex' : 'none';
@@ -3880,17 +3958,6 @@
           return;
         }
         if (!runAutoDetect()) showError('Could not detect grid. Try adjusting lines manually.');
-      });
-      document.getElementById('grid-redetect-btn').addEventListener('click', function () {
-        clearError();
-        if (!currentImage) {
-          showError('Load an image first.');
-          return;
-        }
-        if (runAutoDetect()) {
-          drawOverlay();
-          scheduleAutoCut();
-        } else showError('Could not detect grid. Try adjusting lines manually.');
       });
       document.getElementById('reset-lines').addEventListener('click', function () {
         if (currentImage) {
@@ -4285,6 +4352,18 @@
       var modalTileIndex = -1;
       var modalBatchIndex = -1;
       var pipetteMode = false;
+      var bgRemoveScope = 'tile';
+      var imageBgSettings = { bgRemoveEnabled: false, bgColor: null, bgTolerance: 32 };
+      var batchBgSettings = { bgRemoveEnabled: false, bgColor: null, bgTolerance: 32 };
+      var tileBgScopeRadios = document.querySelectorAll('input[name="tile-bg-scope"]');
+      var tileBgScopeBatchWrap = document.getElementById('tile-bg-scope-batch-wrap');
+      var tilePipetteLoupe = document.getElementById('tile-pipette-loupe');
+      var tilePipetteLoupeZoom = document.getElementById('tile-pipette-loupe-zoom');
+      var tilePipetteLoupeSwatch = document.getElementById('tile-pipette-loupe-swatch');
+      var tilePipetteLoupeRgb = document.getElementById('tile-pipette-loupe-rgb');
+      var PIPETTE_LOUPE_SIZE = 102;
+      var PIPETTE_LOUPE_SOURCE = 17;
+      var PIPETTE_LOUPE_ZOOM = PIPETTE_LOUPE_SIZE / PIPETTE_LOUPE_SOURCE;
 
       function ensureBgDefaults(info) {
         if (info.bgRemoveEnabled == null) info.bgRemoveEnabled = false;
@@ -4292,12 +4371,57 @@
         if (info.bgTolerance == null) info.bgTolerance = 32;
       }
 
-      function syncBgUiFromInfo(info) {
-        ensureBgDefaults(info);
-        if (tileBgRemoveEnable) tileBgRemoveEnable.checked = !!info.bgRemoveEnabled;
-        if (tileBgToleranceInput) tileBgToleranceInput.value = Math.max(0, Math.min(255, info.bgTolerance || 32));
+      function ensureEntryBgDefaults(entry) {
+        if (!entry) return;
+        if (entry.bgRemoveEnabled == null) entry.bgRemoveEnabled = false;
+        if (entry.bgColor == null) entry.bgColor = null;
+        if (entry.bgTolerance == null) entry.bgTolerance = 32;
+      }
+
+      function getEffectiveBgSettings(tileIndex, batchIndex) {
+        var scope = bgRemoveScope;
+        if (batchIndex >= 0 && batchIndex < batchImages.length) {
+          if (scope === 'batch') return batchBgSettings;
+          if (scope === 'image') {
+            var entry = batchImages[batchIndex];
+            ensureEntryBgDefaults(entry);
+            return entry;
+          }
+          var infos = batchImages[batchIndex].tileCropInfos;
+          var info = infos && infos[tileIndex] ? infos[tileIndex] : null;
+          if (info) ensureBgDefaults(info);
+          return info || batchBgSettings;
+        }
+        if (scope === 'image') return imageBgSettings;
+        var info = tileCropInfos[tileIndex];
+        if (info) ensureBgDefaults(info);
+        return info || imageBgSettings;
+      }
+
+      function getTargetBgSettings() {
+        if (modalBatchIndex >= 0 && modalBatchIndex < batchImages.length) {
+          if (bgRemoveScope === 'batch') return batchBgSettings;
+          if (bgRemoveScope === 'image') {
+            var entry = batchImages[modalBatchIndex];
+            ensureEntryBgDefaults(entry);
+            return entry;
+          }
+          var info = tileCropInfos[modalTileIndex];
+          if (info) ensureBgDefaults(info);
+          return info;
+        }
+        if (bgRemoveScope === 'image') return imageBgSettings;
+        var info = tileCropInfos[modalTileIndex];
+        if (info) ensureBgDefaults(info);
+        return info;
+      }
+
+      function syncBgUiFromSettings(settings) {
+        if (!settings) return;
+        if (tileBgRemoveEnable) tileBgRemoveEnable.checked = !!settings.bgRemoveEnabled;
+        if (tileBgToleranceInput) tileBgToleranceInput.value = Math.max(0, Math.min(255, settings.bgTolerance || 32));
         if (tileBgSwatch) {
-          var c = info.bgColor;
+          var c = settings.bgColor;
           if (c && typeof c.r === 'number' && typeof c.g === 'number' && typeof c.b === 'number') {
             tileBgSwatch.style.backgroundColor = 'rgb(' + c.r + ',' + c.g + ',' + c.b + ')';
             tileBgSwatch.style.display = 'block';
@@ -4309,9 +4433,76 @@
         if (tilePipetteBtn) tilePipetteBtn.classList.toggle('active', pipetteMode);
       }
 
+      function syncBgUiFromInfo(info) {
+        ensureBgDefaults(info);
+        syncBgUiFromSettings(info);
+      }
+
       function setPipetteMode(on) {
         pipetteMode = !!on;
         if (tilePipetteBtn) tilePipetteBtn.classList.toggle('active', pipetteMode);
+        if (!pipetteMode && tilePipetteLoupe) tilePipetteLoupe.classList.remove('visible');
+      }
+
+      function updatePipetteLoupe(clientX, clientY) {
+        if (!pipetteMode || !tileModalCanvas || !tilePipetteLoupe || !tilePipetteLoupeZoom) return;
+        var rect = tileModalCanvas.getBoundingClientRect();
+        if (clientX < rect.left || clientX > rect.right || clientY < rect.top || clientY > rect.bottom) {
+          tilePipetteLoupe.classList.remove('visible');
+          return;
+        }
+        var scaleX = tileModalCanvas.width / rect.width;
+        var scaleY = tileModalCanvas.height / rect.height;
+        var px = Math.floor((clientX - rect.left) * scaleX);
+        var py = Math.floor((clientY - rect.top) * scaleY);
+        var w = tileModalCanvas.width;
+        var h = tileModalCanvas.height;
+        var half = Math.floor(PIPETTE_LOUPE_SOURCE / 2);
+        var x0 = Math.max(0, px - half);
+        var y0 = Math.max(0, py - half);
+        var x1 = Math.min(w, x0 + PIPETTE_LOUPE_SOURCE);
+        var y1 = Math.min(h, y0 + PIPETTE_LOUPE_SOURCE);
+        var sw = x1 - x0;
+        var sh = y1 - y0;
+        if (sw <= 0 || sh <= 0) return;
+        var ctx = tileModalCanvas.getContext('2d');
+        var srcData = ctx.getImageData(x0, y0, sw, sh);
+        var loupeCtx = tilePipetteLoupeZoom.getContext('2d');
+        loupeCtx.fillStyle = '#e8e8e8';
+        loupeCtx.fillRect(0, 0, PIPETTE_LOUPE_SIZE, PIPETTE_LOUPE_SIZE);
+        var scale = PIPETTE_LOUPE_SIZE / PIPETTE_LOUPE_SOURCE;
+        loupeCtx.imageSmoothingEnabled = false;
+        var temp = document.createElement('canvas');
+        temp.width = sw;
+        temp.height = sh;
+        temp.getContext('2d').putImageData(srcData, 0, 0);
+        loupeCtx.drawImage(temp, 0, 0, sw, sh, 0, 0, Math.ceil(sw * scale), Math.ceil(sh * scale));
+        var centerPx = Math.min(Math.max(0, px - x0), sw - 1);
+        var centerPy = Math.min(Math.max(0, py - y0), sh - 1);
+        var i = (centerPy * sw + centerPx) * 4;
+        var r = srcData.data[i];
+        var g = srcData.data[i + 1];
+        var b = srcData.data[i + 2];
+        var a = srcData.data[i + 3];
+        loupeCtx.strokeStyle = 'rgba(255, 255, 255, 0.9)';
+        loupeCtx.lineWidth = 1;
+        loupeCtx.setLineDash([2, 2]);
+        var cx = (centerPx + 0.5) * scale;
+        var cy = (centerPy + 0.5) * scale;
+        loupeCtx.beginPath();
+        loupeCtx.moveTo(cx, 0);
+        loupeCtx.lineTo(cx, PIPETTE_LOUPE_SIZE);
+        loupeCtx.moveTo(0, cy);
+        loupeCtx.lineTo(PIPETTE_LOUPE_SIZE, cy);
+        loupeCtx.stroke();
+        loupeCtx.setLineDash([]);
+        if (tilePipetteLoupeSwatch) {
+          tilePipetteLoupeSwatch.style.backgroundColor = a < 255 ? 'rgba(' + r + ',' + g + ',' + b + ',' + (a / 255) + ')' : 'rgb(' + r + ',' + g + ',' + b + ')';
+        }
+        if (tilePipetteLoupeRgb) {
+          tilePipetteLoupeRgb.textContent = a < 255 ? 'R' + r + ' G' + g + ' B' + b + ' A' + a : 'R' + r + ' G' + g + ' B' + b;
+        }
+        tilePipetteLoupe.classList.add('visible');
       }
 
       function applyBgRemoveToImageData(ctx, x, y, w, h, bgColor, tolerance) {
@@ -4344,8 +4535,9 @@
         var ctx = tileModalCanvas.getContext('2d');
         ctx.clearRect(0, 0, sw, sh);
         ctx.drawImage(tileSrcImage, sx, sy, sw, sh, 0, 0, sw, sh);
-        if (info.bgRemoveEnabled && info.bgColor && typeof info.bgColor.r === 'number') {
-          applyBgRemoveToImageData(ctx, 0, 0, sw, sh, info.bgColor, info.bgTolerance);
+        var eff = getEffectiveBgSettings(index, modalBatchIndex);
+        if (eff && eff.bgRemoveEnabled && eff.bgColor && typeof eff.bgColor.r === 'number') {
+          applyBgRemoveToImageData(ctx, 0, 0, sw, sh, eff.bgColor, eff.bgTolerance);
         }
       }
 
@@ -4353,6 +4545,7 @@
         if (!tileSrcImage || index < 0 || index >= tileCropInfos.length) return Promise.resolve();
         var info = tileCropInfos[index];
         ensureBgDefaults(info);
+        var eff = getEffectiveBgSettings(index, modalBatchIndex);
         var sx = info.sx + info.trimLeft;
         var sy = info.sy + info.trimTop;
         var sw = info.sw - info.trimLeft - info.trimRight;
@@ -4362,8 +4555,8 @@
         c.width = sw; c.height = sh;
         var ctx = c.getContext('2d');
         ctx.drawImage(tileSrcImage, sx, sy, sw, sh, 0, 0, sw, sh);
-        if (info.bgRemoveEnabled && info.bgColor && typeof info.bgColor.r === 'number') {
-          applyBgRemoveToImageData(ctx, 0, 0, sw, sh, info.bgColor, info.bgTolerance);
+        if (eff && eff.bgRemoveEnabled && eff.bgColor && typeof eff.bgColor.r === 'number') {
+          applyBgRemoveToImageData(ctx, 0, 0, sw, sh, eff.bgColor, eff.bgTolerance);
         }
         return new Promise(function (resolve) {
           c.toBlob(function (blob) {
@@ -4387,11 +4580,83 @@
         });
       }
 
+      function regenerateAllTilesForCurrentImage() {
+        var n = tileCropInfos.length;
+        var p = Promise.resolve();
+        for (var i = 0; i < n; i++) p = p.then(function (idx) { return regenerateTileBlob(idx); }.bind(null, i));
+        return p;
+      }
+
+      function regenerateAllTilesForBatch() {
+        var p = Promise.resolve();
+        for (var bi = 0; bi < batchImages.length; bi++) {
+          var entry = batchImages[bi];
+          if (!entry.tileBlobs || !entry.tileCropInfos) continue;
+          (function (batchIdx) {
+            p = p.then(function () {
+              tileSrcImage = batchImages[batchIdx].img;
+              tileBlobs = batchImages[batchIdx].tileBlobs;
+              tileCropInfos = batchImages[batchIdx].tileCropInfos;
+              var n = tileCropInfos.length;
+              var chain = Promise.resolve();
+              for (var i = 0; i < n; i++) {
+                (function (tileIdx) {
+                  chain = chain.then(function () {
+                    var info = tileCropInfos[tileIdx];
+                    ensureBgDefaults(info);
+                    var eff = getEffectiveBgSettings(tileIdx, batchIdx);
+                    var sx = info.sx + info.trimLeft;
+                    var sy = info.sy + info.trimTop;
+                    var sw = info.sw - info.trimLeft - info.trimRight;
+                    var sh = info.sh - info.trimTop - info.trimBottom;
+                    if (sw <= 0 || sh <= 0) return Promise.resolve();
+                    var c = document.createElement('canvas');
+                    c.width = sw; c.height = sh;
+                    var ctx = c.getContext('2d');
+                    ctx.drawImage(tileSrcImage, sx, sy, sw, sh, 0, 0, sw, sh);
+                    if (eff && eff.bgRemoveEnabled && eff.bgColor && typeof eff.bgColor.r === 'number') {
+                      applyBgRemoveToImageData(ctx, 0, 0, sw, sh, eff.bgColor, eff.bgTolerance);
+                    }
+                    return new Promise(function (resolve) {
+                      c.toBlob(function (blob) {
+                        if (blob) batchImages[batchIdx].tileBlobs[tileIdx] = blob;
+                        resolve();
+                      }, 'image/png');
+                    }).then(function () {
+                      var wrap = previewGrid.querySelector('.tile-img-wrap[data-batch-index="' + batchIdx + '"][data-tile-index="' + tileIdx + '"]');
+                      var thumb = wrap ? wrap.querySelector('img') : null;
+                      if (thumb && batchImages[batchIdx].tileBlobs[tileIdx]) {
+                        if (thumb.src && thumb.src.indexOf('blob:') === 0) URL.revokeObjectURL(thumb.src);
+                        thumb.src = URL.createObjectURL(batchImages[batchIdx].tileBlobs[tileIdx]);
+                      }
+                    });
+                  });
+                })(i);
+              }
+              return chain;
+            });
+          })(bi);
+        }
+        return p.then(function () {
+          if (modalBatchIndex >= 0 && batchImages[modalBatchIndex]) {
+            tileSrcImage = batchImages[modalBatchIndex].img;
+            tileBlobs = batchImages[modalBatchIndex].tileBlobs;
+            tileCropInfos = batchImages[modalBatchIndex].tileCropInfos;
+          }
+        });
+      }
+
       function openTileModal(index) {
         if (index < 0 || index >= tileCropInfos.length) return;
         modalBatchIndex = -1;
         modalTileIndex = index;
         setPipetteMode(false);
+        if (tileBgScopeBatchWrap) tileBgScopeBatchWrap.style.display = 'none';
+        if (tileBgScopeRadios && tileBgScopeRadios.length) {
+          for (var r = 0; r < tileBgScopeRadios.length; r++) {
+            tileBgScopeRadios[r].checked = tileBgScopeRadios[r].value === bgRemoveScope;
+          }
+        }
         var inputs = previewGrid.querySelectorAll('.tile-name');
         var name = inputs[index] ? inputs[index].value : ('Tile ' + (index + 1));
         tileModalTitle.textContent = name + '  (' + (index + 1) + '/' + tileCropInfos.length + ')';
@@ -4405,7 +4670,7 @@
         trimRightInput.max = Math.floor(info.sw / 2) - 1;
         trimBottomInput.max = Math.floor(info.sh / 2) - 1;
         trimLeftInput.max = Math.floor(info.sw / 2) - 1;
-        syncBgUiFromInfo(info);
+        syncBgUiFromSettings(getTargetBgSettings());
         tileModalPrevBtn.disabled = index <= 0;
         tileModalNextBtn.disabled = index >= tileCropInfos.length - 1;
         renderModalTile(index);
@@ -4483,6 +4748,44 @@
       trimBottomInput.addEventListener('input', handleTrimInput);
       trimLeftInput.addEventListener('input', handleTrimInput);
 
+      if (tileBgScopeRadios && tileBgScopeRadios.length) {
+        for (var s = 0; s < tileBgScopeRadios.length; s++) {
+          (function (radio) {
+            radio.addEventListener('change', function () {
+              if (radio.checked) {
+                bgRemoveScope = radio.value;
+                syncBgUiFromSettings(getTargetBgSettings());
+                renderModalTile(modalTileIndex);
+              }
+            });
+          })(tileBgScopeRadios[s]);
+        }
+      }
+
+      function applyBgChangeAndRegenerate() {
+        var scope = bgRemoveScope;
+        if (scope === 'tile') {
+          renderModalTile(modalTileIndex);
+          regenerateTileBlob(modalTileIndex);
+        } else if (scope === 'image') {
+          renderModalTile(modalTileIndex);
+          regenerateAllTilesForCurrentImage();
+        } else if (scope === 'batch' && batchImages.length > 1) {
+          renderModalTile(modalTileIndex);
+          regenerateAllTilesForBatch();
+        } else {
+          renderModalTile(modalTileIndex);
+          regenerateTileBlob(modalTileIndex);
+        }
+      }
+
+      tileModalCanvas.addEventListener('mousemove', function (e) {
+        if (pipetteMode) updatePipetteLoupe(e.clientX, e.clientY);
+      });
+      tileModalCanvas.addEventListener('mouseleave', function () {
+        if (tilePipetteLoupe) tilePipetteLoupe.classList.remove('visible');
+      });
+
       tileModalCanvas.addEventListener('click', function (e) {
         if (!pipetteMode || modalTileIndex < 0 || modalTileIndex >= tileCropInfos.length) return;
         var rect = tileModalCanvas.getBoundingClientRect();
@@ -4493,12 +4796,11 @@
         if (px < 0 || py < 0 || px >= tileModalCanvas.width || py >= tileModalCanvas.height) return;
         var ctx = tileModalCanvas.getContext('2d');
         var data = ctx.getImageData(px, py, 1, 1).data;
-        var info = tileCropInfos[modalTileIndex];
-        info.bgColor = { r: data[0], g: data[1], b: data[2] };
-        syncBgUiFromInfo(info);
+        var target = getTargetBgSettings();
+        if (target) target.bgColor = { r: data[0], g: data[1], b: data[2] };
+        syncBgUiFromSettings(target);
         setPipetteMode(false);
-        renderModalTile(modalTileIndex);
-        regenerateTileBlob(modalTileIndex);
+        applyBgChangeAndRegenerate();
       });
 
       if (tilePipetteBtn) {
@@ -4509,32 +4811,32 @@
       if (tileBgRemoveEnable) {
         tileBgRemoveEnable.addEventListener('change', function () {
           if (modalTileIndex < 0 || modalTileIndex >= tileCropInfos.length) return;
-          var info = tileCropInfos[modalTileIndex];
-          info.bgRemoveEnabled = tileBgRemoveEnable.checked;
-          renderModalTile(modalTileIndex);
-          regenerateTileBlob(modalTileIndex);
+          var target = getTargetBgSettings();
+          if (target) target.bgRemoveEnabled = tileBgRemoveEnable.checked;
+          applyBgChangeAndRegenerate();
         });
       }
       if (tileBgToleranceInput) {
         tileBgToleranceInput.addEventListener('input', function () {
           if (modalTileIndex < 0 || modalTileIndex >= tileCropInfos.length) return;
-          var info = tileCropInfos[modalTileIndex];
-          info.bgTolerance = Math.max(0, Math.min(255, parseInt(tileBgToleranceInput.value, 10) || 32));
-          renderModalTile(modalTileIndex);
-          regenerateTileBlob(modalTileIndex);
+          var target = getTargetBgSettings();
+          var val = Math.max(0, Math.min(255, parseInt(tileBgToleranceInput.value, 10) || 32));
+          if (target) target.bgTolerance = val;
+          applyBgChangeAndRegenerate();
         });
       }
       if (tileBgResetBtn) {
         tileBgResetBtn.addEventListener('click', function () {
           if (modalTileIndex < 0 || modalTileIndex >= tileCropInfos.length) return;
-          var info = tileCropInfos[modalTileIndex];
-          info.bgRemoveEnabled = false;
-          info.bgColor = null;
-          info.bgTolerance = 32;
-          syncBgUiFromInfo(info);
+          var target = getTargetBgSettings();
+          if (target) {
+            target.bgRemoveEnabled = false;
+            target.bgColor = null;
+            target.bgTolerance = 32;
+          }
           if (tileBgToleranceInput) tileBgToleranceInput.value = 32;
-          renderModalTile(modalTileIndex);
-          regenerateTileBlob(modalTileIndex);
+          syncBgUiFromSettings(target);
+          applyBgChangeAndRegenerate();
         });
       }
 
