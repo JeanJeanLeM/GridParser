@@ -25,26 +25,6 @@
     </div>
   </header>
 
-  <!-- Shared defs for SVG fills -->
-  <svg width="0" height="0" aria-hidden="true" style="position:absolute">
-    <defs>
-      <linearGradient id="grad-clay" x1="0" y1="0" x2="1" y2="1">
-        <stop offset="0%" stop-color="#ff8a80"/>
-        <stop offset="100%" stop-color="#c62828"/>
-      </linearGradient>
-      <linearGradient id="grad-chrome" x1="0" y1="0" x2="0" y2="1">
-        <stop offset="0%" stop-color="#f5f5f5"/>
-        <stop offset="45%" stop-color="#9e9e9e"/>
-        <stop offset="100%" stop-color="#eceff1"/>
-      </linearGradient>
-      <linearGradient id="grad-holo" x1="0" y1="0" x2="1" y2="1">
-        <stop offset="0%" stop-color="#74b9ff"/>
-        <stop offset="50%" stop-color="#fd79a8"/>
-        <stop offset="100%" stop-color="#55efc4"/>
-      </linearGradient>
-    </defs>
-  </svg>
-
   <main class="styles-page">
     <div class="styles-page__intro">
       <h2>Logo style prompts</h2>
@@ -100,17 +80,10 @@
   var backdrop = document.getElementById('style-modal-backdrop');
 
   var activeStyle = null;
-  var promptDirty = false;
 
-  function appleSvgMarkup() {
-    return [
-      '<svg class="apple-svg" viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">',
-      '<path class="apple-stem" d="M58 28 C58 18, 68 14, 72 10" fill="none" stroke="#5a3a22" stroke-width="4" stroke-linecap="round"/>',
-      '<ellipse class="apple-leaf" cx="78" cy="22" rx="14" ry="8" transform="rotate(25 78 22)"/>',
-      '<path class="apple-body" d="M60 34 C38 34, 24 52, 24 72 C24 94, 40 110, 60 110 C80 110, 96 94, 96 72 C96 52, 82 34, 60 34 Z"/>',
-      '<ellipse class="apple-shine" cx="46" cy="58" rx="8" ry="12"/>',
-      '</svg>'
-    ].join('');
+  function thumbHtml(style) {
+    var src = style.thumb || '';
+    return '<img class="style-card__img" src="' + src + '" alt="' + style.name + ' apple" loading="lazy" width="240" height="240">';
   }
 
   function snippetFor(style) {
@@ -121,17 +94,14 @@
   function rebuildPromptFromFields() {
     if (!activeStyle) return;
     promptArea.value = StylePrompts.buildPrompt(activeStyle, subjectInput.value);
-    promptDirty = false;
     copyStatus.textContent = '';
   }
 
   function openModal(style) {
     activeStyle = style;
-    promptDirty = false;
     modalTitle.textContent = style.name;
     modalTagline.textContent = style.tagline;
-    modalPreview.className = 'style-modal__preview-chip ' + style.cssClass;
-    modalPreview.innerHTML = appleSvgMarkup();
+    modalPreview.innerHTML = thumbHtml(style);
     subjectInput.value = StylePrompts.DEFAULT_SUBJECT;
     rebuildPromptFromFields();
     modal.classList.add('is-open');
@@ -169,12 +139,12 @@
       (function (style) {
         var btn = document.createElement('button');
         btn.type = 'button';
-        btn.className = 'style-card ' + style.cssClass;
+        btn.className = 'style-card';
         btn.setAttribute('aria-label', style.name + ' — open prompt');
         btn.innerHTML = [
           '<span class="style-card__inner">',
           '<span class="style-card__face style-card__face--front">',
-          '<span class="style-card__preview">' + appleSvgMarkup() + '</span>',
+          '<span class="style-card__preview">' + thumbHtml(style) + '</span>',
           '<span class="style-card__name">' + style.name + '</span>',
           '<span class="style-card__tag">' + style.tagline + '</span>',
           '</span>',
@@ -193,15 +163,7 @@
 
   subjectInput.addEventListener('input', function () {
     if (!activeStyle) return;
-    if (!promptDirty) rebuildPromptFromFields();
-    else {
-      // keep subject synced into a fresh build when user edits subject after manual prompt edits
-      rebuildPromptFromFields();
-    }
-  });
-
-  promptArea.addEventListener('input', function () {
-    promptDirty = true;
+    rebuildPromptFromFields();
   });
 
   copyBtn.addEventListener('click', copyPrompt);

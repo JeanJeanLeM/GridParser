@@ -9,30 +9,30 @@
   var DEFAULT_GRID = '4x4';
 
   var STYLE_CATALOG = [
-    { id: 'clay-3d', name: '3D Clay', tagline: 'Soft clay render', cssClass: 'style-clay-3d' },
-    { id: 'flat-vector', name: 'Flat Vector', tagline: 'Clean flat icon', cssClass: 'style-flat-vector' },
-    { id: 'manga', name: 'Manga', tagline: 'Ink & screentone', cssClass: 'style-manga' },
-    { id: 'chrome', name: 'Chrome Metal', tagline: 'Polished chrome', cssClass: 'style-chrome' },
-    { id: 'pixel', name: 'Pixel Art', tagline: 'Retro pixels', cssClass: 'style-pixel' },
-    { id: 'watercolor', name: 'Watercolor', tagline: 'Soft washes', cssClass: 'style-watercolor' },
-    { id: 'neon', name: 'Neon Glow', tagline: 'Electric glow', cssClass: 'style-neon' },
-    { id: 'papercut', name: 'Paper Cut', tagline: 'Layered paper', cssClass: 'style-papercut' },
-    { id: 'embroidered', name: 'Embroidered', tagline: 'Thread stitches', cssClass: 'style-embroidered' },
-    { id: 'stained-glass', name: 'Stained Glass', tagline: 'Lead & glass', cssClass: 'style-stained-glass' },
-    { id: 'isometric', name: 'Isometric', tagline: '30° isometric', cssClass: 'style-isometric' },
-    { id: 'lowpoly', name: 'Low Poly', tagline: 'Faceted mesh', cssClass: 'style-lowpoly' },
-    { id: 'chalk', name: 'Chalk', tagline: 'Blackboard chalk', cssClass: 'style-chalk' },
-    { id: 'graffiti', name: 'Graffiti', tagline: 'Spray paint', cssClass: 'style-graffiti' },
-    { id: 'porcelain', name: 'Porcelain', tagline: 'Ceramic glaze', cssClass: 'style-porcelain' },
-    { id: 'hologram', name: 'Hologram', tagline: 'Iridescent HUD', cssClass: 'style-hologram' },
-    { id: 'wood', name: 'Wood Carving', tagline: 'Carved wood', cssClass: 'style-wood' },
-    { id: 'origami', name: 'Origami', tagline: 'Folded paper', cssClass: 'style-origami' },
-    { id: 'popart', name: 'Pop Art', tagline: 'Bold pop print', cssClass: 'style-popart' },
-    { id: 'blueprint', name: 'Blueprint', tagline: 'Technical plan', cssClass: 'style-blueprint' },
-    { id: 'claymation', name: 'Claymation', tagline: 'Stop-motion clay', cssClass: 'style-claymation' },
-    { id: 'steampunk', name: 'Steampunk', tagline: 'Brass & gears', cssClass: 'style-steampunk' },
-    { id: 'glassmorph', name: 'Glassmorphism', tagline: 'Frosted glass', cssClass: 'style-glassmorph' },
-    { id: 'kawaii', name: 'Kawaii', tagline: 'Cute pastel', cssClass: 'style-kawaii' }
+    { id: 'clay-3d', name: '3D Clay', tagline: 'Soft clay render', thumb: 'assets/styles/clay-3d.png' },
+    { id: 'flat-vector', name: 'Flat Vector', tagline: 'Clean flat icon', thumb: 'assets/styles/flat-vector.png' },
+    { id: 'manga', name: 'Manga', tagline: 'Ink & screentone', thumb: 'assets/styles/manga.png' },
+    { id: 'chrome', name: 'Chrome Metal', tagline: 'Polished chrome', thumb: 'assets/styles/chrome.png' },
+    { id: 'pixel', name: 'Pixel Art', tagline: 'Retro pixels', thumb: 'assets/styles/pixel.png' },
+    { id: 'watercolor', name: 'Watercolor', tagline: 'Soft washes', thumb: 'assets/styles/watercolor.png' },
+    { id: 'neon', name: 'Neon Glow', tagline: 'Electric glow', thumb: 'assets/styles/neon.png' },
+    { id: 'papercut', name: 'Paper Cut', tagline: 'Layered paper', thumb: 'assets/styles/papercut.png' },
+    { id: 'embroidered', name: 'Embroidered', tagline: 'Thread stitches', thumb: 'assets/styles/embroidered.png' },
+    { id: 'stained-glass', name: 'Stained Glass', tagline: 'Lead & glass', thumb: 'assets/styles/stained-glass.png' },
+    { id: 'isometric', name: 'Isometric', tagline: '30° isometric', thumb: 'assets/styles/isometric.png' },
+    { id: 'lowpoly', name: 'Low Poly', tagline: 'Faceted mesh', thumb: 'assets/styles/lowpoly.png' },
+    { id: 'chalk', name: 'Chalk', tagline: 'Blackboard chalk', thumb: 'assets/styles/chalk.png' },
+    { id: 'graffiti', name: 'Graffiti', tagline: 'Spray paint', thumb: 'assets/styles/graffiti.png' },
+    { id: 'porcelain', name: 'Porcelain', tagline: 'Ceramic glaze', thumb: 'assets/styles/porcelain.png' },
+    { id: 'hologram', name: 'Hologram', tagline: 'Iridescent HUD', thumb: 'assets/styles/hologram.png' },
+    { id: 'wood', name: 'Wood Carving', tagline: 'Carved wood', thumb: 'assets/styles/wood.png' },
+    { id: 'origami', name: 'Origami', tagline: 'Folded paper', thumb: 'assets/styles/origami.png' },
+    { id: 'popart', name: 'Pop Art', tagline: 'Bold pop print', thumb: 'assets/styles/popart.png' },
+    { id: 'blueprint', name: 'Blueprint', tagline: 'Technical plan', thumb: 'assets/styles/blueprint.png' },
+    { id: 'claymation', name: 'Claymation', tagline: 'Stop-motion clay', thumb: 'assets/styles/claymation.png' },
+    { id: 'steampunk', name: 'Steampunk', tagline: 'Brass & gears', thumb: 'assets/styles/steampunk.png' },
+    { id: 'glassmorph', name: 'Glassmorphism', tagline: 'Frosted glass', thumb: 'assets/styles/glassmorph.png' },
+    { id: 'kawaii', name: 'Kawaii', tagline: 'Cute pastel', thumb: 'assets/styles/kawaii.png' }
   ];
 
   function escapeSubject(subject) {
@@ -41,7 +41,7 @@
 
   /**
    * Build a full image-gen prompt for one style, optimized for Grid2icons.
-   * @param {{ id: string, name: string }} style
+   * @param {{ id: string, name: string, tagline?: string }} style
    * @param {string} [subject]
    * @param {{ grid?: string }} [options]
    */
