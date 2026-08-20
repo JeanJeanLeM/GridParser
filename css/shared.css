@@ -63,6 +63,24 @@
   min-height: 2rem;
 }
 
+.nav-banner__link {
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--text-muted);
+  text-decoration: none;
+  padding: 0.25rem 0.45rem;
+  border-radius: 6px;
+}
+
+.nav-banner__link:hover {
+  color: var(--accent);
+}
+
+.nav-banner__link.is-active {
+  color: var(--btn-primary-bg);
+  background: rgba(91, 124, 186, 0.12);
+}
+
 /* App header: centered brand, no banner */
 .app-header {
   background: transparent;

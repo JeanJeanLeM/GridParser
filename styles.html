@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Grid2icons — Logo style prompts</title>
+  <link rel="stylesheet" href="css/shared.css">
+  <link rel="stylesheet" href="css/styles-gallery.css">
+</head>
+<body>
+  <nav class="nav-banner" aria-label="Main navigation">
+    <div class="nav-banner__inner">
+      <a href="index.html" class="nav-banner__link">Parser</a>
+      <a href="styles.html" class="nav-banner__link is-active" aria-current="page">Styles</a>
+    </div>
+  </nav>
+  <header class="app-header">
+    <div class="app-header__inner">
+      <a href="index.html" class="app-header__brand" aria-label="Grid2icons home">
+        <h1 class="app-header__title">
+          <span class="app-header__title--grid">Grid</span><span class="app-header__title--num">2</span><span class="app-header__title--icons">Icons</span>
+        </h1>
+        <p class="app-header__tagline">A tool to parse your grids into perfect tiles.</p>
+      </a>
+    </div>
+  </header>
+
+  <!-- Shared defs for SVG fills -->
+  <svg width="0" height="0" aria-hidden="true" style="position:absolute">
+    <defs>
+      <linearGradient id="grad-clay" x1="0" y1="0" x2="1" y2="1">
+        <stop offset="0%" stop-color="#ff8a80"/>
+        <stop offset="100%" stop-color="#c62828"/>
+      </linearGradient>
+      <linearGradient id="grad-chrome" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0%" stop-color="#f5f5f5"/>
+        <stop offset="45%" stop-color="#9e9e9e"/>
+        <stop offset="100%" stop-color="#eceff1"/>
+      </linearGradient>
+      <linearGradient id="grad-holo" x1="0" y1="0" x2="1" y2="1">
+        <stop offset="0%" stop-color="#74b9ff"/>
+        <stop offset="50%" stop-color="#fd79a8"/>
+        <stop offset="100%" stop-color="#55efc4"/>
+      </linearGradient>
+    </defs>
+  </svg>
+
+  <main class="styles-page">
+    <div class="styles-page__intro">
+      <h2>Logo style prompts</h2>
+      <p>
+        Flip a card for a preview, click to open the full prompt. Edit the subject, copy, paste into your image generator,
+        then upload the grid into the Parser for clean cuts, auto-name, and optional label removal.
+      </p>
+    </div>
+    <div class="styles-gallery" id="styles-gallery" aria-label="Logo style gallery"></div>
+  </main>
+
+  <div class="style-modal" id="style-modal" aria-hidden="true">
+    <div class="style-modal__backdrop" id="style-modal-backdrop"></div>
+    <div class="style-modal__dialog" role="dialog" aria-modal="true" aria-labelledby="style-modal-title">
+      <div class="style-modal__header">
+        <h3 class="style-modal__title" id="style-modal-title">Style</h3>
+        <button type="button" class="style-modal__close" id="style-modal-close" aria-label="Close">&times;</button>
+      </div>
+      <div class="style-modal__preview-row">
+        <div class="style-modal__preview-chip" id="style-modal-preview"></div>
+        <p class="style-modal__meta" id="style-modal-tagline"></p>
+      </div>
+      <div class="style-modal__field">
+        <label for="style-subject">Subject</label>
+        <input type="text" id="style-subject" value="apple" autocomplete="off">
+      </div>
+      <div class="style-modal__field">
+        <label for="style-prompt">Prompt</label>
+        <textarea id="style-prompt" spellcheck="false"></textarea>
+      </div>
+      <div class="style-modal__actions">
+        <button type="button" class="btn btn-secondary" id="style-modal-cancel">Close</button>
+        <button type="button" class="btn btn-primary" id="style-copy-btn">Copy prompt</button>
+      </div>
+      <p class="style-modal__copy-status" id="style-copy-status" aria-live="polite"></p>
+    </div>
+  </div>
+
+  <script src="js/stylePrompts.js"></script>
+  <script>
+(function () {
+  var gallery = document.getElementById('styles-gallery');
+  var modal = document.getElementById('style-modal');
+  var modalTitle = document.getElementById('style-modal-title');
+  var modalTagline = document.getElementById('style-modal-tagline');
+  var modalPreview = document.getElementById('style-modal-preview');
+  var subjectInput = document.getElementById('style-subject');
+  var promptArea = document.getElementById('style-prompt');
+  var copyBtn = document.getElementById('style-copy-btn');
+  var copyStatus = document.getElementById('style-copy-status');
+  var closeBtn = document.getElementById('style-modal-close');
+  var cancelBtn = document.getElementById('style-modal-cancel');
+  var backdrop = document.getElementById('style-modal-backdrop');
+
+  var activeStyle = null;
+  var promptDirty = false;
+
+  function appleSvgMarkup() {
+    return [
+      '<svg class="apple-svg" viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">',
+      '<path class="apple-stem" d="M58 28 C58 18, 68 14, 72 10" fill="none" stroke="#5a3a22" stroke-width="4" stroke-linecap="round"/>',
+      '<ellipse class="apple-leaf" cx="78" cy="22" rx="14" ry="8" transform="rotate(25 78 22)"/>',
+      '<path class="apple-body" d="M60 34 C38 34, 24 52, 24 72 C24 94, 40 110, 60 110 C80 110, 96 94, 96 72 C96 52, 82 34, 60 34 Z"/>',
+      '<ellipse class="apple-shine" cx="46" cy="58" rx="8" ry="12"/>',
+      '</svg>'
+    ].join('');
+  }
+
+  function snippetFor(style) {
+    var full = StylePrompts.buildPrompt(style, StylePrompts.DEFAULT_SUBJECT);
+    return full.split('\n').slice(0, 3).join(' ');
+  }
+
+  function rebuildPromptFromFields() {
+    if (!activeStyle) return;
+    promptArea.value = StylePrompts.buildPrompt(activeStyle, subjectInput.value);
+    promptDirty = false;
+    copyStatus.textContent = '';
+  }
+
+  function openModal(style) {
+    activeStyle = style;
+    promptDirty = false;
+    modalTitle.textContent = style.name;
+    modalTagline.textContent = style.tagline;
+    modalPreview.className = 'style-modal__preview-chip ' + style.cssClass;
+    modalPreview.innerHTML = appleSvgMarkup();
+    subjectInput.value = StylePrompts.DEFAULT_SUBJECT;
+    rebuildPromptFromFields();
+    modal.classList.add('is-open');
+    modal.setAttribute('aria-hidden', 'false');
+    subjectInput.focus();
+  }
+
+  function closeModal() {
+    modal.classList.remove('is-open');
+    modal.setAttribute('aria-hidden', 'true');
+    activeStyle = null;
+  }
+
+  function copyPrompt() {
+    var text = promptArea.value || '';
+    function done(ok) {
+      copyStatus.textContent = ok ? 'Copied to clipboard.' : 'Could not copy — select and copy manually.';
+      if (ok) setTimeout(function () { copyStatus.textContent = ''; }, 2200);
+    }
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(function () { done(true); }).catch(function () {
+        promptArea.select();
+        done(document.execCommand('copy'));
+      });
+    } else {
+      promptArea.select();
+      done(document.execCommand('copy'));
+    }
+  }
+
+  function renderGallery() {
+    var catalog = StylePrompts.STYLE_CATALOG;
+    gallery.innerHTML = '';
+    for (var i = 0; i < catalog.length; i++) {
+      (function (style) {
+        var btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'style-card ' + style.cssClass;
+        btn.setAttribute('aria-label', style.name + ' — open prompt');
+        btn.innerHTML = [
+          '<span class="style-card__inner">',
+          '<span class="style-card__face style-card__face--front">',
+          '<span class="style-card__preview">' + appleSvgMarkup() + '</span>',
+          '<span class="style-card__name">' + style.name + '</span>',
+          '<span class="style-card__tag">' + style.tagline + '</span>',
+          '</span>',
+          '<span class="style-card__face style-card__face--back">',
+          '<span class="style-card__back-title">' + style.name + '</span>',
+          '<span class="style-card__snippet">' + snippetFor(style) + '</span>',
+          '<span class="style-card__hint">Click to edit &amp; copy</span>',
+          '</span>',
+          '</span>'
+        ].join('');
+        btn.addEventListener('click', function () { openModal(style); });
+        gallery.appendChild(btn);
+      })(catalog[i]);
+    }
+  }
+
+  subjectInput.addEventListener('input', function () {
+    if (!activeStyle) return;
+    if (!promptDirty) rebuildPromptFromFields();
+    else {
+      // keep subject synced into a fresh build when user edits subject after manual prompt edits
+      rebuildPromptFromFields();
+    }
+  });
+
+  promptArea.addEventListener('input', function () {
+    promptDirty = true;
+  });
+
+  copyBtn.addEventListener('click', copyPrompt);
+  closeBtn.addEventListener('click', closeModal);
+  cancelBtn.addEventListener('click', closeModal);
+  backdrop.addEventListener('click', closeModal);
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape' && modal.classList.contains('is-open')) closeModal();
+  });
+
+  renderGallery();
+})();
+  </script>
+</body>
+</html>

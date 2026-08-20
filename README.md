@@ -5,15 +5,16 @@ Split a single image that contains a grid (e.g. 4×4 from ChatGPT) into separate
 ## Features
 
 - **Multiple detection modes**: Grid (uniform grid lines), Freeform (panel/shape-first), Lines (border/line-first), Adjacent (thin dark dividers or foreground on dark BG), Black BG (isolated shapes on dark background), Simple Grid (equal split with corner handles).
-- **Optional border trim** and adjustable cutting lines.
-- **OCR auto-naming** (Tesseract) for tile labels.
+- **Optional border trim** and adjustable cutting lines. Use **Rows × Cols** to pre-set the cut size for Grid and Freeform.
+- **OCR auto-naming** (Tesseract): reads tile labels for filenames; optional **Remove label after auto-name** (on by default) crops the bottom label band afterward.
+- **Style prompt gallery** (`styles.html`): ~24 logo styles (demo subject: apple), flip cards, edit/copy prompts tuned for clean G2I grids.
 - **No server upload**: your image never leaves your device; splitting and ZIP creation happen locally.
 
 ## How to use
 
-1. Open `index.html` in a browser (or run `npm run dev` and open the URL).
+1. Open `index.html` (or `styles.html` for prompts) in a browser, or run `npm run dev`.
 2. Choose an editor mode, then upload an image. Auto-detect runs; adjust lines or shapes if needed.
-3. Download tiles as a single ZIP.
+3. Run auto-name if tiles have bottom labels; download as ZIP.
 
 ## Development
 

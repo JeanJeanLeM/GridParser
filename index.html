@@ -1073,7 +1073,10 @@
 </head>
 <body>
   <nav class="nav-banner" aria-label="Main navigation">
-    <div class="nav-banner__inner"></div>
+    <div class="nav-banner__inner">
+      <a href="index.html" class="nav-banner__link is-active" aria-current="page">Parser</a>
+      <a href="styles.html" class="nav-banner__link">Styles</a>
+    </div>
   </nav>
   <header class="app-header">
     <div class="app-header__inner">
@@ -1119,8 +1122,8 @@
       <span class="step-badge" aria-hidden="true">2</span>
       <h2 id="step2-title" class="section-title">Adjust cutting lines</h2>
     </div>
-    <p class="grid-editor-intro" id="grid-editor-intro">Grid and outer borders are auto-detected on upload. Drag <strong style="color: rgba(50,100,220,0.95);">blue</strong> (outer) and <strong style="color: rgba(220,50,50,0.9);">red</strong> (inner) lines to set where tiles are cut. These lines are guides only—they are not drawn on your image and do not appear in the downloaded tiles.</p>
-    <p class="grid-editor-intro grid-editor-intro--freeform" id="grid-editor-intro-freeform" style="display: none;">Freeform mode: auto-detect prioritizes uncommon form layouts first (panel/segment forms), then falls back to black-line grid only if needed. Click a form to select it; drag inside to move; drag corners/sides to resize; add or delete forms; exclude cells from export.</p>
+    <p class="grid-editor-intro" id="grid-editor-intro">Set <strong>Rows × Cols</strong> to pre-define the cut size, then adjust lines. Grid and outer borders are auto-detected on upload for that size. Drag <strong style="color: rgba(50,100,220,0.95);">blue</strong> (outer) and <strong style="color: rgba(220,50,50,0.9);">red</strong> (inner) lines to set where tiles are cut. These lines are guides only—they are not drawn on your image and do not appear in the downloaded tiles.</p>
+    <p class="grid-editor-intro grid-editor-intro--freeform" id="grid-editor-intro-freeform" style="display: none;">Freeform mode: set <strong>Rows × Cols</strong> to seed that many forms (or guide auto-detect toward that count). Auto-detect prioritizes panel layouts, then falls back to a black-line grid. Click a form to select it; drag to move or resize; add or delete forms; exclude cells from export.</p>
     <p class="grid-editor-intro grid-editor-intro--freeform" id="grid-editor-intro-lineform" style="display: none;">Straight-line mode: detect forms from black border segments (panel borders) first, even when lines are not perfectly continuous. Falls back to classic black-line grid only when border-shape detection is weak.</p>
     <p class="grid-editor-intro grid-editor-intro--freeform" id="grid-editor-intro-blackbg" style="display: none;">Black BG shapes: for dark-background images. Long thin black lines are removed; tiles are the isolated content shapes. Use when grid or line modes underperform.</p>
     <p class="grid-editor-intro" id="grid-editor-intro-geometrical" style="display: none;">Simple geometrical mode: select grid format and fine-tune the image corners. The image is split into equal-sized cells within the defined rectangle. Drag corners and outer lines to set the shape, and drag inner red cutlines if the generated grid is not perfectly symmetrical.</p>
@@ -1130,12 +1133,12 @@
       <span class="parser-status" id="parser-status" aria-live="polite" style="margin-left: auto; font-size: 0.85em; color: var(--text-subtle, #666);"></span>
     </div>
     <div class="grid-editor-top-row">
-      <div class="grid-format-dimensions" role="group" aria-label="Grid dimensions">
+      <div class="grid-format-dimensions" role="group" aria-label="Cut grid dimensions (rows × columns)" title="Pre-set how many rows and columns to cut. Used by Grid and Freeform (and Simple Grid).">
         <label for="grid-format-rows" class="grid-format-dimensions__label">Rows</label>
-        <input type="number" id="grid-format-rows" min="1" max="10" value="4" aria-label="Grid rows" class="grid-format-dimensions__input">
+        <input type="number" id="grid-format-rows" min="1" max="10" value="4" aria-label="Number of rows to cut" class="grid-format-dimensions__input">
         <span class="grid-format-dimensions__times" aria-hidden="true">×</span>
         <label for="grid-format-cols" class="grid-format-dimensions__label">Cols</label>
-        <input type="number" id="grid-format-cols" min="1" max="10" value="4" aria-label="Grid columns" class="grid-format-dimensions__input">
+        <input type="number" id="grid-format-cols" min="1" max="10" value="4" aria-label="Number of columns to cut" class="grid-format-dimensions__input">
       </div>
       <select id="grid-format" aria-label="Grid format (rows × columns)" class="visually-hidden">
         <option value="4_4" selected>4×4</option>
@@ -1217,13 +1220,17 @@
       <span class="step-badge" aria-hidden="true">3</span>
       <h2 id="step3-title" class="section-title">Preview &amp; download tiles</h2>
     </div>
-    <p class="output-hint">Rename each file if you like, run auto-name when you want, then download them all as a single ZIP.</p>
+    <p class="output-hint">Auto-name reads text on each tile to set the <strong>filename</strong>. With <strong>Remove label after auto-name</strong> enabled (default), the bottom label band is cropped after naming so the exported icon is clean.</p>
     <div class="grid-editor-labelisation">
       <span class="trim-inline">
         <label for="label-region-pct">Label region %:</label>
-        <input type="number" id="label-region-pct" min="10" max="50" value="30" step="5" style="width: 3.5em;" title="Bottom % of tile used for label detection">
+        <input type="number" id="label-region-pct" min="10" max="50" value="30" step="5" style="width: 3.5em;" title="Bottom % of each tile used for OCR, and cropped when Remove label is enabled">
       </span>
-      <button type="button" class="btn btn-secondary" id="run-auto-name-btn" disabled>Run auto-name</button>
+      <label class="auto-name-label" for="remove-label-after-name" title="After OCR naming, crop the bottom label band from each tile">
+        <input type="checkbox" id="remove-label-after-name" checked>
+        Remove label after auto-name
+      </label>
+      <button type="button" class="btn btn-secondary" id="run-auto-name-btn" disabled title="Read tile labels with OCR to rename files, then optionally crop the label band">Run auto-name</button>
     </div>
     <p class="detecting-labels" id="detecting-labels" aria-live="polite" style="display: none;">Detecting labels…</p>
     <div class="preview-grid" id="preview-grid"></div>
@@ -1466,6 +1473,87 @@
         var el = document.getElementById('label-region-pct');
         var n = el ? parseInt(el.value, 10) : 30;
         return Math.max(10, Math.min(50, isNaN(n) ? 30 : n));
+      }
+      function shouldRemoveLabelAfterName() {
+        var el = document.getElementById('remove-label-after-name');
+        return el ? !!el.checked : false;
+      }
+      function regenerateTileBlobFromSource(srcImg, info, bgEff) {
+        return new Promise(function (resolve) {
+          if (!srcImg || !info) { resolve(null); return; }
+          var sx = info.sx + info.trimLeft;
+          var sy = info.sy + info.trimTop;
+          var sw = info.sw - info.trimLeft - info.trimRight;
+          var sh = info.sh - info.trimTop - info.trimBottom;
+          if (sw <= 0 || sh <= 0) { resolve(null); return; }
+          var c = document.createElement('canvas');
+          c.width = sw;
+          c.height = sh;
+          var ctx = c.getContext('2d');
+          if (!ctx) { resolve(null); return; }
+          ctx.drawImage(srcImg, sx, sy, sw, sh, 0, 0, sw, sh);
+          if (bgEff && bgEff.bgRemoveEnabled && bgEff.bgColor && typeof bgEff.bgColor.r === 'number') {
+            applyBgRemoveToImageData(ctx, 0, 0, sw, sh, bgEff.bgColor, bgEff.bgTolerance);
+            applyAlphaEdgeTrimToImageData(ctx, 0, 0, sw, sh, bgEff.bgEdgeTrimPx, bgEff.bgSmoothEdges, bgEff.bgColor);
+          }
+          c.toBlob(function (blob) { resolve(blob || null); }, 'image/png');
+        });
+      }
+      function applyLabelRemovalToPreviewTile(index, thumbs, inputs, labelPct) {
+        var input = inputs[index];
+        var biAttr = input.getAttribute('data-batch-index');
+        var tiAttr = input.getAttribute('data-tile-index');
+        var batchIndex = biAttr != null ? parseInt(biAttr, 10) : -1;
+        var tileIndex = tiAttr != null ? parseInt(tiAttr, 10) : index;
+        var entry = batchIndex >= 0 ? batchImages[batchIndex] : null;
+        var info = entry ? (entry.tileCropInfos || [])[tileIndex] : tileCropInfos[index];
+        if (!info) return Promise.resolve();
+        if (info.labelRemoved) return Promise.resolve();
+        var visibleH = Math.max(1, info.sh - info.trimTop - info.trimBottom);
+        var labelPx = Math.max(1, Math.round(visibleH * (labelPct / 100)));
+        info.trimBottom = Math.min(info.sh - info.trimTop - 1, info.trimBottom + labelPx);
+        info.labelRemoved = true;
+        var srcImg = entry && entry.img ? entry.img : tileSrcImage;
+        var bgEff = null;
+        try {
+          bgEff = typeof getEffectiveBgSettings === 'function' ? getEffectiveBgSettings(tileIndex, batchIndex) : null;
+        } catch (e) {
+          bgEff = null;
+        }
+        return regenerateTileBlobFromSource(srcImg, info, bgEff).then(function (blob) {
+          if (!blob) return;
+          if (entry) {
+            if (!entry.tileBlobs) entry.tileBlobs = [];
+            entry.tileBlobs[tileIndex] = blob;
+            for (var j = 0; j < batchPreviewTiles.length; j++) {
+              if (batchPreviewTiles[j].batchIndex === batchIndex && batchPreviewTiles[j].tileIndex === tileIndex) {
+                batchPreviewTiles[j].blob = blob;
+              }
+            }
+          } else {
+            tileBlobs[index] = blob;
+          }
+          var thumb = thumbs[index];
+          if (thumb) {
+            if (thumb.src && thumb.src.indexOf('blob:') === 0) {
+              try { URL.revokeObjectURL(thumb.src); } catch (e) {}
+            }
+            thumb.src = URL.createObjectURL(blob);
+          }
+        });
+      }
+      function removeLabelsAfterAutoName(thumbs, inputs, labelPct) {
+        if (!shouldRemoveLabelAfterName() || !thumbs || !inputs) return Promise.resolve(false);
+        setDetectingLabelsMessage('Auto-name: removing labels…');
+        var chain = Promise.resolve();
+        for (var i = 0; i < thumbs.length; i++) {
+          (function (idx) {
+            chain = chain.then(function () {
+              return applyLabelRemovalToPreviewTile(idx, thumbs, inputs, labelPct);
+            });
+          })(i);
+        }
+        return chain.then(function () { return true; });
       }
       function getZoom() {
         var el = document.getElementById('zoom');
@@ -2036,7 +2124,8 @@
         if (!currentImage) return false;
         var w = currentImage.naturalWidth;
         var h = currentImage.naturalHeight;
-        var cand = getUniformCandidate(w, h, false);
+        // Try all common sizes so 3×3 boards are not stuck on the default 4×4.
+        var cand = getUniformCandidate(w, h, true);
         if (!cand) return false;
         applyCandidateResult(cand);
         return true;
@@ -2059,7 +2148,8 @@
 
       function tryBlackLineGrid(w, h) {
         if (typeof gridDetect === 'undefined' || !gridDetect.detectGridLines) return [];
-        var layouts = [[2, 3], [3, 2], [2, 2], [3, 3], [1, 2], [2, 1], [1, 3], [3, 1], [4, 2], [2, 4]];
+        var fmt = getGridFormat();
+        var layouts = [[fmt.cols, fmt.rows], [2, 3], [3, 2], [2, 2], [3, 3], [1, 2], [2, 1], [1, 3], [3, 1], [4, 2], [2, 4]];
         var opts = {
           blackThreshold: 100,
           darknessThreshold: 0.12,
@@ -2067,9 +2157,13 @@
           minGap: 6,
           useActualLinePositions: true
         };
+        var seen = {};
         for (var L = 0; L < layouts.length; L++) {
           var cols = layouts[L][0];
           var rows = layouts[L][1];
+          var key = cols + 'x' + rows;
+          if (seen[key]) continue;
+          seen[key] = true;
           opts.gridCols = cols;
           opts.gridRows = rows;
           var result = gridDetect.detectGridLines(currentImage, opts);
@@ -2080,6 +2174,61 @@
           }
         }
         return [];
+      }
+
+      /** Apply Rows×Cols to the active editor: Grid detects/locks that size; Freeform seeds that many cells. */
+      function applySelectedGridDimensions() {
+        if (!currentImage) return;
+        var w = currentImage.naturalWidth;
+        var h = currentImage.naturalHeight;
+        var mode = getEditorMode();
+        if (mode === 'geometrical') {
+          geoAlignBoundsToCorners(false);
+          return;
+        }
+        if (mode === 'uniform') {
+          // Keep Rows×Cols as a hard target when the user sets dimensions manually.
+          var locked = getUniformCandidate(w, h, false);
+          if (locked) applyCandidateResult(locked);
+          else initBounds(w, h);
+          return;
+        }
+        if (mode === 'freeform') {
+          var fmt = getGridFormat();
+          var cells = [];
+          if (typeof gridDetect !== 'undefined' && gridDetect.detectGridLines) {
+            var opts = {
+              gridCols: fmt.cols,
+              gridRows: fmt.rows,
+              blackThreshold: 100,
+              darknessThreshold: 0.12,
+              minLinePx: 1,
+              minGap: 6,
+              useActualLinePositions: true
+            };
+            var result = gridDetect.detectGridLines(currentImage, opts);
+            var wantX = fmt.cols + 1;
+            var wantY = fmt.rows + 1;
+            if (result && result.xBounds && result.xBounds.length === wantX && result.yBounds && result.yBounds.length === wantY) {
+              cells = boundsToCells(result.xBounds, result.yBounds);
+            }
+          }
+          if (!cells.length) {
+            initBounds(w, h);
+            cells = boundsToCells(xBounds, yBounds);
+          }
+          freeformCells = cells;
+          xBounds = [];
+          yBounds = [];
+          xTrim = [];
+          yTrim = [];
+          excludedCellIds = {};
+          selectedCellIndex = null;
+          updateParserStatus({ mode: 'freeform', source: 'gridDimensions' });
+          updateFreeformButtons();
+          updateCutButtonLabel();
+          updateFreeformCellsVisual();
+        }
       }
 
       function trySegmentCells(w, h) {
@@ -2502,17 +2651,59 @@
         return { mode: 'geometrical', xBounds: xB, yBounds: yB, source: 'geometrical' };
       }
 
-      var UNIFORM_GRID_SIZES = [[2, 2], [3, 3], [4, 4], [2, 3], [3, 2], [1, 2], [2, 1], [1, 3], [3, 1], [4, 2], [2, 4], [3, 4], [4, 3], [1, 4], [4, 1]];
+      var UNIFORM_GRID_SIZES = [
+        [3, 3], [4, 4], [2, 2], [2, 3], [3, 2], [3, 4], [4, 3],
+        [5, 5], [2, 4], [4, 2], [1, 2], [2, 1], [1, 3], [3, 1], [1, 4], [4, 1], [5, 4], [4, 5]
+      ];
+
+      function scoreUniformLayout(cand, w, h) {
+        if (!cand || !cand.xBounds || !cand.yBounds) return -1e9;
+        var cols = cand.xBounds.length - 1;
+        var rows = cand.yBounds.length - 1;
+        if (cols < 1 || rows < 1) return -1e9;
+        var x0 = cand.xBounds[0];
+        var x1 = cand.xBounds[cand.xBounds.length - 1];
+        var y0 = cand.yBounds[0];
+        var y1 = cand.yBounds[cand.yBounds.length - 1];
+        var spanW = Math.max(1, x1 - x0);
+        var spanH = Math.max(1, y1 - y0);
+        var coverage = (spanW * spanH) / Math.max(1, w * h);
+        function spanVariance(bounds) {
+          if (bounds.length < 2) return 0;
+          var spans = [];
+          var sum = 0;
+          for (var i = 1; i < bounds.length; i++) {
+            var s = bounds[i] - bounds[i - 1];
+            spans.push(s);
+            sum += s;
+          }
+          var mean = sum / spans.length;
+          var v = 0;
+          for (var j = 0; j < spans.length; j++) {
+            var d = spans[j] - mean;
+            v += d * d;
+          }
+          return Math.sqrt(v / spans.length) / Math.max(1, mean);
+        }
+        var equalPenalty = (spanVariance(cand.xBounds) + spanVariance(cand.yBounds)) * 80;
+        var cellCount = rows * cols;
+        // Prefer denser grids that still cover the image and stay evenly spaced.
+        return cellCount * 6 + coverage * 40 - equalPenalty;
+      }
 
       function getUniformCandidate(w, h, tryAllSizes) {
         if (typeof gridDetect === 'undefined' || !gridDetect.detectGridLines) return null;
         var presets = [
-          { blackThreshold: 100, darknessThreshold: 0.12, minLinePx: 1, minGap: 6, minSpanFraction: 0.35 },
-          { blackThreshold: 130, darknessThreshold: 0.10, minLinePx: 1, minGap: 6, minSpanFraction: 0.30 },
-          { blackThreshold: 160, darknessThreshold: 0.08, minLinePx: 1, minGap: 6, minSpanFraction: 0.25 },
-          { blackThreshold: 185, darknessThreshold: 0.06, minLinePx: 1, minGap: 6, minSpanFraction: 0.22 }
+          { blackThreshold: 100, darknessThreshold: 0.12, minLinePx: 1, minGap: 6, minSpanFraction: 0.35, useActualLinePositions: true },
+          { blackThreshold: 130, darknessThreshold: 0.10, minLinePx: 1, minGap: 6, minSpanFraction: 0.30, useActualLinePositions: true },
+          { blackThreshold: 160, darknessThreshold: 0.08, minLinePx: 1, minGap: 6, minSpanFraction: 0.25, useActualLinePositions: true },
+          // Dashed / light gray separators (Grokbot: pointillés)
+          { blackThreshold: 185, darknessThreshold: 0.06, minLinePx: 1, minGap: 6, minSpanFraction: 0.12, allowDashed: true, useActualLinePositions: true },
+          { blackThreshold: 200, darknessThreshold: 0.05, minLinePx: 1, minGap: 5, minSpanFraction: 0.08, allowDashed: true, useActualLinePositions: true }
         ];
         var sizesToTry = tryAllSizes ? UNIFORM_GRID_SIZES : [[getGridFormat().rows, getGridFormat().cols]];
+        var best = null;
+        var bestScore = -1e9;
         for (var si = 0; si < sizesToTry.length; si++) {
           var rows = sizesToTry[si][0];
           var cols = sizesToTry[si][1];
@@ -2523,7 +2714,7 @@
             for (var k in presets[p]) opts[k] = presets[p][k];
             var result = gridDetect.detectGridLines(currentImage, opts);
             if (result && result.xBounds && result.xBounds.length === wantX && result.yBounds && result.yBounds.length === wantY) {
-              return {
+              var cand = {
                 mode: 'uniform',
                 xBounds: result.xBounds.slice(),
                 yBounds: result.yBounds.slice(),
@@ -2531,17 +2722,37 @@
                 yTrim: result.yTrim ? result.yTrim.slice() : [],
                 rows: rows,
                 cols: cols,
-                source: 'gridLines'
+                source: presets[p].allowDashed ? 'gridLinesDashed' : 'gridLines'
               };
+              var score = scoreUniformLayout(cand, w, h);
+              if (score > bestScore) {
+                bestScore = score;
+                best = cand;
+              }
+              // Locked size: first solid hit is enough.
+              if (!tryAllSizes) return cand;
             }
           }
         }
-        return null;
+        return best;
       }
 
       function getFreeformCandidate(w, h) {
-        var cells = [];
-        var source = null;
+        var expectedCount = getGridFormat().rows * getGridFormat().cols;
+        var best = null;
+        var bestScore = -1;
+        function consider(cells, source) {
+          if (!cells || cells.length < 2 || cells.length > 64) return;
+          var score = cells.length;
+          if (expectedCount > 0) {
+            if (cells.length === expectedCount) score += 1000;
+            else score -= Math.abs(cells.length - expectedCount) * 8;
+          }
+          if (score > bestScore) {
+            bestScore = score;
+            best = { mode: 'freeform', cells: cells.slice(), source: source };
+          }
+        }
         if (typeof segmentDetect !== 'undefined' && segmentDetect.detectPanelRects) {
           var panelPresets = [
             { nonWhiteThreshold: 246, minAreaFraction: 0.008, minWFrac: 0.06, minHFrac: 0.06, minFillRatio: 0.12, padPx: 1, mergeGapPx: 0 },
@@ -2549,20 +2760,12 @@
             { nonWhiteThreshold: 238, minAreaFraction: 0.004, minWFrac: 0.04, minHFrac: 0.04, minFillRatio: 0.08, padPx: 1, mergeGapPx: 1 }
           ];
           for (var p = 0; p < panelPresets.length; p++) {
-            cells = segmentDetect.detectPanelRects(currentImage, panelPresets[p]) || [];
-            if (cells.length > 1) { source = 'panelRects'; break; }
+            consider(segmentDetect.detectPanelRects(currentImage, panelPresets[p]) || [], 'panelRects');
           }
         }
-        if (!source && cells.length <= 1) {
-          cells = trySegmentCells(w, h);
-          if (cells.length > 1) source = 'whiteGaps';
-        }
-        if (!source && cells.length <= 1) {
-          cells = tryBlackLineGrid(w, h);
-          if (cells.length > 1) source = 'blackLineGrid';
-        }
-        if (!cells.length || cells.length > 64) return null;
-        return { mode: 'freeform', cells: cells.slice(), source: source || 'panelRects' };
+        consider(trySegmentCells(w, h), 'whiteGaps');
+        consider(tryBlackLineGrid(w, h), 'blackLineGrid');
+        return best;
       }
 
       function getLineformCandidate(w, h) {
@@ -4132,11 +4335,8 @@
         syncGridFormatVisual();
         updateCutButtonLabel();
         if (currentImage) {
-          if (getEditorMode() === 'geometrical') {
-            geoAlignBoundsToCorners(true);
-          } else {
-            initBounds(currentImage.naturalWidth, currentImage.naturalHeight);
-          }
+          applySelectedGridDimensions();
+          saveCurrentImageState();
           drawOverlay();
           scheduleAutoCut();
         }
@@ -4326,8 +4526,31 @@
         return s;
       }
 
+      var OCR_COMMON_FIXES = {
+        buraer: 'burger',
+        burqer: 'burger',
+        buraers: 'burger',
+        icecrearn: 'icecream',
+        iceoream: 'icecream',
+        croissont: 'croissant',
+        croisant: 'croissant',
+        puppv: 'puppy',
+        kiften: 'kitten',
+        penguim: 'penguin'
+      };
+
+      function applyOcrFixes(base) {
+        if (!base) return null;
+        var s = base;
+        // Strip noisy prefixes like cc_, on_, the_
+        s = s.replace(/^(cc|on|the|a|an)_+/g, '');
+        if (OCR_COMMON_FIXES[s]) s = OCR_COMMON_FIXES[s];
+        return s || null;
+      }
+
       function ocrTextToBaseName(text) {
         var s = normalizeOcrString(text).trim().toLowerCase().replace(/['\u2019]/g, '').replace(/[^a-z0-9]+/g, '_').replace(/_+/g, '_').replace(/^_|_$/g, '');
+        s = applyOcrFixes(s);
         if (!s || s.length < 2) return null;
         var maxLen = 50;
         if (s.length > maxLen) s = s.slice(0, maxLen).replace(/_$/, '');
@@ -4343,18 +4566,29 @@
       }
 
       function extractWordsFromOcrResult(result) {
-        var out = [];
+        var scored = [];
         var words = result && result.data && result.data.words;
         if (words && Array.isArray(words)) {
           for (var i = 0; i < words.length; i++) {
             var w = words[i] || {};
             var text = (w.text && String(w.text).trim()) || '';
             var confidence = typeof w.confidence === 'number' ? w.confidence : 100;
-            if (confidence < 20) continue;
-            if (isWordLike(text)) out.push(normalizeOcrString(text).trim());
+            if (confidence < 40) continue;
+            if (!isWordLike(text)) continue;
+            var clean = normalizeOcrString(text).trim();
+            scored.push({ text: clean, confidence: confidence, len: clean.length });
           }
         }
-        if (out.length) return out;
+        if (scored.length) {
+          scored.sort(function (a, b) {
+            // Prefer longer label words with decent confidence (icon names are usually one word).
+            var sa = a.confidence + a.len * 8;
+            var sb = b.confidence + b.len * 8;
+            return sb - sa;
+          });
+          return scored.map(function (x) { return x.text; });
+        }
+        var out = [];
         var rawText = result && result.data && result.data.text ? normalizeOcrString(result.data.text) : '';
         var parts = rawText.split(/\s+/);
         for (var j = 0; j < parts.length; j++) {
@@ -4365,8 +4599,8 @@
 
       function wordsToBaseName(words) {
         if (!words || words.length === 0) return null;
-        var trimmed = words.slice(0, 4);
-        return ocrTextToBaseName(trimmed.join(' '));
+        // Icon labels are typically a single word — take the best (first after scoring).
+        return ocrTextToBaseName(words[0]);
       }
 
       function getLabelRegionCanvas(imageUrl, bottomPercent, enhance) {
@@ -4516,13 +4750,20 @@
             if (inputs[i]) inputs[i].value = name;
             if (onNameApplied) onNameApplied(i, name);
           }
-          if (renamedCount > 0) {
-            setDetectingLabelsMessage('Auto-name: renamed ' + renamedCount + ' / ' + total + ' tiles.');
-          } else {
-            setDetectingLabelsMessage('Auto-name: no reliable labels found (kept default names).');
-          }
-          clearDetectingLabelsMessage(2600);
-          logAutoName('OCR run finished', { tiles: total, renamed: renamedCount });
+          return removeLabelsAfterAutoName(thumbs, inputs, labelPct).then(function (removed) {
+            if (runId !== autoNameRunId) return;
+            var msg;
+            if (renamedCount > 0) {
+              msg = 'Auto-name: renamed ' + renamedCount + ' / ' + total + ' tiles.';
+              if (removed) msg += ' Labels removed.';
+            } else {
+              msg = 'Auto-name: no reliable labels found (kept default names).';
+              if (removed) msg += ' Labels removed.';
+            }
+            setDetectingLabelsMessage(msg);
+            clearDetectingLabelsMessage(2600);
+            logAutoName('OCR run finished', { tiles: total, renamed: renamedCount, labelsRemoved: !!removed });
+          });
         }).catch(function (err) {
           var message = err && err.message ? err.message : 'Unknown OCR error';
           setDetectingLabelsMessage('Auto-name failed: ' + message, true);

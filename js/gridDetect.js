@@ -96,15 +96,23 @@
   /**
    * Darkness profile that is zero where the longest contiguous dark run is too short.
    * This rejects text rows/columns (short segments) while keeping real grid lines (long span).
+   * When allowDashed is true, uses total dark fraction along the axis instead of one long run
+   * (so dotted/dashed separators can still register as grid lines).
    */
-  function lineAwareProfile(data, w, h, axis, blackThreshold, minSpanFraction) {
+  function lineAwareProfile(data, w, h, axis, blackThreshold, minSpanFraction, allowDashed) {
     var raw = darknessProfile(data, w, h, axis, blackThreshold);
     var size = axis === 'x' ? h : w;
     var out = [];
     for (var i = 0; i < raw.length; i++) {
-      var span = maxContiguousDark(data, w, h, axis, i, blackThreshold);
-      var minSpan = Math.floor(size * minSpanFraction);
-      out.push(span >= minSpan ? raw[i] : 0);
+      if (allowDashed) {
+        // Dashed lines: require enough total dark coverage, not one continuous stroke.
+        var minFrac = Math.max(0.08, minSpanFraction * 0.85);
+        out.push(raw[i] >= minFrac ? raw[i] : 0);
+      } else {
+        var span = maxContiguousDark(data, w, h, axis, i, blackThreshold);
+        var minSpan = Math.floor(size * minSpanFraction);
+        out.push(span >= minSpan ? raw[i] : 0);
+      }
     }
     return out;
   }
@@ -273,6 +281,7 @@
     var gridCols = Math.max(1, Math.min(10, parseInt(opts.gridCols, 10) || 4));
     var gridRows = Math.max(1, Math.min(10, parseInt(opts.gridRows, 10) || 4));
     var useActualPositions = opts.useActualLinePositions === true;
+    var allowDashed = opts.allowDashed === true;
 
     var w = image.naturalWidth || image.width;
     var h = image.naturalHeight || image.height;
@@ -288,8 +297,8 @@
     var data = ctx.getImageData(0, 0, w, h).data;
 
     /* Use line-aware profiles so rows/columns with only short dark segments (e.g. text) are ignored. */
-    var colProfile = lineAwareProfile(data, w, h, 'x', blackThreshold, minSpanFraction);
-    var rowProfile = lineAwareProfile(data, w, h, 'y', blackThreshold, minSpanFraction);
+    var colProfile = lineAwareProfile(data, w, h, 'x', blackThreshold, minSpanFraction, allowDashed);
+    var rowProfile = lineAwareProfile(data, w, h, 'y', blackThreshold, minSpanFraction, allowDashed);
 
     var colRuns = findRuns(colProfile, darknessThreshold, minLinePx, maxLinePx);
     var rowRuns = findRuns(rowProfile, darknessThreshold, minLinePx, maxLinePx);
