@@ -6,12 +6,14 @@
   "scripts": {
     "dev": "npx serve .",
     "local": "vercel dev",
-    "test:grid": "node scripts/test-grid-split.js"
+    "test:grid": "node scripts/test-grid-split.js",
+    "compress:styles": "node scripts/compress-style-thumbs.js"
   },
   "dependencies": {
     "jimp": "^0.22.12"
   },
   "devDependencies": {
+    "sharp": "^0.35.3",
     "tesseract.js": "^5.1.0",
     "vercel": "^50.22.1"
   }
