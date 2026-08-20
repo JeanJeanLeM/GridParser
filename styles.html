@@ -29,11 +29,38 @@
     <div class="styles-page__intro">
       <h2>Logo style prompts</h2>
       <p>
-        Click a style to open the full prompt. Edit the subject, copy, paste into your image generator,
-        then upload the grid into the Parser for clean cuts, auto-name, and optional label removal.
+        Copy a G2I-ready grid prompt, generate in your image tool, then upload into the Parser
+        (Grid mode, Rows&times;Cols matching the prompt, Auto-name + Remove label).
       </p>
     </div>
-    <div class="styles-gallery" id="styles-gallery" aria-label="Logo style gallery"></div>
+
+    <div class="styles-view-toggle" role="tablist" aria-label="Gallery view">
+      <button type="button" class="styles-view-toggle__btn is-active" id="view-styles-btn" role="tab" aria-selected="true">Focus styles</button>
+      <button type="button" class="styles-view-toggle__btn" id="view-grid-btn" role="tab" aria-selected="false">Full 4&times;4 fruit grid</button>
+    </div>
+
+    <section class="styles-panel" id="panel-styles" role="tabpanel">
+      <p class="styles-panel__hint">Click a style to edit the subject and copy a <strong>4&times;4 G2I grid prompt</strong> for that look.</p>
+      <div class="styles-gallery" id="styles-gallery" aria-label="Logo style gallery"></div>
+    </section>
+
+    <section class="styles-panel" id="panel-grid" role="tabpanel" hidden>
+      <div class="styles-grid-showcase">
+        <figure class="styles-grid-showcase__figure">
+          <img id="fruit-grid-img" class="styles-grid-showcase__img" src="/assets/styles/fruit-grid-4x4.webp" alt="4 by 4 fruit icons grid in mixed graphic styles" width="1024" height="1024">
+          <figcaption class="styles-grid-showcase__cap">Example 4&times;4: 16 fruits &times; 16 styles, separators + OCR labels for Grid2icons.</figcaption>
+        </figure>
+        <div class="styles-grid-showcase__side">
+          <label for="grid-prompt" class="styles-grid-showcase__label">Prompt for this full fruit grid</label>
+          <textarea id="grid-prompt" class="styles-grid-showcase__prompt" spellcheck="false" readonly></textarea>
+          <div class="styles-grid-showcase__actions">
+            <button type="button" class="btn btn-primary" id="grid-copy-btn">Copy grid prompt</button>
+            <a class="btn btn-secondary" href="/index.html">Open Parser</a>
+          </div>
+          <p class="styles-grid-showcase__status" id="grid-copy-status" aria-live="polite"></p>
+        </div>
+      </div>
+    </section>
   </main>
 
   <div class="style-modal" id="style-modal" aria-hidden="true">
@@ -52,7 +79,7 @@
         <input type="text" id="style-subject" value="apple" autocomplete="off">
       </div>
       <div class="style-modal__field">
-        <label for="style-prompt">Prompt</label>
+        <label for="style-prompt">G2I 4&times;4 grid prompt</label>
         <textarea id="style-prompt" spellcheck="false"></textarea>
       </div>
       <div class="style-modal__actions">
@@ -67,6 +94,15 @@
   <script>
 (function () {
   var gallery = document.getElementById('styles-gallery');
+  var panelStyles = document.getElementById('panel-styles');
+  var panelGrid = document.getElementById('panel-grid');
+  var viewStylesBtn = document.getElementById('view-styles-btn');
+  var viewGridBtn = document.getElementById('view-grid-btn');
+  var gridPrompt = document.getElementById('grid-prompt');
+  var gridCopyBtn = document.getElementById('grid-copy-btn');
+  var gridCopyStatus = document.getElementById('grid-copy-status');
+  var fruitGridImg = document.getElementById('fruit-grid-img');
+
   var modal = document.getElementById('style-modal');
   var modalTitle = document.getElementById('style-modal-title');
   var modalTagline = document.getElementById('style-modal-tagline');
@@ -88,6 +124,30 @@
     return '<img class="style-card__img" src="' + style.thumb + '" alt="' + style.name + ' apple" loading="lazy" width="320" height="320">';
   }
 
+  function copyText(text, statusEl) {
+    function done(ok) {
+      statusEl.textContent = ok ? 'Copied to clipboard.' : 'Could not copy — select and copy manually.';
+      if (ok) setTimeout(function () { statusEl.textContent = ''; }, 2200);
+    }
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(function () { done(true); }).catch(function () {
+        done(false);
+      });
+    } else {
+      done(false);
+    }
+  }
+
+  function setView(mode) {
+    var isStyles = mode === 'styles';
+    panelStyles.hidden = !isStyles;
+    panelGrid.hidden = isStyles;
+    viewStylesBtn.classList.toggle('is-active', isStyles);
+    viewGridBtn.classList.toggle('is-active', !isStyles);
+    viewStylesBtn.setAttribute('aria-selected', isStyles ? 'true' : 'false');
+    viewGridBtn.setAttribute('aria-selected', isStyles ? 'false' : 'true');
+  }
+
   function rebuildPromptFromFields() {
     if (!activeStyle || typeof StylePrompts === 'undefined') return;
     promptArea.value = StylePrompts.buildPrompt(activeStyle, subjectInput.value);
@@ -97,7 +157,7 @@
   function openModal(style) {
     activeStyle = style;
     modalTitle.textContent = style.name;
-    modalTagline.textContent = style.tagline;
+    modalTagline.textContent = style.tagline + ' — generates a full 4x4 G2I grid of your subject.';
     modalPreview.innerHTML = thumbHtml(style);
     subjectInput.value = StylePrompts.DEFAULT_SUBJECT;
     rebuildPromptFromFields();
@@ -112,23 +172,6 @@
     activeStyle = null;
   }
 
-  function copyPrompt() {
-    var text = promptArea.value || '';
-    function done(ok) {
-      copyStatus.textContent = ok ? 'Copied to clipboard.' : 'Could not copy — select and copy manually.';
-      if (ok) setTimeout(function () { copyStatus.textContent = ''; }, 2200);
-    }
-    if (navigator.clipboard && navigator.clipboard.writeText) {
-      navigator.clipboard.writeText(text).then(function () { done(true); }).catch(function () {
-        promptArea.select();
-        done(document.execCommand('copy'));
-      });
-    } else {
-      promptArea.select();
-      done(document.execCommand('copy'));
-    }
-  }
-
   function renderGallery() {
     if (typeof StylePrompts === 'undefined' || !StylePrompts.STYLE_CATALOG) {
       showGalleryError('Style catalog failed to load. Hard-refresh the page (Ctrl+F5).');
@@ -141,7 +184,7 @@
         var btn = document.createElement('button');
         btn.type = 'button';
         btn.className = 'style-card';
-        btn.setAttribute('aria-label', style.name + ' — open prompt');
+        btn.setAttribute('aria-label', style.name + ' — open G2I grid prompt');
         btn.innerHTML =
           '<span class="style-card__preview">' + thumbHtml(style) + '</span>' +
           '<span class="style-card__name">' + style.name + '</span>' +
@@ -150,10 +193,21 @@
         gallery.appendChild(btn);
       })(catalog[i]);
     }
+
+    if (StylePrompts.MULTI_STYLE_GRID_IMAGE) {
+      fruitGridImg.src = StylePrompts.MULTI_STYLE_GRID_IMAGE;
+    }
+    gridPrompt.value = StylePrompts.buildMultiStyleFruitGridPrompt();
   }
 
+  viewStylesBtn.addEventListener('click', function () { setView('styles'); });
+  viewGridBtn.addEventListener('click', function () { setView('grid'); });
+  gridCopyBtn.addEventListener('click', function () {
+    copyText(gridPrompt.value, gridCopyStatus);
+  });
+
   subjectInput.addEventListener('input', rebuildPromptFromFields);
-  copyBtn.addEventListener('click', copyPrompt);
+  copyBtn.addEventListener('click', function () { copyText(promptArea.value, copyStatus); });
   closeBtn.addEventListener('click', closeModal);
   cancelBtn.addEventListener('click', closeModal);
   backdrop.addEventListener('click', closeModal);
@@ -163,6 +217,7 @@
 
   try {
     renderGallery();
+    setView('styles');
   } catch (err) {
     showGalleryError('Gallery error: ' + (err && err.message ? err.message : String(err)));
   }

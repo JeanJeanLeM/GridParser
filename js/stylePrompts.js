@@ -1,6 +1,5 @@
 ﻿/**
- * Logo style gallery data + G2I-oriented prompt builder.
- * Each style produces a prompt for a regular labeled grid that Grid2icons can parse.
+ * Logo style gallery data + G2I-oriented prompt builders.
  */
 (function (root) {
   'use strict';
@@ -19,7 +18,7 @@
     { id: 'papercut', name: 'Paper Cut', tagline: 'Layered paper', thumb: '/assets/styles/papercut.webp' },
     { id: 'embroidered', name: 'Embroidered', tagline: 'Thread stitches', thumb: '/assets/styles/embroidered.webp' },
     { id: 'stained-glass', name: 'Stained Glass', tagline: 'Lead & glass', thumb: '/assets/styles/stained-glass.webp' },
-    { id: 'isometric', name: 'Isometric', tagline: '30Â° isometric', thumb: '/assets/styles/isometric.webp' },
+    { id: 'isometric', name: 'Isometric', tagline: '30deg isometric', thumb: '/assets/styles/isometric.webp' },
     { id: 'lowpoly', name: 'Low Poly', tagline: 'Faceted mesh', thumb: '/assets/styles/lowpoly.webp' },
     { id: 'chalk', name: 'Chalk', tagline: 'Blackboard chalk', thumb: '/assets/styles/chalk.webp' },
     { id: 'graffiti', name: 'Graffiti', tagline: 'Spray paint', thumb: '/assets/styles/graffiti.webp' },
@@ -47,38 +46,87 @@
     { id: 'halftone', name: 'Halftone', tagline: 'Dot print', thumb: '/assets/styles/halftone.webp' }
   ];
 
+  /** 16 fruits for the showcase 4x4 multi-style grid (row-major). */
+  var FRUIT_GRID_SUBJECTS = [
+    'apple', 'banana', 'orange', 'strawberry',
+    'grape', 'watermelon', 'pineapple', 'cherry',
+    'lemon', 'peach', 'kiwi', 'mango',
+    'pear', 'blueberry', 'coconut', 'avocado'
+  ];
+
+  var MULTI_STYLE_GRID_IMAGE = '/assets/styles/fruit-grid-4x4.webp';
+
   function escapeSubject(subject) {
     return String(subject || DEFAULT_SUBJECT).trim() || DEFAULT_SUBJECT;
   }
 
+  function labelToken(name) {
+    return String(name || 'Icon').replace(/\s+/g, '');
+  }
+
+  /** Shared rules so Grid2icons Grid mode + OCR + label crop work reliably. */
+  function g2iLayoutRules(grid) {
+    return [
+      'GRID2ICONS LAYOUT (must follow exactly):',
+      '- One square image that is a perfect ' + grid + ' regular grid (equal cell sizes).',
+      '- Thin continuous pure-black separator lines between every cell (1-3 px), full span, no gaps, no dashes.',
+      '- Pure white margins outside the grid; no outer frame, watermark, title, or caption outside cells.',
+      '- Each cell: upper ~75% = centered icon on solid plain white (or solid flat neutral) background; no scenic backdrop, no floor, no shadows on the page.',
+      '- Each cell: bottom ~25% = solid white label band with short black sans-serif text only (no icons in the band).',
+      '- Labels must be OCR-friendly: high contrast, no effects, one short word or CamelCase token.',
+      '- Designed so Grid mode detects ' + grid + ' and Auto-name + Remove-label crop cleanly.'
+    ].join('\n');
+  }
+
   /**
-   * Build a full image-gen prompt for one style, optimized for Grid2icons.
-   * @param {{ id: string, name: string, tagline?: string }} style
-   * @param {string} [subject]
-   * @param {{ grid?: string }} [options]
+   * Prompt for ONE style: same subject repeated in a G2I-ready grid.
    */
   function buildPrompt(style, subject, options) {
     var s = escapeSubject(subject);
     var grid = (options && options.grid) || DEFAULT_GRID;
     var styleName = style && style.name ? style.name : 'icon';
-    var labelWord = styleName.replace(/\s+/g, '');
+    var label = labelToken(styleName);
 
     return [
-      'Create a single image that is a perfect ' + grid + ' grid of icon tiles.',
-      'Subject for EVERY tile: ' + s + ' (same object, same pose family, only small harmless variation).',
-      'Visual style for EVERY tile: ' + styleName + ' â€” ' + (style.tagline || styleName) + '.',
-      'Each tile must look like an app icon / logo mark: subject only, solid plain white or solid flat neutral background (no colorful scenic backdrop, no floor, no room).',
-      'Layout requirements (critical for automatic splitting):',
-      '- Exactly ' + grid + ' equal rectangular cells in a regular row/column grid.',
-      '- Thin continuous black separator lines between cells (1â€“3 px), full length, no gaps.',
-      '- Pure white background outside and between cells.',
-      '- No outer decorative frame, watermark, or title outside the grid.',
-      'Label requirements (critical for OCR naming):',
-      '- Bottom 25% of EACH cell is a clean white label band with short black sans-serif text.',
-      '- Label text is ONLY the style name word: "' + labelWord + '" (same on every tile, readable, no effects).',
-      '- Icon artwork stays in the upper ~75% of each cell; do not put the label over the object.',
-      'After crop of the bottom label band, each tile must still be a clean centered ' + s + ' icon on a plain background.',
-      'Square overall image, high resolution, consistent lighting, no collage randomness.'
+      'Generate a single square image for Grid2icons (G2I).',
+      'Content: a perfect ' + grid + ' grid of the SAME subject: "' + s + '".',
+      'Art direction for EVERY tile: ' + styleName + ' (' + (style.tagline || styleName) + ').',
+      'Each tile is an app-icon / logo mark of "' + s + '" only — plain background inside the tile.',
+      'Label on every tile (identical): "' + label + '".',
+      g2iLayoutRules(grid),
+      'Output: one high-resolution square PNG-like image, consistent lighting, no collage chaos.'
+    ].join('\n');
+  }
+
+  /**
+   * Prompt for the showcase 4x4: different fruits, each in a different style.
+   * Uses the first 16 styles from STYLE_CATALOG.
+   */
+  function buildMultiStyleFruitGridPrompt(options) {
+    var grid = (options && options.grid) || DEFAULT_GRID;
+    var styles = STYLE_CATALOG.slice(0, 16);
+    var lines = [];
+    var i;
+    for (i = 0; i < 16; i++) {
+      var row = Math.floor(i / 4) + 1;
+      var col = (i % 4) + 1;
+      var fruit = FRUIT_GRID_SUBJECTS[i];
+      var st = styles[i];
+      lines.push(
+        '- Row ' + row + ' Col ' + col + ': fruit "' + fruit + '" in style "' + st.name +
+        '" (' + st.tagline + '); label text exactly "' + labelToken(fruit) + '".'
+      );
+    }
+
+    return [
+      'Generate a single square image for Grid2icons (G2I): a perfect ' + grid + ' icon grid of FRUITS.',
+      'Each cell is a different fruit in a different graphic style (16 unique fruit+style pairs).',
+      'Cell map (row-major, left-to-right, top-to-bottom):',
+      lines.join('\n'),
+      'Every cell must look like a clean app icon: fruit only, solid plain white tile background.',
+      g2iLayoutRules(grid),
+      'Do not repeat the same fruit or the same style twice.',
+      'Output: one high-resolution square image ready to upload into Grid2icons Parser (Grid mode, 4 rows x 4 cols).'
     ].join('\n');
   }
 
@@ -93,7 +141,10 @@
     DEFAULT_SUBJECT: DEFAULT_SUBJECT,
     DEFAULT_GRID: DEFAULT_GRID,
     STYLE_CATALOG: STYLE_CATALOG,
+    FRUIT_GRID_SUBJECTS: FRUIT_GRID_SUBJECTS,
+    MULTI_STYLE_GRID_IMAGE: MULTI_STYLE_GRID_IMAGE,
     buildPrompt: buildPrompt,
+    buildMultiStyleFruitGridPrompt: buildMultiStyleFruitGridPrompt,
     getStyleById: getStyleById
   };
 
@@ -103,4 +154,3 @@
     root.StylePrompts = api;
   }
 })(typeof self !== 'undefined' ? self : this);
-
