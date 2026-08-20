@@ -3,20 +3,20 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Grid2icons — Logo style prompts</title>
-  <link rel="stylesheet" href="css/shared.css">
-  <link rel="stylesheet" href="css/styles-gallery.css">
+  <title>Grid2icons - Logo style prompts</title>
+  <link rel="stylesheet" href="/css/shared.css">
+  <link rel="stylesheet" href="/css/styles-gallery.css">
 </head>
 <body>
   <nav class="nav-banner" aria-label="Main navigation">
     <div class="nav-banner__inner">
-      <a href="index.html" class="nav-banner__link">Parser</a>
-      <a href="styles.html" class="nav-banner__link is-active" aria-current="page">Styles</a>
+      <a href="/index.html" class="nav-banner__link">Parser</a>
+      <a href="/styles.html" class="nav-banner__link is-active" aria-current="page">Styles</a>
     </div>
   </nav>
   <header class="app-header">
     <div class="app-header__inner">
-      <a href="index.html" class="app-header__brand" aria-label="Grid2icons home">
+      <a href="/index.html" class="app-header__brand" aria-label="Grid2icons home">
         <h1 class="app-header__title">
           <span class="app-header__title--grid">Grid</span><span class="app-header__title--num">2</span><span class="app-header__title--icons">Icons</span>
         </h1>
@@ -29,7 +29,7 @@
     <div class="styles-page__intro">
       <h2>Logo style prompts</h2>
       <p>
-        Flip a card for a preview, click to open the full prompt. Edit the subject, copy, paste into your image generator,
+        Click a style to open the full prompt. Edit the subject, copy, paste into your image generator,
         then upload the grid into the Parser for clean cuts, auto-name, and optional label removal.
       </p>
     </div>
@@ -63,7 +63,7 @@
     </div>
   </div>
 
-  <script src="js/stylePrompts.js"></script>
+  <script src="/js/stylePrompts.js"></script>
   <script>
 (function () {
   var gallery = document.getElementById('styles-gallery');
@@ -78,21 +78,18 @@
   var closeBtn = document.getElementById('style-modal-close');
   var cancelBtn = document.getElementById('style-modal-cancel');
   var backdrop = document.getElementById('style-modal-backdrop');
-
   var activeStyle = null;
 
-  function thumbHtml(style) {
-    var src = style.thumb || '';
-    return '<img class="style-card__img" src="' + src + '" alt="' + style.name + ' apple" loading="lazy" width="240" height="240">';
+  function showGalleryError(msg) {
+    gallery.innerHTML = '<p class="styles-gallery__error">' + msg + '</p>';
   }
 
-  function snippetFor(style) {
-    var full = StylePrompts.buildPrompt(style, StylePrompts.DEFAULT_SUBJECT);
-    return full.split('\n').slice(0, 3).join(' ');
+  function thumbHtml(style) {
+    return '<img class="style-card__img" src="' + style.thumb + '" alt="' + style.name + ' apple" loading="lazy" width="320" height="320">';
   }
 
   function rebuildPromptFromFields() {
-    if (!activeStyle) return;
+    if (!activeStyle || typeof StylePrompts === 'undefined') return;
     promptArea.value = StylePrompts.buildPrompt(activeStyle, subjectInput.value);
     copyStatus.textContent = '';
   }
@@ -133,6 +130,10 @@
   }
 
   function renderGallery() {
+    if (typeof StylePrompts === 'undefined' || !StylePrompts.STYLE_CATALOG) {
+      showGalleryError('Style catalog failed to load. Hard-refresh the page (Ctrl+F5).');
+      return;
+    }
     var catalog = StylePrompts.STYLE_CATALOG;
     gallery.innerHTML = '';
     for (var i = 0; i < catalog.length; i++) {
@@ -141,31 +142,17 @@
         btn.type = 'button';
         btn.className = 'style-card';
         btn.setAttribute('aria-label', style.name + ' — open prompt');
-        btn.innerHTML = [
-          '<span class="style-card__inner">',
-          '<span class="style-card__face style-card__face--front">',
-          '<span class="style-card__preview">' + thumbHtml(style) + '</span>',
-          '<span class="style-card__name">' + style.name + '</span>',
-          '<span class="style-card__tag">' + style.tagline + '</span>',
-          '</span>',
-          '<span class="style-card__face style-card__face--back">',
-          '<span class="style-card__back-title">' + style.name + '</span>',
-          '<span class="style-card__snippet">' + snippetFor(style) + '</span>',
-          '<span class="style-card__hint">Click to edit &amp; copy</span>',
-          '</span>',
-          '</span>'
-        ].join('');
+        btn.innerHTML =
+          '<span class="style-card__preview">' + thumbHtml(style) + '</span>' +
+          '<span class="style-card__name">' + style.name + '</span>' +
+          '<span class="style-card__tag">' + style.tagline + '</span>';
         btn.addEventListener('click', function () { openModal(style); });
         gallery.appendChild(btn);
       })(catalog[i]);
     }
   }
 
-  subjectInput.addEventListener('input', function () {
-    if (!activeStyle) return;
-    rebuildPromptFromFields();
-  });
-
+  subjectInput.addEventListener('input', rebuildPromptFromFields);
   copyBtn.addEventListener('click', copyPrompt);
   closeBtn.addEventListener('click', closeModal);
   cancelBtn.addEventListener('click', closeModal);
@@ -174,7 +161,11 @@
     if (e.key === 'Escape' && modal.classList.contains('is-open')) closeModal();
   });
 
-  renderGallery();
+  try {
+    renderGallery();
+  } catch (err) {
+    showGalleryError('Gallery error: ' + (err && err.message ? err.message : String(err)));
+  }
 })();
   </script>
 </body>

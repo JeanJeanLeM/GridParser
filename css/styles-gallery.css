@@ -1,4 +1,4 @@
-/* Style gallery: flip cards + prompt modal (image thumbs) */
+/* Style gallery: visible image cards + prompt modal */
 
 .styles-page {
   max-width: min(1100px, 94vw);
@@ -28,78 +28,53 @@
 
 .styles-gallery {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(168px, 1fr));
   gap: 1rem;
-  perspective: 1000px;
+}
+
+.styles-gallery__error {
+  grid-column: 1 / -1;
+  padding: 1rem;
+  border: 1px solid #f0c2c2;
+  background: #fff5f5;
+  color: #a12020;
+  border-radius: 8px;
+  font-size: var(--text-sm);
 }
 
 .style-card {
-  border: none;
-  background: transparent;
+  display: block;
+  width: 100%;
+  margin: 0;
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-card);
+  background: var(--card-bg, #fff);
   padding: 0;
   cursor: pointer;
   text-align: left;
   font: inherit;
   color: inherit;
-  perspective: 900px;
+  overflow: hidden;
+  box-shadow: 0 6px 18px rgba(30, 58, 95, 0.1);
+  transition: transform 0.18s ease, box-shadow 0.18s ease;
 }
 
-.style-card:focus {
+.style-card:hover,
+.style-card:focus-visible {
+  transform: translateY(-3px);
+  box-shadow: 0 10px 24px rgba(30, 58, 95, 0.16);
   outline: none;
 }
 
-.style-card:focus-visible .style-card__inner {
-  box-shadow: 0 0 0 3px rgba(91, 124, 186, 0.45);
-}
-
-.style-card__inner {
-  position: relative;
-  width: 100%;
-  aspect-ratio: 1 / 1.22;
-  transform-style: preserve-3d;
-  transition: transform 0.55s ease;
-  border-radius: var(--radius-card);
-  box-shadow: 0 6px 18px rgba(30, 58, 95, 0.12);
-}
-
-.style-card:hover .style-card__inner,
-.style-card:focus-visible .style-card__inner {
-  transform: rotateY(180deg);
-}
-
-.style-card__face {
-  position: absolute;
-  inset: 0;
-  backface-visibility: hidden;
-  -webkit-backface-visibility: hidden;
-  border-radius: var(--radius-card);
-  overflow: hidden;
-  display: flex;
-  flex-direction: column;
-  background: var(--card-bg);
-  border: 1px solid var(--border-light);
-}
-
-.style-card__face--front {
-  align-items: stretch;
-  justify-content: flex-start;
-  padding: 0;
-}
-
-.style-card__face--back {
-  transform: rotateY(180deg);
-  padding: 0.85rem 0.75rem;
-  background: linear-gradient(160deg, #1e3a5f 0%, #3d4f7a 55%, #5b7cba 100%);
-  color: #f5f7fb;
-  justify-content: space-between;
+.style-card:focus-visible {
+  box-shadow: 0 0 0 3px rgba(91, 124, 186, 0.45), 0 10px 24px rgba(30, 58, 95, 0.16);
 }
 
 .style-card__preview {
-  flex: 1;
-  width: 100%;
-  min-height: 0;
   display: block;
-  background: #eef0f5;
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  background: #e8ebf2;
   overflow: hidden;
 }
 
@@ -111,46 +86,22 @@
 }
 
 .style-card__name {
+  display: block;
   margin: 0;
-  padding: 0.45rem 0.55rem 0.1rem;
-  font-size: 0.82rem;
+  padding: 0.55rem 0.6rem 0.15rem;
+  font-size: 0.86rem;
   font-weight: 700;
   color: var(--text-primary);
   text-align: center;
 }
 
 .style-card__tag {
+  display: block;
   margin: 0;
-  padding: 0 0.55rem 0.55rem;
+  padding: 0 0.6rem 0.7rem;
   font-size: 0.72rem;
   color: var(--text-subtle);
   text-align: center;
-}
-
-.style-card__back-title {
-  margin: 0;
-  font-size: 0.9rem;
-  font-weight: 700;
-}
-
-.style-card__snippet {
-  margin: 0.5rem 0 0;
-  font-size: 0.72rem;
-  line-height: 1.35;
-  opacity: 0.92;
-  display: -webkit-box;
-  -webkit-line-clamp: 6;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-}
-
-.style-card__hint {
-  margin: 0.6rem 0 0;
-  font-size: 0.7rem;
-  font-weight: 600;
-  letter-spacing: 0.02em;
-  text-transform: uppercase;
-  opacity: 0.85;
 }
 
 /* Modal */
@@ -180,7 +131,7 @@
   width: min(720px, 96vw);
   max-height: min(90vh, 900px);
   overflow: auto;
-  background: var(--card-bg);
+  background: var(--card-bg, #fff);
   border-radius: 14px;
   border: 1px solid var(--border-light);
   box-shadow: 0 20px 50px rgba(20, 28, 45, 0.28);
@@ -219,12 +170,12 @@
 }
 
 .style-modal__preview-chip {
-  width: 112px;
-  height: 112px;
+  width: 120px;
+  height: 120px;
   border-radius: 12px;
   border: 1px solid var(--border-light);
   overflow: hidden;
-  background: var(--input-bg);
+  background: #e8ebf2;
   flex-shrink: 0;
 }
 
