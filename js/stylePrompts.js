@@ -68,13 +68,14 @@
   function g2iLayoutRules(grid) {
     return [
       'GRID2ICONS LAYOUT (must follow exactly):',
-      '- One square image that is a perfect ' + grid + ' regular grid (equal cell sizes).',
+      '- One square image that is a perfect ' + grid + ' regular grid of CONTENT tiles only (equal cell sizes).',
+      '- CRITICAL: the text label is INSIDE the SAME cell as its icon. Never put labels in separate cells, never add an extra label-only row or column, never put caption text between cells.',
+      '- Each cell contains BOTH: (1) the icon in the upper ~75% of THAT cell, and (2) a white label band in the bottom ~25% of THE SAME cell.',
       '- Thin continuous pure-black separator lines between every cell (1-3 px), full span, no gaps, no dashes.',
       '- Pure white margins outside the grid; no outer frame, watermark, title, or caption outside cells.',
-      '- Each cell: upper ~75% = centered icon on solid plain white (or solid flat neutral) background; no scenic backdrop, no floor, no shadows on the page.',
-      '- Each cell: bottom ~25% = solid white label band with short black sans-serif text only (no icons in the band).',
-      '- Labels must be OCR-friendly: high contrast, no effects, one short word or CamelCase token.',
-      '- Designed so Grid mode detects ' + grid + ' and Auto-name + Remove-label crop cleanly.'
+      '- Inside each cell: solid plain white (or solid flat neutral) background behind the icon; no scenic backdrop, no floor.',
+      '- Label band (same cell): short black sans-serif text only, OCR-friendly, high contrast, no effects.',
+      '- Designed so Grid mode detects exactly ' + grid + ' tiles, then Auto-name reads the in-cell label and Remove-label crops that bottom band.'
     ].join('\n');
   }
 
@@ -91,10 +92,10 @@
       'Generate a single square image for Grid2icons (G2I).',
       'Content: a perfect ' + grid + ' grid of the SAME subject: "' + s + '".',
       'Art direction for EVERY tile: ' + styleName + ' (' + (style.tagline || styleName) + ').',
-      'Each tile is an app-icon / logo mark of "' + s + '" only — plain background inside the tile.',
-      'Label on every tile (identical): "' + label + '".',
+      'Each tile is one cell that includes the icon AND its label together (label is not a separate cell).',
+      'In-cell label text on every tile (identical): "' + label + '".',
       g2iLayoutRules(grid),
-      'Output: one high-resolution square PNG-like image, consistent lighting, no collage chaos.'
+      'Output: one high-resolution square image, consistent lighting, no collage chaos.'
     ].join('\n');
   }
 
@@ -113,20 +114,21 @@
       var fruit = FRUIT_GRID_SUBJECTS[i];
       var st = styles[i];
       lines.push(
-        '- Row ' + row + ' Col ' + col + ': fruit "' + fruit + '" in style "' + st.name +
-        '" (' + st.tagline + '); label text exactly "' + labelToken(fruit) + '".'
+        '- Row ' + row + ' Col ' + col + ': ONE cell with fruit "' + fruit + '" in style "' + st.name +
+        '" (' + st.tagline + ') AND in-cell label "' + labelToken(fruit) + '" at the bottom of that same cell.'
       );
     }
 
     return [
       'Generate a single square image for Grid2icons (G2I): a perfect ' + grid + ' icon grid of FRUITS.',
+      'Exactly 16 content cells. Labels live inside each fruit cell — never in their own cells.',
       'Each cell is a different fruit in a different graphic style (16 unique fruit+style pairs).',
       'Cell map (row-major, left-to-right, top-to-bottom):',
       lines.join('\n'),
-      'Every cell must look like a clean app icon: fruit only, solid plain white tile background.',
+      'Every cell = icon + label together on a solid plain white tile background.',
       g2iLayoutRules(grid),
       'Do not repeat the same fruit or the same style twice.',
-      'Output: one high-resolution square image ready to upload into Grid2icons Parser (Grid mode, 4 rows x 4 cols).'
+      'Output: one high-resolution square image ready for Grid2icons Parser (Grid mode, 4 rows x 4 cols).'
     ].join('\n');
   }
 
