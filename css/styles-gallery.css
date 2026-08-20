@@ -137,6 +137,30 @@
   margin: 0 0 1rem;
 }
 
+.styles-panel__fruits {
+  text-align: center;
+  font-size: var(--text-xs);
+  color: var(--text-subtle);
+  margin: -0.35rem auto 1rem;
+  max-width: 42rem;
+  line-height: 1.45;
+}
+
+.styles-gallery--grids {
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+}
+
+.style-card--grid .style-card__preview {
+  aspect-ratio: 1 / 1;
+}
+
+.style-modal__mode {
+  display: flex;
+  gap: 0.45rem;
+  flex-wrap: wrap;
+  margin: 0 0 0.9rem;
+}
+
 .styles-grid-showcase {
   display: grid;
   grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr);

@@ -46,7 +46,7 @@
     { id: 'halftone', name: 'Halftone', tagline: 'Dot print', thumb: '/assets/styles/halftone.webp' }
   ];
 
-  /** 16 fruits for the showcase 4x4 multi-style grid (row-major). */
+  /** 16 fruits used for every per-style showcase grid (row-major). */
   var FRUIT_GRID_SUBJECTS = [
     'apple', 'banana', 'orange', 'strawberry',
     'grape', 'watermelon', 'pineapple', 'cherry',
@@ -64,18 +64,39 @@
     return String(name || 'Icon').replace(/\s+/g, '');
   }
 
+  function styleFruitGridPath(style) {
+    var id = style && style.id ? style.id : 'style';
+    return '/assets/styles/fruit-grid-' + id + '.webp';
+  }
+
+  function fruitCellMapLines() {
+    var lines = [];
+    var i;
+    for (i = 0; i < FRUIT_GRID_SUBJECTS.length; i++) {
+      var row = Math.floor(i / 4) + 1;
+      var col = (i % 4) + 1;
+      var fruit = FRUIT_GRID_SUBJECTS[i];
+      lines.push(
+        '- Row ' + row + ' Col ' + col + ': fruit "' + fruit +
+        '" + label "' + labelToken(fruit) + '" in ONE open cell (no line between icon and text).'
+      );
+    }
+    return lines.join('\n');
+  }
+
   /** Shared rules so Grid2icons Grid mode + OCR + label crop work reliably. */
   function g2iLayoutRules(grid) {
     return [
       'GRID2ICONS LAYOUT (must follow exactly):',
       '- One square image that is a perfect ' + grid + ' regular grid of CONTENT tiles only (equal cell sizes).',
-      '- CRITICAL: the text label is INSIDE the SAME cell as its icon. Never put labels in separate cells, never add an extra label-only row or column, never put caption text between cells.',
-      '- Each cell contains BOTH: (1) the icon in the upper ~75% of THAT cell, and (2) a white label band in the bottom ~25% of THE SAME cell.',
-      '- Thin continuous pure-black separator lines between every cell (1-3 px), full span, no gaps, no dashes.',
+      '- CRITICAL — ONE undivided cell per tile: icon + label share ONE continuous open rectangle. Do NOT draw any horizontal (or vertical) black/gray line inside a cell between the icon and the text. No inner frame, no subtitle bar border, no rule under the icon. A line under the icon = WRONG (it looks like two cells and breaks Grid mode).',
+      '- Never put labels in separate cells, never add an extra label-only row/column, never put caption text between cells.',
+      '- Inside each cell (top to bottom, same white fill): fruit/icon centered in the upper area, then the label text floating near the bottom — same background, no divider.',
+      '- ONLY black separator lines allowed: the thin continuous pure-black grid lines BETWEEN cells (1-3 px), full span, no gaps, no dashes. Nothing else is a line.',
       '- Pure white margins outside the grid; no outer frame, watermark, title, or caption outside cells.',
-      '- Inside each cell: solid plain white (or solid flat neutral) background behind the icon; no scenic backdrop, no floor.',
-      '- Label band (same cell): short black sans-serif text only, OCR-friendly, high contrast, no effects.',
-      '- Designed so Grid mode detects exactly ' + grid + ' tiles, then Auto-name reads the in-cell label and Remove-label crops that bottom band.'
+      '- Cell fill: solid plain white behind icon and text; no scenic backdrop, no floor.',
+      '- Label: short black sans-serif text only, OCR-friendly, high contrast, no effects, no box, no underline.',
+      '- Designed so Grid mode detects exactly ' + grid + ' tiles (not 2× that because of fake inner label rows), then Auto-name reads the in-cell label and Remove-label crops the bottom text area.'
     ].join('\n');
   }
 
@@ -92,7 +113,7 @@
       'Generate a single square image for Grid2icons (G2I).',
       'Content: a perfect ' + grid + ' grid of the SAME subject: "' + s + '".',
       'Art direction for EVERY tile: ' + styleName + ' (' + (style.tagline || styleName) + ').',
-      'Each tile is one cell that includes the icon AND its label together (label is not a separate cell).',
+      'Each tile is ONE open cell: icon above + label text below on the SAME white fill — NO horizontal line between icon and label.',
       'In-cell label text on every tile (identical): "' + label + '".',
       g2iLayoutRules(grid),
       'Output: one high-resolution square image, consistent lighting, no collage chaos.'
@@ -100,7 +121,27 @@
   }
 
   /**
-   * Prompt for the showcase 4x4: different fruits, each in a different style.
+   * Prompt for ONE style: the fixed 16-fruit set, all rendered in that style.
+   */
+  function buildStyleFruitGridPrompt(style, options) {
+    var grid = (options && options.grid) || DEFAULT_GRID;
+    var styleName = style && style.name ? style.name : 'icon';
+    var tagline = style && style.tagline ? style.tagline : styleName;
+
+    return [
+      'Generate a single square image for Grid2icons (G2I): a perfect ' + grid + ' fruit icon grid.',
+      'Art direction for EVERY cell: "' + styleName + '" (' + tagline + '). Same style on all 16 tiles — do not mix styles.',
+      'Exactly 16 content cells. Each cell = icon + label on ONE continuous white area. FORBIDDEN: any horizontal black line under the icon / above the text (that splits the cell).',
+      'Use this exact fruit map (row-major, left-to-right, top-to-bottom):',
+      fruitCellMapLines(),
+      'Every cell on solid plain white. Labels are the fruit names only (Apple, Banana, …), text floating at the bottom of the cell with no bar or divider.',
+      g2iLayoutRules(grid),
+      'Output: one high-resolution square image ready for Grid2icons Parser (Grid mode, 4 rows x 4 cols).'
+    ].join('\n');
+  }
+
+  /**
+   * Prompt for the mixed showcase 4x4: different fruits, each in a different style.
    * Uses the first 16 styles from STYLE_CATALOG.
    */
   function buildMultiStyleFruitGridPrompt(options) {
@@ -114,18 +155,18 @@
       var fruit = FRUIT_GRID_SUBJECTS[i];
       var st = styles[i];
       lines.push(
-        '- Row ' + row + ' Col ' + col + ': ONE cell with fruit "' + fruit + '" in style "' + st.name +
-        '" (' + st.tagline + ') AND in-cell label "' + labelToken(fruit) + '" at the bottom of that same cell.'
+        '- Row ' + row + ' Col ' + col + ': ONE open cell — fruit "' + fruit + '" in style "' + st.name +
+        '" (' + st.tagline + ') with label "' + labelToken(fruit) + '" at bottom; NO horizontal divider inside the cell.'
       );
     }
 
     return [
       'Generate a single square image for Grid2icons (G2I): a perfect ' + grid + ' icon grid of FRUITS.',
-      'Exactly 16 content cells. Labels live inside each fruit cell — never in their own cells.',
+      'Exactly 16 content cells. Labels sit in the same open cell as the fruit — NEVER a separate label cell, NEVER a horizontal line splitting icon from text.',
       'Each cell is a different fruit in a different graphic style (16 unique fruit+style pairs).',
       'Cell map (row-major, left-to-right, top-to-bottom):',
       lines.join('\n'),
-      'Every cell = icon + label together on a solid plain white tile background.',
+      'Every cell = icon + floating label on solid plain white (no inner bars).',
       g2iLayoutRules(grid),
       'Do not repeat the same fruit or the same style twice.',
       'Output: one high-resolution square image ready for Grid2icons Parser (Grid mode, 4 rows x 4 cols).'
@@ -145,7 +186,9 @@
     STYLE_CATALOG: STYLE_CATALOG,
     FRUIT_GRID_SUBJECTS: FRUIT_GRID_SUBJECTS,
     MULTI_STYLE_GRID_IMAGE: MULTI_STYLE_GRID_IMAGE,
+    styleFruitGridPath: styleFruitGridPath,
     buildPrompt: buildPrompt,
+    buildStyleFruitGridPrompt: buildStyleFruitGridPrompt,
     buildMultiStyleFruitGridPrompt: buildMultiStyleFruitGridPrompt,
     getStyleById: getStyleById
   };

@@ -29,37 +29,26 @@
     <div class="styles-page__intro">
       <h2>Logo style prompts</h2>
       <p>
-        Copy a G2I-ready grid prompt, generate in your image tool, then upload into the Parser
-        (Grid mode, Rows&times;Cols matching the prompt, Auto-name + Remove label).
+        Copy a G2I-ready <strong>4&times;4 fruit grid</strong> prompt (same 16 fruits per style).
+        Icon + label must share one open cell — <em>no</em> horizontal line between them.
+        Generate, then upload into the Parser (Grid mode, Auto-name + Remove label).
       </p>
     </div>
 
     <div class="styles-view-toggle" role="tablist" aria-label="Gallery view">
-      <button type="button" class="styles-view-toggle__btn is-active" id="view-styles-btn" role="tab" aria-selected="true">Focus styles</button>
-      <button type="button" class="styles-view-toggle__btn" id="view-grid-btn" role="tab" aria-selected="false">Full 4&times;4 fruit grid</button>
+      <button type="button" class="styles-view-toggle__btn is-active" id="view-styles-btn" role="tab" aria-selected="true">Style thumbs</button>
+      <button type="button" class="styles-view-toggle__btn" id="view-grid-btn" role="tab" aria-selected="false">Fruit grids by style</button>
     </div>
 
     <section class="styles-panel" id="panel-styles" role="tabpanel">
-      <p class="styles-panel__hint">Click a style to edit the subject and copy a <strong>4&times;4 G2I grid prompt</strong> (icon + label in the <em>same</em> cell).</p>
+      <p class="styles-panel__hint">Click a style to copy its <strong>4&times;4 fruit grid</strong> prompt — label under the icon in the <em>same</em> open cell, <em>without</em> a divider line.</p>
       <div class="styles-gallery" id="styles-gallery" aria-label="Logo style gallery"></div>
     </section>
 
     <section class="styles-panel" id="panel-grid" role="tabpanel" hidden>
-      <div class="styles-grid-showcase">
-        <figure class="styles-grid-showcase__figure">
-          <img id="fruit-grid-img" class="styles-grid-showcase__img" src="/assets/styles/fruit-grid-4x4.webp" alt="4 by 4 fruit icons grid in mixed graphic styles" width="1024" height="1024">
-          <figcaption class="styles-grid-showcase__cap">Example 4&times;4: each fruit icon keeps its label inside the same cell (not a separate label cell).</figcaption>
-        </figure>
-        <div class="styles-grid-showcase__side">
-          <label for="grid-prompt" class="styles-grid-showcase__label">Prompt for this full fruit grid</label>
-          <textarea id="grid-prompt" class="styles-grid-showcase__prompt" spellcheck="false" readonly></textarea>
-          <div class="styles-grid-showcase__actions">
-            <button type="button" class="btn btn-primary" id="grid-copy-btn">Copy grid prompt</button>
-            <a class="btn btn-secondary" href="/index.html">Open Parser</a>
-          </div>
-          <p class="styles-grid-showcase__status" id="grid-copy-status" aria-live="polite"></p>
-        </div>
-      </div>
+      <p class="styles-panel__hint">Same 16 fruits in every grid — only the art style changes. Click to open the prompt.</p>
+      <p class="styles-panel__fruits" id="fruit-list"></p>
+      <div class="styles-gallery styles-gallery--grids" id="fruit-grids-gallery" aria-label="Fruit grids by style"></div>
     </section>
   </main>
 
@@ -74,8 +63,12 @@
         <div class="style-modal__preview-chip" id="style-modal-preview"></div>
         <p class="style-modal__meta" id="style-modal-tagline"></p>
       </div>
-      <div class="style-modal__field">
-        <label for="style-subject">Subject</label>
+      <div class="style-modal__mode" role="tablist" aria-label="Prompt mode">
+        <button type="button" class="styles-view-toggle__btn is-active" id="mode-fruit-btn" role="tab" aria-selected="true">16 fruits grid</button>
+        <button type="button" class="styles-view-toggle__btn" id="mode-subject-btn" role="tab" aria-selected="false">Custom subject</button>
+      </div>
+      <div class="style-modal__field" id="subject-field" hidden>
+        <label for="style-subject">Subject (repeated on every tile)</label>
         <input type="text" id="style-subject" value="apple" autocomplete="off">
       </div>
       <div class="style-modal__field">
@@ -94,19 +87,18 @@
   <script>
 (function () {
   var gallery = document.getElementById('styles-gallery');
+  var fruitGridsGallery = document.getElementById('fruit-grids-gallery');
+  var fruitList = document.getElementById('fruit-list');
   var panelStyles = document.getElementById('panel-styles');
   var panelGrid = document.getElementById('panel-grid');
   var viewStylesBtn = document.getElementById('view-styles-btn');
   var viewGridBtn = document.getElementById('view-grid-btn');
-  var gridPrompt = document.getElementById('grid-prompt');
-  var gridCopyBtn = document.getElementById('grid-copy-btn');
-  var gridCopyStatus = document.getElementById('grid-copy-status');
-  var fruitGridImg = document.getElementById('fruit-grid-img');
 
   var modal = document.getElementById('style-modal');
   var modalTitle = document.getElementById('style-modal-title');
   var modalTagline = document.getElementById('style-modal-tagline');
   var modalPreview = document.getElementById('style-modal-preview');
+  var subjectField = document.getElementById('subject-field');
   var subjectInput = document.getElementById('style-subject');
   var promptArea = document.getElementById('style-prompt');
   var copyBtn = document.getElementById('style-copy-btn');
@@ -114,14 +106,32 @@
   var closeBtn = document.getElementById('style-modal-close');
   var cancelBtn = document.getElementById('style-modal-cancel');
   var backdrop = document.getElementById('style-modal-backdrop');
+  var modeFruitBtn = document.getElementById('mode-fruit-btn');
+  var modeSubjectBtn = document.getElementById('mode-subject-btn');
   var activeStyle = null;
+  var promptMode = 'fruit';
+  var preferFruitGridPreview = false;
 
-  function showGalleryError(msg) {
-    gallery.innerHTML = '<p class="styles-gallery__error">' + msg + '</p>';
+  function showGalleryError(target, msg) {
+    target.innerHTML = '<p class="styles-gallery__error">' + msg + '</p>';
   }
 
-  function thumbHtml(style) {
-    return '<img class="style-card__img" src="' + style.thumb + '" alt="' + style.name + ' apple" loading="lazy" width="320" height="320">';
+  function thumbSrc(style, useFruitGrid) {
+    if (useFruitGrid && typeof StylePrompts !== 'undefined' && StylePrompts.styleFruitGridPath) {
+      return StylePrompts.styleFruitGridPath(style);
+    }
+    return style.thumb;
+  }
+
+  function thumbHtml(style, useFruitGrid) {
+    var src = thumbSrc(style, useFruitGrid);
+    var alt = useFruitGrid
+      ? style.name + ' 4x4 fruit grid'
+      : style.name + ' apple';
+    return '<img class="style-card__img" src="' + src + '" alt="' + alt + '" loading="lazy" width="512" height="512"' +
+      (useFruitGrid
+        ? ' onerror="this.onerror=null;this.src=\'' + style.thumb + '\'"'
+        : '') + '>';
   }
 
   function copyText(text, statusEl) {
@@ -148,22 +158,40 @@
     viewGridBtn.setAttribute('aria-selected', isStyles ? 'false' : 'true');
   }
 
+  function setPromptMode(mode) {
+    promptMode = mode === 'subject' ? 'subject' : 'fruit';
+    var isFruit = promptMode === 'fruit';
+    modeFruitBtn.classList.toggle('is-active', isFruit);
+    modeSubjectBtn.classList.toggle('is-active', !isFruit);
+    modeFruitBtn.setAttribute('aria-selected', isFruit ? 'true' : 'false');
+    modeSubjectBtn.setAttribute('aria-selected', isFruit ? 'false' : 'true');
+    subjectField.hidden = isFruit;
+    rebuildPromptFromFields();
+  }
+
   function rebuildPromptFromFields() {
     if (!activeStyle || typeof StylePrompts === 'undefined') return;
-    promptArea.value = StylePrompts.buildPrompt(activeStyle, subjectInput.value);
+    if (promptMode === 'fruit') {
+      promptArea.value = StylePrompts.buildStyleFruitGridPrompt(activeStyle);
+    } else {
+      promptArea.value = StylePrompts.buildPrompt(activeStyle, subjectInput.value);
+    }
     copyStatus.textContent = '';
   }
 
-  function openModal(style) {
+  function openModal(style, opts) {
     activeStyle = style;
+    preferFruitGridPreview = !!(opts && opts.fruitGrid);
     modalTitle.textContent = style.name;
-    modalTagline.textContent = style.tagline + ' — generates a full 4x4 G2I grid of your subject.';
-    modalPreview.innerHTML = thumbHtml(style);
+    modalTagline.textContent = style.tagline +
+      ' — 4×4 of the same 16 fruits; label in the same open cell (no line between icon and text).';
+    modalPreview.innerHTML = thumbHtml(style, preferFruitGridPreview);
     subjectInput.value = StylePrompts.DEFAULT_SUBJECT;
-    rebuildPromptFromFields();
+    setPromptMode(preferFruitGridPreview || !opts ? 'fruit' : (opts.mode || 'fruit'));
     modal.classList.add('is-open');
     modal.setAttribute('aria-hidden', 'false');
-    subjectInput.focus();
+    if (promptMode === 'subject') subjectInput.focus();
+    else copyBtn.focus();
   }
 
   function closeModal() {
@@ -172,39 +200,45 @@
     activeStyle = null;
   }
 
+  function appendStyleCard(target, style, useFruitGrid) {
+    var btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'style-card' + (useFruitGrid ? ' style-card--grid' : '');
+    btn.setAttribute(
+      'aria-label',
+      style.name + (useFruitGrid ? ' — fruit grid prompt' : ' — open G2I grid prompt')
+    );
+    btn.innerHTML =
+      '<span class="style-card__preview">' + thumbHtml(style, useFruitGrid) + '</span>' +
+      '<span class="style-card__name">' + style.name + '</span>' +
+      '<span class="style-card__tag">' + style.tagline + '</span>';
+    btn.addEventListener('click', function () {
+      openModal(style, { fruitGrid: useFruitGrid, mode: 'fruit' });
+    });
+    target.appendChild(btn);
+  }
+
   function renderGallery() {
     if (typeof StylePrompts === 'undefined' || !StylePrompts.STYLE_CATALOG) {
-      showGalleryError('Style catalog failed to load. Hard-refresh the page (Ctrl+F5).');
+      showGalleryError(gallery, 'Style catalog failed to load. Hard-refresh the page (Ctrl+F5).');
       return;
     }
     var catalog = StylePrompts.STYLE_CATALOG;
     gallery.innerHTML = '';
+    fruitGridsGallery.innerHTML = '';
     for (var i = 0; i < catalog.length; i++) {
-      (function (style) {
-        var btn = document.createElement('button');
-        btn.type = 'button';
-        btn.className = 'style-card';
-        btn.setAttribute('aria-label', style.name + ' — open G2I grid prompt');
-        btn.innerHTML =
-          '<span class="style-card__preview">' + thumbHtml(style) + '</span>' +
-          '<span class="style-card__name">' + style.name + '</span>' +
-          '<span class="style-card__tag">' + style.tagline + '</span>';
-        btn.addEventListener('click', function () { openModal(style); });
-        gallery.appendChild(btn);
-      })(catalog[i]);
+      appendStyleCard(gallery, catalog[i], false);
+      appendStyleCard(fruitGridsGallery, catalog[i], true);
     }
-
-    if (StylePrompts.MULTI_STYLE_GRID_IMAGE) {
-      fruitGridImg.src = StylePrompts.MULTI_STYLE_GRID_IMAGE;
+    if (fruitList && StylePrompts.FRUIT_GRID_SUBJECTS) {
+      fruitList.textContent = 'Fruits: ' + StylePrompts.FRUIT_GRID_SUBJECTS.join(', ') + '.';
     }
-    gridPrompt.value = StylePrompts.buildMultiStyleFruitGridPrompt();
   }
 
   viewStylesBtn.addEventListener('click', function () { setView('styles'); });
   viewGridBtn.addEventListener('click', function () { setView('grid'); });
-  gridCopyBtn.addEventListener('click', function () {
-    copyText(gridPrompt.value, gridCopyStatus);
-  });
+  modeFruitBtn.addEventListener('click', function () { setPromptMode('fruit'); });
+  modeSubjectBtn.addEventListener('click', function () { setPromptMode('subject'); });
 
   subjectInput.addEventListener('input', rebuildPromptFromFields);
   copyBtn.addEventListener('click', function () { copyText(promptArea.value, copyStatus); });
@@ -219,7 +253,7 @@
     renderGallery();
     setView('styles');
   } catch (err) {
-    showGalleryError('Gallery error: ' + (err && err.message ? err.message : String(err)));
+    showGalleryError(gallery, 'Gallery error: ' + (err && err.message ? err.message : String(err)));
   }
 })();
   </script>
