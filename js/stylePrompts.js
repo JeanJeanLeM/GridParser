@@ -32,7 +32,19 @@
     { id: 'claymation', name: 'Claymation', tagline: 'Stop-motion clay', thumb: '/assets/styles/claymation.png' },
     { id: 'steampunk', name: 'Steampunk', tagline: 'Brass & gears', thumb: '/assets/styles/steampunk.png' },
     { id: 'glassmorph', name: 'Glassmorphism', tagline: 'Frosted glass', thumb: '/assets/styles/glassmorph.png' },
-    { id: 'kawaii', name: 'Kawaii', tagline: 'Cute pastel', thumb: '/assets/styles/kawaii.png' }
+    { id: 'kawaii', name: 'Kawaii', tagline: 'Cute pastel', thumb: '/assets/styles/kawaii.png' },
+    { id: 'sumi-e', name: 'Sumi-e', tagline: 'Ink wash brush', thumb: '/assets/styles/sumi-e.png' },
+    { id: 'bauhaus', name: 'Bauhaus', tagline: 'Geometric primary', thumb: '/assets/styles/bauhaus.png' },
+    { id: 'art-deco', name: 'Art Deco', tagline: 'Gold geometric', thumb: '/assets/styles/art-deco.png' },
+    { id: 'risograph', name: 'Risograph', tagline: 'Grainy print layers', thumb: '/assets/styles/risograph.png' },
+    { id: 'duotone', name: 'Duotone', tagline: 'Two-tone print', thumb: '/assets/styles/duotone.png' },
+    { id: 'enamel-pin', name: 'Enamel Pin', tagline: 'Hard enamel badge', thumb: '/assets/styles/enamel-pin.png' },
+    { id: 'sticker', name: 'Sticker', tagline: 'Die-cut sticker', thumb: '/assets/styles/sticker.png' },
+    { id: 'contour', name: 'Contour', tagline: 'Outline only', thumb: '/assets/styles/contour.png' },
+    { id: 'charcoal', name: 'Charcoal', tagline: 'Graphite sketch', thumb: '/assets/styles/charcoal.png' },
+    { id: 'monoline', name: 'Monoline', tagline: 'Single-weight line', thumb: '/assets/styles/monoline.png' },
+    { id: 'acrylic', name: 'Acrylic', tagline: 'Impasto brush', thumb: '/assets/styles/acrylic.png' },
+    { id: 'halftone', name: 'Halftone', tagline: 'Dot print', thumb: '/assets/styles/halftone.png' }
   ];
 
   function escapeSubject(subject) {
@@ -55,6 +67,7 @@
       'Create a single image that is a perfect ' + grid + ' grid of icon tiles.',
       'Subject for EVERY tile: ' + s + ' (same object, same pose family, only small harmless variation).',
       'Visual style for EVERY tile: ' + styleName + ' — ' + (style.tagline || styleName) + '.',
+      'Each tile must look like an app icon / logo mark: subject only, solid plain white or solid flat neutral background (no colorful scenic backdrop, no floor, no room).',
       'Layout requirements (critical for automatic splitting):',
       '- Exactly ' + grid + ' equal rectangular cells in a regular row/column grid.',
       '- Thin continuous black separator lines between cells (1–3 px), full length, no gaps.',
@@ -64,7 +77,7 @@
       '- Bottom 25% of EACH cell is a clean white label band with short black sans-serif text.',
       '- Label text is ONLY the style name word: "' + labelWord + '" (same on every tile, readable, no effects).',
       '- Icon artwork stays in the upper ~75% of each cell; do not put the label over the object.',
-      'After crop of the bottom label band, each tile must still be a clean centered ' + s + ' icon.',
+      'After crop of the bottom label band, each tile must still be a clean centered ' + s + ' icon on a plain background.',
       'Square overall image, high resolution, consistent lighting, no collage randomness.'
     ].join('\n');
   }
