@@ -39,8 +39,9 @@ All modes end in **cells** before export.
 2. **Shortlist**: `getQuickSignals` → `prioritizeModesFromSignals` (skips `blackbg` on light images; skips `geometrical`).
 3. **Uniform first**: `detectGridLines` with `inferSize: true` (1–2 presets) derives rows/cols from line runs + virtual edges — no 18×5 brute force. Strong uniform candidates early-exit.
 4. **Fallbacks**: freeform / lineform / blackbg only if needed; unified scoring prefers regular lattices.
-5. **Labels**: `labelDetect.detectLabelRegion` votes top/bottom/left/right bands (no OCR) and sets Label side + % in the UI.
-6. **Apply**: `applyCandidateResult` + grid format update; radio stays on Auto while `editorMode` holds the resolved mode.
+5. **Cut-through check**: proposed cut lines are sampled in RGBA — if they cross multi-color / mid-tone shapes (not gutters or separators), the candidate is rejected or heavily penalized.
+6. **Labels**: `labelDetect.detectLabelRegion` votes top/bottom/left/right bands (no OCR) and sets Label side + % in the UI.
+7. **Apply**: `applyCandidateResult` + grid format update; radio stays on Auto while `editorMode` holds the resolved mode.
 
 Tests: `npm run generate:grids` then `npm run test:parse` (synthetic expected vs result; real fixtures in `Examples/`).
 

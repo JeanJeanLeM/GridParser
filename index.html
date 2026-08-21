@@ -1138,10 +1138,10 @@
     <div class="grid-editor-top-row">
       <div class="grid-format-dimensions" role="group" aria-label="Cut grid dimensions (rows × columns)" title="Pre-set how many rows and columns to cut. Used by Grid and Freeform (and Simple Grid).">
         <label for="grid-format-rows" class="grid-format-dimensions__label">Rows</label>
-        <input type="number" id="grid-format-rows" min="1" max="10" value="4" aria-label="Number of rows to cut" class="grid-format-dimensions__input">
+        <input type="number" id="grid-format-rows" min="1" max="12" value="4" aria-label="Number of rows to cut" class="grid-format-dimensions__input">
         <span class="grid-format-dimensions__times" aria-hidden="true">×</span>
         <label for="grid-format-cols" class="grid-format-dimensions__label">Cols</label>
-        <input type="number" id="grid-format-cols" min="1" max="10" value="4" aria-label="Number of columns to cut" class="grid-format-dimensions__input">
+        <input type="number" id="grid-format-cols" min="1" max="12" value="4" aria-label="Number of columns to cut" class="grid-format-dimensions__input">
       </div>
       <select id="grid-format" aria-label="Grid format (rows × columns)" class="visually-hidden">
         <option value="4_4" selected>4×4</option>
@@ -1593,8 +1593,8 @@
         var sel = document.getElementById('grid-format');
         if (!sel || !sel.value) return { rows: 4, cols: 4 };
         var parts = sel.value.split('_');
-        var rows = Math.max(1, Math.min(10, parseInt(parts[0], 10) || 4));
-        var cols = Math.max(1, Math.min(10, parseInt(parts[1], 10) || 4));
+        var rows = Math.max(1, Math.min(12, parseInt(parts[0], 10) || 4));
+        var cols = Math.max(1, Math.min(12, parseInt(parts[1], 10) || 4));
         return { rows: rows, cols: cols };
       }
 
@@ -2188,7 +2188,12 @@
       function runMultiModeAutoDetect() {
         if (!currentImage) return false;
         if (typeof parseAuto === 'undefined' || !parseAuto.selectBestParse) {
-          return runAutoDetect();
+          var w0 = currentImage.naturalWidth;
+          var h0 = currentImage.naturalHeight;
+          var cand0 = getUniformCandidate(w0, h0, true);
+          if (!cand0) return false;
+          applyCandidateResult(cand0);
+          return true;
         }
         var result = parseAuto.selectBestParse(currentImage, { maxSide: 640 });
         if (!result) return false;
@@ -2223,21 +2228,18 @@
           source: (result.source || 'auto') + (result.confidence ? ' · ' + result.confidence : ''),
           confidence: result.confidence
         });
+        // Refresh toolbars for the resolved mode while keeping Auto radio selected.
+        if (getEditorModeRadio() === 'auto') {
+          setEditorMode('auto', { suppressAutoDetect: true, suppressAutoCut: true });
+        }
+        drawOverlay();
         return true;
       }
 
       function runAutoDetect() {
         if (!currentImage) return false;
-        // Prefer full multi-mode auto (correct size + mode). Uniform-only is a fallback.
-        if (typeof parseAuto !== 'undefined' && parseAuto.selectBestParse) {
-          return runMultiModeAutoDetect();
-        }
-        var w = currentImage.naturalWidth;
-        var h = currentImage.naturalHeight;
-        var cand = getUniformCandidate(w, h, true);
-        if (!cand) return false;
-        applyCandidateResult(cand);
-        return true;
+        // Always use multi-mode auto so Rows/Cols + mode update together (fixes 5×5 no-op).
+        return runMultiModeAutoDetect();
       }
 
       function boundsToCells(xBounds, yBounds) {
@@ -4386,8 +4388,8 @@
         var colsEl = document.getElementById('grid-format-cols');
         if (!sel) return;
         var v = (sel.value || '4_4').split('_');
-        var rows = Math.max(1, Math.min(10, parseInt(v[0], 10) || 4));
-        var cols = Math.max(1, Math.min(10, parseInt(v[1], 10) || 4));
+        var rows = Math.max(1, Math.min(12, parseInt(v[0], 10) || 4));
+        var cols = Math.max(1, Math.min(12, parseInt(v[1], 10) || 4));
         if (rowsEl) rowsEl.value = String(rows);
         if (colsEl) colsEl.value = String(cols);
         if (gridEl) {
@@ -4415,7 +4417,7 @@
       function initGridFormatPicker() {
         var sel = document.getElementById('grid-format');
         if (!sel) return;
-        var maxGrid = 10;
+        var maxGrid = 12;
         sel.innerHTML = '';
         for (var r = 1; r <= maxGrid; r++) {
           for (var c = 1; c <= maxGrid; c++) {
@@ -4431,8 +4433,8 @@
           var rowsEl = document.getElementById('grid-format-rows');
           var colsEl = document.getElementById('grid-format-cols');
           if (!rowsEl || !colsEl || !sel) return;
-          var rows = Math.max(1, Math.min(10, parseInt(rowsEl.value, 10) || 1));
-          var cols = Math.max(1, Math.min(10, parseInt(colsEl.value, 10) || 1));
+          var rows = Math.max(1, Math.min(12, parseInt(rowsEl.value, 10) || 1));
+          var cols = Math.max(1, Math.min(12, parseInt(colsEl.value, 10) || 1));
           rowsEl.value = String(rows);
           colsEl.value = String(cols);
           sel.value = rows + '_' + cols;

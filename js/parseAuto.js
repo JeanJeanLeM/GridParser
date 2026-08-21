@@ -97,6 +97,141 @@
     return score;
   }
 
+  /**
+   * Sample a cut line: good cuts stay on background/separators;
+   * bad cuts cross multi-color icon content.
+   * @returns {{ contentRatio: number, chromaVar: number, crossing: number }}
+   *   crossing in [0,1] — higher = more likely cutting through artwork.
+   */
+  function sampleCutLine(data, w, h, axis, pos, from, to) {
+    pos = Math.max(0, Math.min((axis === 'x' ? w : h) - 1, Math.round(pos)));
+    from = Math.max(0, Math.floor(from));
+    to = Math.min(axis === 'x' ? h : w, Math.ceil(to));
+    var step = Math.max(1, Math.floor((to - from) / 64));
+    var content = 0;
+    var total = 0;
+    var sumC = 0;
+    var sumC2 = 0;
+    var prevL = null;
+    var transitions = 0;
+    for (var t = from; t < to; t += step) {
+      var x = axis === 'x' ? pos : t;
+      var y = axis === 'x' ? t : pos;
+      var i = (y * w + x) * 4;
+      var a = data[i + 3] / 255;
+      var r = data[i] * a + 255 * (1 - a);
+      var g = data[i + 1] * a + 255 * (1 - a);
+      var b = data[i + 2] * a + 255 * (1 - a);
+      var L = 0.299 * r + 0.587 * g + 0.114 * b;
+      var maxCh = Math.max(r, g, b);
+      var minCh = Math.min(r, g, b);
+      var chroma = maxCh - minCh;
+      total++;
+      sumC += chroma;
+      sumC2 += chroma * chroma;
+      // Content = mid-tone colorful OR mid-tone with structure (not plain white/black gutter).
+      var isSeparator = L <= 45 || L >= 235 || (chroma < 18 && (L <= 70 || L >= 200));
+      if (!isSeparator) content++;
+      if (prevL != null && Math.abs(L - prevL) > 35) transitions++;
+      prevL = L;
+    }
+    if (total < 4) return { contentRatio: 0, chromaVar: 0, crossing: 0 };
+    var contentRatio = content / total;
+    var meanC = sumC / total;
+    var chromaVar = Math.max(0, sumC2 / total - meanC * meanC);
+    var transitionRatio = transitions / total;
+    // Crossing score: colorful mid-tones + chroma diversity + luminance jumps.
+    var crossing = Math.min(1, contentRatio * 0.55 + Math.min(1, chromaVar / 1200) * 0.25 + transitionRatio * 0.35);
+    return { contentRatio: contentRatio, chromaVar: chromaVar, crossing: crossing };
+  }
+
+  /**
+   * Average cut-through score for inner grid lines (uniform bounds).
+   * Outer bounds are ignored (image edges).
+   */
+  function cutThroughScoreBounds(imageData, xBounds, yBounds) {
+    if (!imageData || !imageData.data || !xBounds || !yBounds) return 0;
+    var data = imageData.data;
+    var w = imageData.width;
+    var h = imageData.height;
+    var scores = [];
+    var y0 = yBounds[0];
+    var y1 = yBounds[yBounds.length - 1];
+    var x0 = xBounds[0];
+    var x1 = xBounds[xBounds.length - 1];
+    for (var i = 1; i < xBounds.length - 1; i++) {
+      scores.push(sampleCutLine(data, w, h, 'x', xBounds[i], y0, y1).crossing);
+    }
+    for (var j = 1; j < yBounds.length - 1; j++) {
+      scores.push(sampleCutLine(data, w, h, 'y', yBounds[j], x0, x1).crossing);
+    }
+    if (!scores.length) return 0;
+    var sum = 0;
+    for (var k = 0; k < scores.length; k++) sum += scores[k];
+    return sum / scores.length;
+  }
+
+  /**
+   * For cell lists: sample shared mid-edges between neighboring cells.
+   */
+  function cutThroughScoreCells(imageData, cells) {
+    if (!imageData || !imageData.data || !cells || cells.length < 2) return 0;
+    var data = imageData.data;
+    var w = imageData.width;
+    var h = imageData.height;
+    var scores = [];
+    var tol = Math.max(3, Math.min(w, h) * 0.02);
+    for (var i = 0; i < cells.length; i++) {
+      for (var j = i + 1; j < cells.length; j++) {
+        var a = cells[i];
+        var b = cells[j];
+        // Vertical adjacency: a's right ≈ b's left
+        if (Math.abs((a.x + a.w) - b.x) <= tol) {
+          var yFrom = Math.max(a.y, b.y);
+          var yTo = Math.min(a.y + a.h, b.y + b.h);
+          if (yTo - yFrom > 4) {
+            scores.push(sampleCutLine(data, w, h, 'x', (a.x + a.w + b.x) / 2, yFrom, yTo).crossing);
+          }
+        } else if (Math.abs((b.x + b.w) - a.x) <= tol) {
+          var yFrom2 = Math.max(a.y, b.y);
+          var yTo2 = Math.min(a.y + a.h, b.y + b.h);
+          if (yTo2 - yFrom2 > 4) {
+            scores.push(sampleCutLine(data, w, h, 'x', (b.x + b.w + a.x) / 2, yFrom2, yTo2).crossing);
+          }
+        }
+        // Horizontal adjacency
+        if (Math.abs((a.y + a.h) - b.y) <= tol) {
+          var xFrom = Math.max(a.x, b.x);
+          var xTo = Math.min(a.x + a.w, b.x + b.w);
+          if (xTo - xFrom > 4) {
+            scores.push(sampleCutLine(data, w, h, 'y', (a.y + a.h + b.y) / 2, xFrom, xTo).crossing);
+          }
+        } else if (Math.abs((b.y + b.h) - a.y) <= tol) {
+          var xFrom2 = Math.max(a.x, b.x);
+          var xTo2 = Math.min(a.x + a.w, b.x + b.w);
+          if (xTo2 - xFrom2 > 4) {
+            scores.push(sampleCutLine(data, w, h, 'y', (b.y + b.h + a.y) / 2, xFrom2, xTo2).crossing);
+          }
+        }
+      }
+    }
+    if (!scores.length) return 0;
+    var sum = 0;
+    for (var k = 0; k < scores.length; k++) sum += scores[k];
+    return sum / scores.length;
+  }
+
+  function cutThroughForCandidate(cand, imageData) {
+    if (!imageData) return 0;
+    if ((cand.mode === 'uniform' || cand.mode === 'geometrical') && cand.xBounds && cand.yBounds) {
+      return cutThroughScoreBounds(imageData, cand.xBounds, cand.yBounds);
+    }
+    if (cand.cells && cand.cells.length) {
+      return cutThroughScoreCells(imageData, cand.cells);
+    }
+    return 0;
+  }
+
   function isRectangularCount(n) {
     if (n < 2) return false;
     for (var r = 1; r <= 12; r++) {
@@ -108,7 +243,7 @@
     return false;
   }
 
-  function scoreCandidateUnified(cand, w, h, signals) {
+  function scoreCandidateUnified(cand, w, h, signals, imageData) {
     var minC = 2;
     var maxC = 72;
     var imgArea = w * h;
@@ -116,7 +251,7 @@
       ? boundsToCells(cand.xBounds, cand.yBounds)
       : (cand.cells || []);
     if (cells.length < minC || cells.length > maxC) {
-      return { valid: false, score: -1e9, confidence: 'low' };
+      return { valid: false, score: -1e9, confidence: 'low', cutThrough: 1 };
     }
     var maxArea = 0;
     var stripPenalty = 0;
@@ -174,8 +309,17 @@
     // Over-segmented lineform vs a clean freeform rectangle count
     if (cand.mode === 'lineform' && cv > 0.45) score -= 25;
 
+    // Cut lines that cross multi-color shapes are almost always wrong.
+    var cutThrough = cutThroughForCandidate(cand, imageData);
+    cand.cutThrough = cutThrough;
+    if (cutThrough > 0.55) {
+      return { valid: false, score: -1e9, confidence: 'low', cutThrough: cutThrough, cellCount: cells.length };
+    }
+    if (cutThrough > 0.35) score -= (cutThrough - 0.35) * 180;
+    else if (cutThrough < 0.15) score += 18;
+
     var confidence = score > 80 ? 'high' : (score > 40 ? 'medium' : 'low');
-    return { valid: true, score: score, confidence: confidence, cellCount: cells.length };
+    return { valid: true, score: score, confidence: confidence, cellCount: cells.length, cutThrough: cutThrough };
   }
 
   function makeImageProxy(buffer) {
@@ -230,12 +374,15 @@
         inferredConfidence: conf,
         lineEvidence: lineEvidence
       };
-      var score = scoreUniformLayout(cand, w, h);
+      var cutThrough = cutThroughScoreBounds(imageData, cand.xBounds, cand.yBounds);
+      if (cutThrough > 0.45) continue; // cuts through icons → reject
+      cand.cutThrough = cutThrough;
+      var score = scoreUniformLayout(cand, w, h) - cutThrough * 80;
       if (score > bestScore) {
         bestScore = score;
         best = cand;
       }
-      if (!opts.allowDashed && conf >= 0.8 && lineEvidence >= 0.9 && score > 30) break;
+      if (!opts.allowDashed && conf >= 0.8 && lineEvidence >= 0.9 && cutThrough < 0.2 && score > 30) break;
     }
     return best;
   }
@@ -335,7 +482,7 @@
       rects = filterTinyCells(rects, w, h);
       if (rects.length >= 2 && rects.length <= 64) {
         var cand = { mode: 'blackbg', cells: rects, source: 'isolatedShapes' };
-        var s = scoreCandidateUnified(cand, w, h, null);
+        var s = scoreCandidateUnified(cand, w, h, null, imageData);
         if (s.valid && s.score > bestScore) {
           bestScore = s.score;
           best = cand;
@@ -354,7 +501,7 @@
         var cells = filterTinyCells(segmentArrangement.segmentsToCells(w, h, segs) || [], w, h);
         if (cells.length >= 2 && cells.length <= 64) {
           var cand2 = { mode: 'blackbg', cells: cells, source: 'cutLines' };
-          var s2 = scoreCandidateUnified(cand2, w, h, null);
+          var s2 = scoreCandidateUnified(cand2, w, h, null, imageData);
           if (s2.valid && s2.score > bestScore) best = cand2;
         }
       }
@@ -447,10 +594,10 @@
       }
       if (cand) candidates.push(cand);
 
-      // Early exit only for strong line-backed uniform grids
+      // Early exit only for strong line-backed uniform grids that don't cut icons
       if (mode === 'uniform' && cand && cand.lineEvidence >= 0.9 && cand.inferredConfidence >= 0.7) {
-        var early = scoreCandidateUnified(cand, w, h, signals);
-        if (early.valid && early.score >= 70) {
+        var early = scoreCandidateUnified(cand, w, h, signals, imageData);
+        if (early.valid && early.score >= 70 && (early.cutThrough == null || early.cutThrough < 0.25)) {
           candidates = [cand];
           break;
         }
@@ -462,8 +609,8 @@
 
     var scored = [];
     for (var s = 0; s < candidates.length; s++) {
-      var sc = scoreCandidateUnified(candidates[s], w, h, signals);
-      if (sc.valid) scored.push({ candidate: candidates[s], score: sc.score, confidence: sc.confidence, cellCount: sc.cellCount });
+      var sc = scoreCandidateUnified(candidates[s], w, h, signals, imageData);
+      if (sc.valid) scored.push({ candidate: candidates[s], score: sc.score, confidence: sc.confidence, cellCount: sc.cellCount, cutThrough: sc.cutThrough });
     }
     if (!scored.length) return null;
     scored.sort(function (a, b) { return b.score - a.score; });
@@ -473,22 +620,26 @@
     var candOut = best.candidate;
 
     // Icon packs without grid lines: snap freeform panels to equal uniform bounds
-    // when we have a clean rectangular count (3×3 / 4×4 / …).
+    // when we have a clean rectangular count (3×3 / 4×4 / …) AND snaps don't cut icons.
     if (candOut.mode === 'freeform' && candOut.cells && candOut.cells.length >= 4) {
       var dims = inferRowsColsFromCells(candOut.cells, w, h);
       if (dims.rows >= 2 && dims.cols >= 2 && dims.rows * dims.cols === candOut.cells.length) {
         var snapped = equalBoundsFromCells(candOut.cells, dims.rows, dims.cols, w, h);
         if (snapped) {
-          candOut = {
-            mode: 'uniform',
-            xBounds: snapped.xBounds,
-            yBounds: snapped.yBounds,
-            rows: dims.rows,
-            cols: dims.cols,
-            source: 'contentGrid',
-            inferredConfidence: 0.8,
-            lineEvidence: 0
-          };
+          var snapCut = cutThroughScoreBounds(imageData, snapped.xBounds, snapped.yBounds);
+          if (snapCut < 0.35) {
+            candOut = {
+              mode: 'uniform',
+              xBounds: snapped.xBounds,
+              yBounds: snapped.yBounds,
+              rows: dims.rows,
+              cols: dims.cols,
+              source: 'contentGrid',
+              inferredConfidence: 0.8,
+              lineEvidence: 0,
+              cutThrough: snapCut
+            };
+          }
         }
       }
     }
