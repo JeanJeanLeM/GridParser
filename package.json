@@ -8,6 +8,7 @@
     "local": "vercel dev",
     "test:grid": "node scripts/test-grid-split.js",
     "test:parse": "node scripts/test-parse-auto.js",
+    "test:l1": "node scripts/test-l1-levels.js",
     "generate:grids": "node scripts/generate-random-grids.js",
     "compress:styles": "node scripts/compress-style-thumbs.js",
     "compress:fruit-grids": "node scripts/compress-fruit-grids.js",

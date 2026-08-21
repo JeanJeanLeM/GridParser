@@ -24,8 +24,8 @@
   'use strict';
 
   var UNIFORM_PRESETS = [
-    { blackThreshold: 110, darknessThreshold: 0.10, minLinePx: 1, minGap: 6, minSpanFraction: 0.30, useActualLinePositions: true },
-    { blackThreshold: 185, darknessThreshold: 0.06, minLinePx: 1, minGap: 6, minSpanFraction: 0.12, allowDashed: true, useActualLinePositions: true }
+    { blackThreshold: 110, darknessThreshold: 0.10, minLinePx: 1, minGap: 6, minSpanFraction: 0.30, useActualLinePositions: false },
+    { blackThreshold: 185, darknessThreshold: 0.06, minLinePx: 1, minGap: 6, minSpanFraction: 0.12, allowDashed: true, useActualLinePositions: false }
   ];
 
   function boundsToCells(xBounds, yBounds) {
@@ -232,6 +232,308 @@
     return 0;
   }
 
+  /**
+   * Fraction of non-background pixels in a cell (sampled).
+   * Icon cells are mid-range; empty gutter cells ~0; solid fills ~1.
+   */
+  function cellOccupancy(data, w, h, cell) {
+    var x0 = Math.max(0, Math.floor(cell.x));
+    var y0 = Math.max(0, Math.floor(cell.y));
+    var x1 = Math.min(w, Math.ceil(cell.x + cell.w));
+    var y1 = Math.min(h, Math.ceil(cell.y + cell.h));
+    var step = Math.max(1, Math.floor(Math.min(cell.w, cell.h) / 24));
+    var content = 0;
+    var total = 0;
+    for (var y = y0; y < y1; y += step) {
+      for (var x = x0; x < x1; x += step) {
+        var i = (y * w + x) * 4;
+        var a = data[i + 3] / 255;
+        var r = data[i] * a + 255 * (1 - a);
+        var g = data[i + 1] * a + 255 * (1 - a);
+        var b = data[i + 2] * a + 255 * (1 - a);
+        var L = 0.299 * r + 0.587 * g + 0.114 * b;
+        var chroma = Math.max(r, g, b) - Math.min(r, g, b);
+        total++;
+        if (L < 232 || chroma > 18) content++;
+      }
+    }
+    return total ? content / total : 0;
+  }
+
+  /**
+   * @returns {{ empty: number, filled: number, mean: number, cv: number, fitness: number, gutter: number }}
+   * fitness in ~[-1,1]: high when every cell looks like a single icon tile.
+   */
+  function occupancyStats(imageData, xBounds, yBounds) {
+    if (!imageData || !xBounds || !yBounds) {
+      return { empty: 99, filled: 0, mean: 0, cv: 1, fitness: -1, gutter: 1 };
+    }
+    var cells = boundsToCells(xBounds, yBounds);
+    if (!cells.length) return { empty: 99, filled: 0, mean: 0, cv: 1, fitness: -1, gutter: 1 };
+    var data = imageData.data;
+    var w = imageData.width;
+    var h = imageData.height;
+    var ratios = [];
+    var empty = 0;
+    var filled = 0;
+    var sum = 0;
+    var gutterSum = 0;
+    for (var i = 0; i < cells.length; i++) {
+      var o = cellOccupancy(data, w, h, cells[i]);
+      ratios.push(o);
+      sum += o;
+      if (o < 0.04) empty++;
+      // Labeled tiles are often >0.9 filled — still count as occupied tiles.
+      if (o >= 0.08) filled++;
+      gutterSum += cellInternalGutterRatio(data, w, h, cells[i]);
+    }
+    var mean = sum / ratios.length;
+    var v = 0;
+    for (var j = 0; j < ratios.length; j++) {
+      var d = ratios[j] - mean;
+      v += d * d;
+    }
+    var cv = mean > 0.01 ? Math.sqrt(v / ratios.length) / mean : 1;
+    var gutter = gutterSum / ratios.length;
+    // Coarse wrong grids (2×2 on a 4×4 sheet) leave white gutters across cell midlines.
+    var fitness = (filled / ratios.length) - (empty / ratios.length) * 1.5 - Math.min(1, cv) * 0.35 - gutter * 1.1;
+    return { empty: empty, filled: filled, mean: mean, cv: cv, fitness: fitness, gutter: gutter };
+  }
+
+  /** White ratio along the center segment of mid axes — high ⇒ cell contains a grid gutter. */
+  function cellInternalGutterRatio(data, w, h, cell) {
+    function axisBackground(horizontal) {
+      var bg = 0;
+      var total = 0;
+      if (horizontal) {
+        var y = Math.max(0, Math.min(h - 1, Math.floor(cell.y + cell.h / 2)));
+        var x0 = Math.floor(cell.x + cell.w * 0.3);
+        var x1 = Math.ceil(cell.x + cell.w * 0.7);
+        var step = Math.max(1, Math.floor((x1 - x0) / 32));
+        for (var x = x0; x < x1; x += step) {
+          var i = (y * w + Math.max(0, Math.min(w - 1, x))) * 4;
+          var a = data[i + 3] / 255;
+          var r = data[i] * a + 255 * (1 - a);
+          var g = data[i + 1] * a + 255 * (1 - a);
+          var b = data[i + 2] * a + 255 * (1 - a);
+          var L = 0.299 * r + 0.587 * g + 0.114 * b;
+          var chroma = Math.max(r, g, b) - Math.min(r, g, b);
+          total++;
+          // True gutter is flat near-white — bright colored / white glyphs are content.
+          if (L >= 235 && chroma < 18) bg++;
+        }
+      } else {
+        var xMid = Math.max(0, Math.min(w - 1, Math.floor(cell.x + cell.w / 2)));
+        var y0 = Math.floor(cell.y + cell.h * 0.3);
+        var y1 = Math.ceil(cell.y + cell.h * 0.7);
+        var stepY = Math.max(1, Math.floor((y1 - y0) / 32));
+        for (var y = y0; y < y1; y += stepY) {
+          var j = (Math.max(0, Math.min(h - 1, y)) * w + xMid) * 4;
+          var a2 = data[j + 3] / 255;
+          var r2 = data[j] * a2 + 255 * (1 - a2);
+          var g2 = data[j + 1] * a2 + 255 * (1 - a2);
+          var b2 = data[j + 2] * a2 + 255 * (1 - a2);
+          var L2 = 0.299 * r2 + 0.587 * g2 + 0.114 * b2;
+          var chroma2 = Math.max(r2, g2, b2) - Math.min(r2, g2, b2);
+          total++;
+          if (L2 >= 235 && chroma2 < 18) bg++;
+        }
+      }
+      return total ? bg / total : 0;
+    }
+    return Math.max(axisBackground(true), axisBackground(false));
+  }
+
+  /**
+   * Infer lattice from white valleys in content projections (light icon sheets).
+   */
+  function inferContentGapLattice(imageData, w, h) {
+    if (!imageData || !imageData.data) return null;
+    var data = imageData.data;
+    var colContent = new Float64Array(w);
+    var rowContent = new Float64Array(h);
+    for (var y = 0; y < h; y++) {
+      for (var x = 0; x < w; x++) {
+        var i = (y * w + x) * 4;
+        var a = data[i + 3] / 255;
+        var r = data[i] * a + 255 * (1 - a);
+        var g = data[i + 1] * a + 255 * (1 - a);
+        var b = data[i + 2] * a + 255 * (1 - a);
+        var L = 0.299 * r + 0.587 * g + 0.114 * b;
+        var chroma = Math.max(r, g, b) - Math.min(r, g, b);
+        var c = (L < 232 || chroma > 18) ? 1 : 0;
+        colContent[x] += c;
+        rowContent[y] += c;
+      }
+    }
+    for (var xi = 0; xi < w; xi++) colContent[xi] /= h;
+    for (var yi = 0; yi < h; yi++) rowContent[yi] /= w;
+
+    function gapCenters(profile, size) {
+      var thr = 0.045;
+      var minGap = Math.max(2, Math.floor(size * 0.01));
+      var maxGap = Math.max(minGap + 1, Math.floor(size * 0.14));
+      var gaps = [];
+      var i = 0;
+      while (i < size) {
+        if (profile[i] <= thr) {
+          var start = i;
+          while (i < size && profile[i] <= thr) i++;
+          var thick = i - start;
+          if (thick >= minGap && thick <= maxGap) gaps.push(start + thick / 2);
+        } else i++;
+      }
+      return gaps;
+    }
+    function contentSpan(profile, size) {
+      var thr = 0.06;
+      var a0 = 0;
+      var a1 = size - 1;
+      while (a0 < size && profile[a0] < thr) a0++;
+      while (a1 > a0 && profile[a1] < thr) a1--;
+      if (a1 - a0 < size * 0.35) return { a0: 0, a1: size };
+      return { a0: a0, a1: a1 + 1 };
+    }
+    function mergeGaps(gaps, minSep) {
+      if (!gaps.length) return [];
+      var out = [gaps[0]];
+      for (var k = 1; k < gaps.length; k++) {
+        if (gaps[k] - out[out.length - 1] < minSep) {
+          out[out.length - 1] = (out[out.length - 1] + gaps[k]) / 2;
+        } else out.push(gaps[k]);
+      }
+      return out;
+    }
+
+    var xSpan = contentSpan(colContent, w);
+    var ySpan = contentSpan(rowContent, h);
+    var vGaps = mergeGaps(
+      gapCenters(colContent, w).filter(function (g) { return g > xSpan.a0 + 4 && g < xSpan.a1 - 4; }),
+      Math.max(8, (xSpan.a1 - xSpan.a0) * 0.045)
+    );
+    var hGaps = mergeGaps(
+      gapCenters(rowContent, h).filter(function (g) { return g > ySpan.a0 + 4 && g < ySpan.a1 - 4; }),
+      Math.max(8, (ySpan.a1 - ySpan.a0) * 0.045)
+    );
+    var cols = vGaps.length + 1;
+    var rows = hGaps.length + 1;
+    var candidates = [];
+
+    function considerBounds(eqX, eqY, rowsN, colsN, tag) {
+      if (colsN < 2 || rowsN < 2 || colsN > 12 || rowsN > 12) return;
+      if (rowsN * colsN < 4 || rowsN * colsN > 72) return;
+      var cut = cutThroughScoreBounds(imageData, eqX, eqY);
+      if (cut > 0.35) return;
+      var occ = occupancyStats(imageData, eqX, eqY);
+      if (occ.empty > 0 || (occ.gutter > 0.55 && occ.mean < 0.28)) return;
+      if (occ.filled < Math.max(4, Math.floor(rowsN * colsN * 0.85))) return;
+      var score = occ.filled * 3 - cut * 40 + Math.max(0, occ.fitness) * 10;
+      if (tag === 'gaps') score += 4;
+      candidates.push({
+        mode: 'uniform',
+        xBounds: eqX,
+        yBounds: eqY,
+        rows: rowsN,
+        cols: colsN,
+        source: 'contentGaps',
+        inferredConfidence: Math.min(0.95, 0.55 + Math.max(0, occ.fitness) * 0.4),
+        lineEvidence: 0,
+        cutThrough: cut,
+        _score: score
+      });
+    }
+
+    if (cols >= 2 && rows >= 2 && cols <= 12 && rows <= 12) {
+      considerBounds(
+        [xSpan.a0].concat(vGaps).concat([xSpan.a1]),
+        [ySpan.a0].concat(hGaps).concat([ySpan.a1]),
+        rows,
+        cols,
+        'gaps'
+      );
+    }
+
+    // Equal lattices: catch missed gutters (e.g. 4×5 emoji packs).
+    var commons = [
+      [2, 2], [3, 3], [4, 4], [4, 5], [5, 4], [3, 4], [4, 3],
+      [5, 5], [3, 5], [5, 3], [2, 3], [3, 2]
+    ];
+    for (var ci = 0; ci < commons.length; ci++) {
+      var rr = commons[ci][0];
+      var cc = commons[ci][1];
+      var eqX = [];
+      var eqY = [];
+      for (var c = 0; c <= cc; c++) eqX.push(xSpan.a0 + (c * (xSpan.a1 - xSpan.a0)) / cc);
+      for (var r = 0; r <= rr; r++) eqY.push(ySpan.a0 + (r * (ySpan.a1 - ySpan.a0)) / rr);
+      considerBounds(eqX, eqY, rr, cc, 'equal');
+    }
+
+    if (!candidates.length) return null;
+    candidates.sort(function (a, b) { return b._score - a._score; });
+    var bestLat = candidates[0];
+    delete bestLat._score;
+    return bestLat;
+  }
+
+  /**
+   * When panels find almost a full lattice (e.g. 8/9, 15/16), complete via bbox equal grid.
+   * Only completes missing tiles — never invents denser grids from noisy cell sets.
+   */
+  function tryCompleteNearLattice(cells, w, h, imageData) {
+    if (!cells || cells.length < 4 || !imageData) return null;
+    var n = cells.length;
+    var dims = inferRowsColsFromCells(cells, w, h);
+    if (!(dims.rows >= 2 && dims.cols >= 2)) return null;
+    var targets = [];
+    var prod = dims.rows * dims.cols;
+    // Cluster said RxC but we only found n cells (1–2 missing).
+    if (prod > n && prod <= n + 2) targets.push({ rows: dims.rows, cols: dims.cols });
+    // Exact rectangle already — snap only (handled elsewhere); also try n+1 factors if cluster under-counted.
+    for (var missing = 1; missing <= 2; missing++) {
+      var n2 = n + missing;
+      for (var rows = 2; rows <= 12; rows++) {
+        if (n2 % rows !== 0) continue;
+        var cols = n2 / rows;
+        if (cols < 2 || cols > 12) continue;
+        // Must agree with spatial clustering (±1).
+        if (Math.abs(rows - dims.rows) <= 1 && Math.abs(cols - dims.cols) <= 1) {
+          targets.push({ rows: rows, cols: cols });
+        }
+      }
+    }
+    if (!targets.length) return null;
+    var best = null;
+    var bestScore = -1e9;
+    var seen = {};
+    for (var t = 0; t < targets.length; t++) {
+      var key = targets[t].rows + 'x' + targets[t].cols;
+      if (seen[key]) continue;
+      seen[key] = true;
+      var snapped = equalBoundsFromCells(cells, targets[t].rows, targets[t].cols, w, h);
+      if (!snapped) continue;
+      var cut = cutThroughScoreBounds(imageData, snapped.xBounds, snapped.yBounds);
+      if (cut > 0.35) continue;
+      var occ = occupancyStats(imageData, snapped.xBounds, snapped.yBounds);
+      if (occ.empty > 0 || occ.fitness < 0.4 || occ.gutter > 0.35) continue;
+      var sc = occ.fitness * 80 - cut * 30 - occ.gutter * 40;
+      if (sc > bestScore) {
+        bestScore = sc;
+        best = {
+          mode: 'uniform',
+          xBounds: snapped.xBounds,
+          yBounds: snapped.yBounds,
+          rows: targets[t].rows,
+          cols: targets[t].cols,
+          source: 'nearLattice',
+          inferredConfidence: 0.75,
+          lineEvidence: 0,
+          cutThrough: cut
+        };
+      }
+    }
+    return best;
+  }
+
   function isRectangularCount(n) {
     if (n < 2) return false;
     for (var r = 1; r <= 12; r++) {
@@ -289,19 +591,29 @@
     if (cand.mode === 'uniform') {
       score += 20 + Math.min(60, scoreUniformLayout(cand, w, h));
     } else if (isRectangularCount(cells.length) && cv < 0.4) {
-      score += 35;
-      // Prefer exact common sheet sizes for icon packs without lines.
-      if (cells.length === 9 || cells.length === 16) score += 25;
-      else if (cells.length === 4 || cells.length === 12 || cells.length === 20 || cells.length === 24) score += 12;
+      var dimsFF = inferRowsColsFromCells(cells, w, h);
+      var spatialRect = dimsFF.rows >= 2 && dimsFF.cols >= 2 && dimsFF.rows * dimsFF.cols === cells.length;
+      if (!spatialRect) {
+        // Full-width strips / single-column stacks look "rectangular" by count only.
+        score -= 45;
+      } else {
+        score += 35;
+        if (cells.length === 9 || cells.length === 16) score += 25;
+        else if (cells.length === 4 || cells.length === 12 || cells.length === 20 || cells.length === 24) score += 12;
+      }
     } else if (!isRectangularCount(cells.length)) {
       score -= 20;
     }
 
+    // Reject gutter-only whiteGaps floods and strip cuts (L1 shapes / UI packs).
+    if (cand.mode === 'freeform' && cand.source === 'whiteGaps') {
+      var dimsWG = inferRowsColsFromCells(cells, w, h);
+      if (dimsWG.rows < 2 || dimsWG.cols < 2) score -= 80;
+      if (cells.length > 24) score -= (cells.length - 24) * 4;
+      else if (cells.length > 16 && !isRectangularCount(cells.length)) score -= 30;
+    }
     if (cand.mode === 'blackbg' && signals && signals.lightRatio > 0.4) {
       score -= 80;
-    }
-    if (cand.mode === 'freeform' && cand.source === 'whiteGaps' && cells.length > 24) {
-      score -= (cells.length - 24) * 4;
     }
     if (cand.mode === 'lineform' && cells.length > 24) {
       score -= (cells.length - 24) * 5;
@@ -317,6 +629,22 @@
     }
     if (cutThrough > 0.35) score -= (cutThrough - 0.35) * 180;
     else if (cutThrough < 0.15) score += 18;
+
+    // Empty / uneven cell occupancy → wrong rows×cols (e.g. 3×5 on a 3×3 sheet).
+    if ((cand.mode === 'uniform' || cand.mode === 'geometrical') && cand.xBounds && imageData) {
+      var occ = occupancyStats(imageData, cand.xBounds, cand.yBounds);
+      if (occ.empty >= 2 || occ.empty / Math.max(1, cells.length) > 0.2) {
+        return { valid: false, score: -1e9, confidence: 'low', cutThrough: cutThrough, cellCount: cells.length };
+      }
+      // High "gutter" on midlines is common for white glyphs on colored tiles — only reject
+      // when the cell also looks mostly empty (true gutter cell).
+      if (occ.gutter > 0.55 && occ.mean < 0.28) {
+        return { valid: false, score: -1e9, confidence: 'low', cutThrough: cutThrough, cellCount: cells.length };
+      }
+      if (occ.empty > 0) score -= occ.empty * 45;
+      if (occ.gutter > 0.35 && occ.mean < 0.35) score -= (occ.gutter - 0.35) * 80;
+      score += Math.max(-25, Math.min(35, occ.fitness * 40));
+    }
 
     var confidence = score > 80 ? 'high' : (score > 40 ? 'medium' : 'low');
     return { valid: true, score: score, confidence: confidence, cellCount: cells.length, cutThrough: cutThrough };
@@ -376,13 +704,15 @@
       };
       var cutThrough = cutThroughScoreBounds(imageData, cand.xBounds, cand.yBounds);
       if (cutThrough > 0.45) continue; // cuts through icons → reject
+      var occ = occupancyStats(imageData, cand.xBounds, cand.yBounds);
+      if (occ.empty >= 2 || occ.fitness < 0.2 || occ.gutter > 0.4) continue;
       cand.cutThrough = cutThrough;
-      var score = scoreUniformLayout(cand, w, h) - cutThrough * 80;
+      var score = scoreUniformLayout(cand, w, h) - cutThrough * 80 + occ.fitness * 30;
       if (score > bestScore) {
         bestScore = score;
         best = cand;
       }
-      if (!opts.allowDashed && conf >= 0.8 && lineEvidence >= 0.9 && cutThrough < 0.2 && score > 30) break;
+      if (!opts.allowDashed && conf >= 0.8 && lineEvidence >= 0.9 && cutThrough < 0.2 && occ.empty === 0 && score > 30) break;
     }
     return best;
   }
@@ -418,14 +748,63 @@
     });
   }
 
+  /** Prefer real panels / regular lattices — never reward raw cell count (over-segmentation). */
+  function scoreCellSetLocal(cells, w, h, source) {
+    if (!cells || cells.length < 2) return -1e9;
+    var dims = inferRowsColsFromCells(cells, w, h);
+    var n = cells.length;
+    var rectangular = dims.rows >= 2 && dims.cols >= 2 && dims.rows * dims.cols === n;
+    var areas = cells.map(function (c) { return c.w * c.h; });
+    var sum = 0;
+    for (var i = 0; i < areas.length; i++) sum += areas[i];
+    var mean = sum / areas.length;
+    var v = 0;
+    for (var j = 0; j < areas.length; j++) {
+      var d = areas[j] - mean;
+      v += d * d;
+    }
+    var cv = mean > 0 ? Math.sqrt(v / areas.length) / mean : 1;
+    var score = 20 - cv * 40;
+    if (rectangular) score += 50;
+    else if (isRectangularCount(n)) score += 15;
+    else score -= Math.min(40, Math.abs(n - (dims.rows * dims.cols)) * 3);
+    if (source === 'panelRects') score += 25;
+    if (source === 'whiteGaps' && n > 24) score -= (n - 24) * 2;
+    // Mild prior for common sheet sizes
+    if (n === 9 || n === 16) score += 12;
+    else if (n === 4 || n === 12 || n === 20 || n === 24 || n === 25) score += 6;
+    return score;
+  }
+
+  function trySnapLattice(cells, w, h, imageData, sourceTag) {
+    if (!cells || cells.length < 4) return null;
+    var dims = inferRowsColsFromCells(cells, w, h);
+    if (!(dims.rows >= 2 && dims.cols >= 2 && dims.rows * dims.cols === cells.length)) return null;
+    var snapped = equalBoundsFromCells(cells, dims.rows, dims.cols, w, h);
+    if (!snapped) return null;
+    var snapCut = cutThroughScoreBounds(imageData, snapped.xBounds, snapped.yBounds);
+    if (snapCut > 0.35) return null;
+    return {
+      mode: 'uniform',
+      xBounds: snapped.xBounds,
+      yBounds: snapped.yBounds,
+      rows: dims.rows,
+      cols: dims.cols,
+      source: sourceTag || 'contentGrid',
+      inferredConfidence: 0.8,
+      lineEvidence: 0,
+      cutThrough: snapCut
+    };
+  }
+
   function getFreeformCandidate(proxy, w, h, imageData) {
     if (!segmentDetect) return null;
     var best = null;
-    var bestScore = -1;
+    var bestScore = -1e9;
     function consider(cells, source) {
       cells = filterTinyCells(cells, w, h);
       if (!cells || cells.length < 2 || cells.length > 64) return;
-      var score = cells.length * 10;
+      var score = scoreCellSetLocal(cells, w, h, source);
       if (score > bestScore) {
         bestScore = score;
         best = { mode: 'freeform', cells: cells.slice(), source: source };
@@ -585,6 +964,10 @@
       if (mode === 'uniform') {
         cand = getUniformCandidate(proxy, w, h, imageData);
         uniformCand = cand;
+        if (signals.lightRatio > 0.35) {
+          var gapLat = inferContentGapLattice(imageData, w, h);
+          if (gapLat) candidates.push(gapLat);
+        }
       } else if (mode === 'freeform') {
         cand = getFreeformCandidate(proxy, w, h, imageData);
       } else if (mode === 'lineform') {
@@ -607,6 +990,21 @@
     if (!candidates.length && uniformCand) candidates.push(uniformCand);
     if (!candidates.length) return null;
 
+    // Lattice rescue: rectangular cell sets → equal uniform bounds (no cut-through).
+    var extra = [];
+    for (var cIdx = 0; cIdx < candidates.length; cIdx++) {
+      var base = candidates[cIdx];
+      if (!base.cells || base.cells.length < 4) continue;
+      var snappedCand = trySnapLattice(base.cells, w, h, imageData, 'contentGrid');
+      if (snappedCand) extra.push(snappedCand);
+      // nearLattice only for panel-like detections — not whiteGaps/line floods.
+      if (base.source === 'panelRects' || base.source === 'isolatedShapes') {
+        var nearCand = tryCompleteNearLattice(base.cells, w, h, imageData);
+        if (nearCand) extra.push(nearCand);
+      }
+    }
+    for (var e = 0; e < extra.length; e++) candidates.push(extra[e]);
+
     var scored = [];
     for (var s = 0; s < candidates.length; s++) {
       var sc = scoreCandidateUnified(candidates[s], w, h, signals, imageData);
@@ -619,27 +1017,14 @@
     var confidence = gap >= 30 ? 'high' : (gap >= 15 || best.score > 80 ? 'medium' : 'low');
     var candOut = best.candidate;
 
-    // Icon packs without grid lines: snap freeform panels to equal uniform bounds
-    // when we have a clean rectangular count (3×3 / 4×4 / …) AND snaps don't cut icons.
-    if (candOut.mode === 'freeform' && candOut.cells && candOut.cells.length >= 4) {
-      var dims = inferRowsColsFromCells(candOut.cells, w, h);
-      if (dims.rows >= 2 && dims.cols >= 2 && dims.rows * dims.cols === candOut.cells.length) {
-        var snapped = equalBoundsFromCells(candOut.cells, dims.rows, dims.cols, w, h);
-        if (snapped) {
-          var snapCut = cutThroughScoreBounds(imageData, snapped.xBounds, snapped.yBounds);
-          if (snapCut < 0.35) {
-            candOut = {
-              mode: 'uniform',
-              xBounds: snapped.xBounds,
-              yBounds: snapped.yBounds,
-              rows: dims.rows,
-              cols: dims.cols,
-              source: 'contentGrid',
-              inferredConfidence: 0.8,
-              lineEvidence: 0,
-              cutThrough: snapCut
-            };
-          }
+    // Final snap if a freeform/lineform winner is still a clean rectangle.
+    if (candOut.mode !== 'uniform' && candOut.cells && candOut.cells.length >= 4) {
+      var lateSnap = trySnapLattice(candOut.cells, w, h, imageData, 'contentGrid');
+      if (lateSnap) {
+        var lateScore = scoreCandidateUnified(lateSnap, w, h, signals, imageData);
+        if (lateScore.valid && lateScore.score >= best.score - 5) {
+          candOut = lateSnap;
+          best = { score: lateScore.score, confidence: lateScore.confidence, cellCount: lateScore.cellCount };
         }
       }
     }

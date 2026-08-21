@@ -291,14 +291,44 @@
   }
 
   function enforceMinGap(bounds, size, gap) {
-    var b = bounds.slice();
-    for (var i = 1; i < b.length - 1; i++) {
-      var prev = b[i - 1];
-      var next = b[i + 1];
-      if (b[i] - prev < gap) b[i] = Math.min(prev + gap, (prev + next) / 2);
-      if (next - b[i] < gap) b[i] = Math.max(next - gap, (prev + next) / 2);
+    // Collapse near-duplicate cut positions — never push them apart (that creates micro-columns).
+    if (!bounds || bounds.length < 2) return bounds ? bounds.slice() : bounds;
+    var b = [bounds[0]];
+    for (var i = 1; i < bounds.length - 1; i++) {
+      if (bounds[i] - b[b.length - 1] >= gap) b.push(bounds[i]);
+    }
+    var last = bounds[bounds.length - 1];
+    if (last - b[b.length - 1] >= gap) {
+      b.push(last);
+    } else if (b.length >= 2) {
+      b[b.length - 1] = last;
+    } else {
+      b.push(last);
     }
     return b;
+  }
+
+  /**
+   * If any cell span is a thin gutter (<< median), rebuild equal splits between outer edges.
+   * Prevents black grid lines from becoming fake columns/rows.
+   */
+  function sanitizeLatticeBounds(bounds, divisions, minGap) {
+    if (!bounds || bounds.length < 2 || divisions < 1) return bounds;
+    var spans = [];
+    for (var i = 1; i < bounds.length; i++) spans.push(bounds[i] - bounds[i - 1]);
+    if (!spans.length) return bounds;
+    var sorted = spans.slice().sort(function (a, b) { return a - b; });
+    var median = sorted[Math.floor(sorted.length / 2)];
+    var minSpan = Math.min.apply(null, spans);
+    var needEqual = bounds.length !== divisions + 1 ||
+      minSpan < Math.max(minGap, median * 0.35);
+    if (!needEqual) return bounds;
+    var x0 = bounds[0];
+    var x1 = bounds[bounds.length - 1];
+    if (!(x1 > x0)) return bounds;
+    var out = [];
+    for (var d = 0; d <= divisions; d++) out.push(x0 + (d * (x1 - x0)) / divisions);
+    return out;
   }
 
   /**
@@ -306,9 +336,30 @@
    * Prefer cases where outer + inner lines form a regular lattice.
    */
   function inferGridSizeFromRuns(colRuns, rowRuns, w, h) {
+    // Drop separator pairs that only enclose a thin gutter (line thickness artifact).
+    function collapseThinSpans(runs, size) {
+      var list = (runs || []).slice().sort(function (a, b) { return a.position - b.position; });
+      if (list.length < 2) return list;
+      var minCell = Math.max(8, size * 0.06);
+      var out = [list[0]];
+      for (var i = 1; i < list.length; i++) {
+        if (list[i].position - out[out.length - 1].position < minCell) {
+          var prev = out[out.length - 1];
+          var cur = list[i];
+          var t = prev.thickness + cur.thickness;
+          out[out.length - 1] = {
+            position: (prev.position * prev.thickness + cur.position * cur.thickness) / Math.max(1, t),
+            thickness: Math.max(prev.thickness, cur.thickness)
+          };
+        } else {
+          out.push(list[i]);
+        }
+      }
+      return out;
+    }
     // Ensure outer edges count as bounds when only inner separators were found.
     function withEdges(runs, size) {
-      var list = (runs || []).slice().sort(function (a, b) { return a.position - b.position; });
+      var list = collapseThinSpans(runs, size);
       var edgeTol = Math.max(3, size * 0.02);
       if (!list.length || list[0].position > edgeTol) {
         list.unshift({ position: 0, thickness: 1 });
@@ -316,12 +367,12 @@
       if (!list.length || size - 1 - list[list.length - 1].position > edgeTol) {
         list.push({ position: size - 1, thickness: 1 });
       }
-      return list;
+      return collapseThinSpans(list, size);
     }
     var colsRuns = withEdges(colRuns, w);
     var rowsRuns = withEdges(rowRuns, h);
-    var cols = Math.max(1, Math.min(10, colsRuns.length - 1));
-    var rows = Math.max(1, Math.min(10, rowsRuns.length - 1));
+    var cols = Math.max(1, Math.min(12, colsRuns.length - 1));
+    var rows = Math.max(1, Math.min(12, rowsRuns.length - 1));
     function regularity(runs, size) {
       if (!runs || runs.length < 2) return 0;
       var spans = [];
@@ -418,6 +469,8 @@
 
     var xBounds = enforceMinGap([leftOuter].concat(innerX).concat([rightOuter]), w, minGap);
     var yBounds = enforceMinGap([topOuter].concat(innerY).concat([bottomOuter]), h, minGap);
+    xBounds = sanitizeLatticeBounds(xBounds, gridCols, minGap);
+    yBounds = sanitizeLatticeBounds(yBounds, gridRows, minGap);
 
     var innerThickness = [];
     innerColRuns.forEach(function (r) { innerThickness.push(r.thickness); });
@@ -446,8 +499,8 @@
     var runs = detectLineRuns(image, opts);
     if (!runs) return null;
 
-    var gridCols = Math.max(1, Math.min(10, parseInt(opts.gridCols, 10) || 4));
-    var gridRows = Math.max(1, Math.min(10, parseInt(opts.gridRows, 10) || 4));
+    var gridCols = Math.max(1, Math.min(12, parseInt(opts.gridCols, 10) || 4));
+    var gridRows = Math.max(1, Math.min(12, parseInt(opts.gridRows, 10) || 4));
     var colRuns = runs.colRuns;
     var rowRuns = runs.rowRuns;
     if (opts.inferSize && runs.inferred && runs.inferred.cols >= 1 && runs.inferred.rows >= 1) {
