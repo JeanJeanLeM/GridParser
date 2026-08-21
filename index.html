@@ -6,6 +6,9 @@
   <title>Grid2icons</title>
   <link rel="icon" type="image/png" href="assets/preview/LogoG2i.png">
   <link rel="apple-touch-icon" href="assets/preview/LogoG2i.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,700&family=Source+Sans+3:wght@400;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="css/shared.css">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
   <script src="lib/tesseract.min.js"></script>
@@ -29,7 +32,6 @@
       font-family: var(--font-sans);
       margin: 0;
       min-height: 100vh;
-      background: var(--page-bg);
     }
     .hero {
       text-align: center;
@@ -72,28 +74,38 @@
       display: flex;
       align-items: center;
       justify-content: center;
-      border: 2px dashed var(--border-input);
-      border-radius: 8px;
-      padding: 2.5rem 2rem;
+      border: 2px dashed var(--accent);
+      border-radius: 12px;
+      padding: 2.75rem 2rem;
       text-align: center;
       cursor: pointer;
       background: var(--input-bg);
-      transition: background 0.15s, border-color 0.15s;
+      transition: background 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
       position: relative;
       width: 100%;
-      max-width: 320px;
+      max-width: 100%;
       margin-left: auto;
       margin-right: auto;
+      min-height: 200px;
       aspect-ratio: 1;
       box-sizing: border-box;
+      box-shadow: inset 0 0 0 1px rgba(29, 78, 216, 0.06);
+    }
+    body:not(.has-image) .drop-zone {
+      max-width: min(360px, 100%);
+    }
+    body.has-image .drop-zone {
+      max-width: 280px;
+      min-height: 0;
     }
     .drop-zone:hover, .drop-zone.dragover {
-      background: #eee;
-      border-color: var(--text-muted);
+      background: #eff6ff;
+      border-color: var(--btn-primary-hover);
+      box-shadow: 0 8px 24px rgba(29, 78, 216, 0.12);
     }
     .drop-zone.dragover {
       border-color: var(--text-secondary);
-      background: #e8e8e8;
+      background: #dbeafe;
     }
     .drop-zone p { margin: 0; color: var(--text-muted); }
     .drop-zone .drop-title { font-weight: 600; color: var(--text-secondary); }
@@ -1096,6 +1108,32 @@
   </header>
 
   <main class="main-content">
+  <div class="landing-shell">
+    <ul class="logo-mosaic logo-mosaic--side" aria-hidden="true">
+      <li class="logo-mosaic__cell"><img class="logo-mosaic__img" src="assets/styles/fruit-grid-flat-vector.webp" alt="" loading="lazy" width="200" height="200"></li>
+      <li class="logo-mosaic__cell"><img class="logo-mosaic__img" src="assets/styles/fruit-grid-watercolor.webp" alt="" loading="lazy" width="200" height="200"></li>
+      <li class="logo-mosaic__cell"><img class="logo-mosaic__img" src="assets/styles/fruit-grid-pixel.webp" alt="" loading="lazy" width="200" height="200"></li>
+      <li class="logo-mosaic__cell"><img class="logo-mosaic__img" src="assets/styles/fruit-grid-isometric.webp" alt="" loading="lazy" width="200" height="200"></li>
+      <li class="logo-mosaic__cell"><img class="logo-mosaic__img" src="assets/styles/fruit-grid-popart.webp" alt="" loading="lazy" width="200" height="200"></li>
+      <li class="logo-mosaic__cell"><img class="logo-mosaic__img" src="assets/styles/fruit-grid-origami.webp" alt="" loading="lazy" width="200" height="200"></li>
+      <li class="logo-mosaic__cell"><img class="logo-mosaic__img" src="assets/styles/fruit-grid-neon.webp" alt="" loading="lazy" width="200" height="200"></li>
+      <li class="logo-mosaic__cell"><img class="logo-mosaic__img" src="assets/styles/fruit-grid-bauhaus.webp" alt="" loading="lazy" width="200" height="200"></li>
+      <li class="logo-mosaic__cell"><img class="logo-mosaic__img" src="assets/styles/fruit-grid-chalk.webp" alt="" loading="lazy" width="200" height="200"></li>
+      <li class="logo-mosaic__cell"><img class="logo-mosaic__img" src="assets/styles/fruit-grid-sticker.webp" alt="" loading="lazy" width="200" height="200"></li>
+      <li class="logo-mosaic__cell"><img class="logo-mosaic__img" src="assets/styles/fruit-grid-wood.webp" alt="" loading="lazy" width="200" height="200"></li>
+      <li class="logo-mosaic__cell"><img class="logo-mosaic__img" src="assets/styles/fruit-grid-manga.webp" alt="" loading="lazy" width="200" height="200"></li>
+    </ul>
+    <div class="landing-shell__center">
+    <ul class="logo-mosaic logo-mosaic--mobile" aria-hidden="true">
+      <li class="logo-mosaic__cell"><img class="logo-mosaic__img" src="assets/styles/fruit-grid-flat-vector.webp" alt="" loading="lazy" width="120" height="120"></li>
+      <li class="logo-mosaic__cell"><img class="logo-mosaic__img" src="assets/styles/fruit-grid-watercolor.webp" alt="" loading="lazy" width="120" height="120"></li>
+      <li class="logo-mosaic__cell"><img class="logo-mosaic__img" src="assets/styles/fruit-grid-pixel.webp" alt="" loading="lazy" width="120" height="120"></li>
+      <li class="logo-mosaic__cell"><img class="logo-mosaic__img" src="assets/styles/fruit-grid-isometric.webp" alt="" loading="lazy" width="120" height="120"></li>
+      <li class="logo-mosaic__cell"><img class="logo-mosaic__img" src="assets/styles/fruit-grid-popart.webp" alt="" loading="lazy" width="120" height="120"></li>
+      <li class="logo-mosaic__cell"><img class="logo-mosaic__img" src="assets/styles/fruit-grid-neon.webp" alt="" loading="lazy" width="120" height="120"></li>
+      <li class="logo-mosaic__cell"><img class="logo-mosaic__img" src="assets/styles/fruit-grid-bauhaus.webp" alt="" loading="lazy" width="120" height="120"></li>
+      <li class="logo-mosaic__cell"><img class="logo-mosaic__img" src="assets/styles/fruit-grid-sticker.webp" alt="" loading="lazy" width="120" height="120"></li>
+    </ul>
   <section class="drop-section" aria-labelledby="step1-title">
     <div class="section-title-row">
       <span class="step-badge" aria-hidden="true">1</span>
@@ -1325,6 +1363,23 @@
     </div>
   </div>
 
+  </div><!-- /.landing-shell__center -->
+    <ul class="logo-mosaic logo-mosaic--side" aria-hidden="true">
+      <li class="logo-mosaic__cell"><img class="logo-mosaic__img" src="assets/styles/fruit-grid-clay-3d.webp" alt="" loading="lazy" width="200" height="200"></li>
+      <li class="logo-mosaic__cell"><img class="logo-mosaic__img" src="assets/styles/fruit-grid-embroidered.webp" alt="" loading="lazy" width="200" height="200"></li>
+      <li class="logo-mosaic__cell"><img class="logo-mosaic__img" src="assets/styles/fruit-grid-papercut.webp" alt="" loading="lazy" width="200" height="200"></li>
+      <li class="logo-mosaic__cell"><img class="logo-mosaic__img" src="assets/styles/fruit-grid-chrome.webp" alt="" loading="lazy" width="200" height="200"></li>
+      <li class="logo-mosaic__cell"><img class="logo-mosaic__img" src="assets/styles/fruit-grid-lowpoly.webp" alt="" loading="lazy" width="200" height="200"></li>
+      <li class="logo-mosaic__cell"><img class="logo-mosaic__img" src="assets/styles/fruit-grid-halftone.webp" alt="" loading="lazy" width="200" height="200"></li>
+      <li class="logo-mosaic__cell"><img class="logo-mosaic__img" src="assets/styles/fruit-grid-blueprint.webp" alt="" loading="lazy" width="200" height="200"></li>
+      <li class="logo-mosaic__cell"><img class="logo-mosaic__img" src="assets/styles/fruit-grid-kawaii.webp" alt="" loading="lazy" width="200" height="200"></li>
+      <li class="logo-mosaic__cell"><img class="logo-mosaic__img" src="assets/styles/fruit-grid-art-deco.webp" alt="" loading="lazy" width="200" height="200"></li>
+      <li class="logo-mosaic__cell"><img class="logo-mosaic__img" src="assets/styles/fruit-grid-porcelain.webp" alt="" loading="lazy" width="200" height="200"></li>
+      <li class="logo-mosaic__cell"><img class="logo-mosaic__img" src="assets/styles/fruit-grid-graffiti.webp" alt="" loading="lazy" width="200" height="200"></li>
+      <li class="logo-mosaic__cell"><img class="logo-mosaic__img" src="assets/styles/fruit-grid-sumi-e.webp" alt="" loading="lazy" width="200" height="200"></li>
+    </ul>
+  </div><!-- /.landing-shell -->
+
   </main>
 
   <script>
@@ -1344,6 +1399,9 @@
       var tileSrcImage = null;
       var objectUrl = null;
       var currentImage = null;
+      function setHasImage(on) {
+        document.body.classList.toggle('has-image', !!on);
+      }
       var editorMode = 'uniform';
       var xBounds = [];
       var yBounds = [];
@@ -2114,6 +2172,7 @@
         }
         gridImg.onload = sizeOverlay;
         gridEditor.classList.add('visible');
+        setHasImage(true);
         if (gridImg.complete) setTimeout(sizeOverlay, 0);
       }
 
@@ -3450,6 +3509,7 @@
           countEl.textContent = batchImages.length === 1 ? '1 image loaded' : batchImages.length + ' images loaded';
         }
         gridEditor.classList.add('visible');
+        setHasImage(true);
         var cutBtn = document.getElementById('cut-btn');
         var actionsEl = document.querySelector('.grid-editor-actions');
         // #region agent log
@@ -3651,6 +3711,7 @@
           setDownloadButtonsEnabled(false);
           setRunAutoNameButtonEnabled(false);
           gridEditor.classList.remove('visible');
+          setHasImage(false);
           var nav = document.getElementById('batch-navigator');
           if (nav) nav.style.display = 'none';
           var countEl = document.getElementById('batch-count');
