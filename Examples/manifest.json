@@ -1,0 +1,261 @@
+{
+  "version": 1,
+  "notes": "Expected parse outcomes for real fixture grids. modeAlternates = acceptable equivalent modes when cell count/layout matches.",
+  "images": [
+    {
+      "file": "real/01_06885079-29ca-47cc-9c90-e9a722a5a464-c553ecbb-df87-4f65-8aff-5a2ad58f730c.png",
+      "rows": 4, "cols": 4, "mode": "uniform", "modeAlternates": ["lineform"],
+      "hasLabel": false, "labelRegion": "none", "notes": "hygiene icons with French bottom labels? verify"
+    },
+    {
+      "file": "real/02_2806b89d-abd5-49e2-989e-2206a366c3b3-878b621e-f782-406a-8ba1-ff11cb910ecf.png",
+      "rows": 4, "cols": 4, "mode": "uniform", "modeAlternates": ["lineform", "freeform"],
+      "hasLabel": false, "labelRegion": "none"
+    },
+    {
+      "file": "real/03_3124abdc-a78e-4b1c-ad23-7529fd9296e4-7f6db52c-4652-4996-91d7-ce8569e67384.png",
+      "rows": 4, "cols": 4, "mode": "uniform", "modeAlternates": ["lineform", "freeform"],
+      "hasLabel": false, "labelRegion": "none"
+    },
+    {
+      "file": "real/04_741fe298-eb87-46ab-b85e-383c57b8a598-d00374e4-594f-44eb-86fd-76b6fc7ef7d4.png",
+      "rows": 4, "cols": 4, "mode": "uniform", "modeAlternates": ["lineform", "freeform"],
+      "hasLabel": false, "labelRegion": "none"
+    },
+    {
+      "file": "real/05_b6d737b5-cfc4-4c17-8928-afe186491dd0-1e5acfe8-595d-4f06-8259-88f2f232b021.png",
+      "rows": 4, "cols": 4, "mode": "uniform", "modeAlternates": ["lineform", "freeform"],
+      "hasLabel": false, "labelRegion": "none"
+    },
+    {
+      "file": "real/06_c6787a12-d280-41fa-9830-3175e410fbd5-7a369c5f-3fb6-4a12-b99c-e638177b1bb8.png",
+      "rows": 4, "cols": 4, "mode": "uniform", "modeAlternates": ["lineform", "freeform"],
+      "hasLabel": false, "labelRegion": "none"
+    },
+    {
+      "file": "real/07_ChatGPT_Image_10_juin_2026__20_23_17-54596958-7ff3-4b7b-982b-2220db156fd9.png",
+      "rows": 4, "cols": 4, "mode": "uniform", "modeAlternates": ["lineform"],
+      "hasLabel": false, "labelRegion": "none", "notes": "futuristic architecture 4x4 thick black borders"
+    },
+    {
+      "file": "real/08_ChatGPT_Image_19_janv._2026__09_26_47-ffda3e48-d0a0-4822-bd6f-ed37f1f47698.png",
+      "rows": 2, "cols": 2, "mode": "lineform", "modeAlternates": ["uniform", "freeform"],
+      "hasLabel": false, "labelRegion": "none", "notes": "comic strip 2x2 farmer panels"
+    },
+    {
+      "file": "real/09_ChatGPT_Image_19_janv._2026__09_26_59-64048615-2021-4ba8-84ab-6e016302275c.png",
+      "rows": 2, "cols": 2, "mode": "lineform", "modeAlternates": ["uniform", "freeform"],
+      "hasLabel": false, "labelRegion": "none"
+    },
+    {
+      "file": "real/10_ChatGPT_Image_21_f_vr._2026__14_49_39-874c544e-fbf9-4f81-a3b0-8ce3a6ead75f.png",
+      "rows": 4, "cols": 4, "mode": "uniform", "modeAlternates": ["freeform"],
+      "hasLabel": false, "labelRegion": "none", "notes": "grains/cereals icons white bg"
+    },
+    {
+      "file": "real/11_ChatGPT_Image_21_f_vr._2026__14_49_45-c9358c02-4a07-40c0-a5cd-360b69b5ae8a.png",
+      "rows": 4, "cols": 4, "mode": "uniform", "modeAlternates": ["freeform"],
+      "hasLabel": false, "labelRegion": "none", "notes": "leafy greens icons"
+    },
+    {
+      "file": "real/12_ChatGPT_Image_21_f_vr._2026__15_00_01-f00bfd23-5d13-49c0-866b-3079eca9de23.png",
+      "rows": 4, "cols": 4, "mode": "uniform", "modeAlternates": ["freeform"],
+      "hasLabel": false, "labelRegion": "none", "notes": "flowers 4x4"
+    },
+    {
+      "file": "real/13_ChatGPT_Image_21_f_vr._2026__15_00_07-f922626b-159f-4eba-9115-ad533faafbf2.png",
+      "rows": 4, "cols": 4, "mode": "blackbg", "modeAlternates": ["uniform", "lineform"],
+      "hasLabel": false, "labelRegion": "none", "notes": "tropical fruits dark bg with grid lines"
+    },
+    {
+      "file": "real/14_ChatGPT_Image_21_f_vr._2026__15_00_11-6b23eaa6-efb5-4f37-b5bf-d2bcd3d2d694.png",
+      "rows": 4, "cols": 4, "mode": "uniform", "modeAlternates": ["freeform"],
+      "hasLabel": false, "labelRegion": "none"
+    },
+    {
+      "file": "real/15_ChatGPT_Image_21_f_vr._2026__15_04_26-f663099c-509d-4ec0-adba-db80db23fac8.png",
+      "rows": 4, "cols": 4, "mode": "uniform", "modeAlternates": ["freeform"],
+      "hasLabel": false, "labelRegion": "none", "notes": "Greek embroidery patches"
+    },
+    {
+      "file": "real/16_ChatGPT_Image_21_f_vr._2026__15_04_34-27f5e739-0fa6-4c4d-becc-0e6e7792af09.png",
+      "rows": 4, "cols": 4, "mode": "uniform", "modeAlternates": ["freeform"],
+      "hasLabel": false, "labelRegion": "none"
+    },
+    {
+      "file": "real/17_ChatGPT_Image_21_f_vr._2026__15_10_07-32a54b0c-4b54-4de0-aa47-1052a539ba2a.png",
+      "rows": 2, "cols": 2, "cells": 5, "mode": "lineform", "modeAlternates": ["freeform"],
+      "hasLabel": false, "labelRegion": "none", "notes": "comic 2x2 + wide bottom panel (5 cells)"
+    },
+    {
+      "file": "real/18_ChatGPT_Image_21_f_vr._2026__15_14_51-89a4bf99-9a8a-46de-a2d5-b4f31b92472c.png",
+      "rows": 4, "cols": 4, "mode": "uniform", "modeAlternates": ["lineform"],
+      "hasLabel": true, "labelRegion": "bottom", "labelPercent": 20, "notes": "frozen foods French labels"
+    },
+    {
+      "file": "real/19_ChatGPT_Image_23_f_vr._2026__11_37_30-97ff6501-5d0e-44f7-a319-4016ce5728ea.png",
+      "rows": 3, "cols": 3, "mode": "uniform", "modeAlternates": ["lineform"],
+      "hasLabel": true, "labelRegion": "bottom", "labelPercent": 18, "notes": "tomato plant botanical labels"
+    },
+    {
+      "file": "real/20_ChatGPT_Image_2_mars_2026__15_17_14-ad07d5e7-5b6c-4851-8628-175c73195ef2.png",
+      "rows": 4, "cols": 4, "mode": "uniform", "modeAlternates": ["lineform", "freeform"],
+      "hasLabel": false, "labelRegion": "none"
+    },
+    {
+      "file": "real/21_ChatGPT_Image_2_mars_2026__16_17_02-06a576f4-1ac0-4d82-9abe-a6f930db02d2.png",
+      "rows": 4, "cols": 4, "mode": "uniform", "modeAlternates": ["lineform"],
+      "hasLabel": true, "labelRegion": "bottom", "labelPercent": 22, "notes": "hygiene French labels"
+    },
+    {
+      "file": "real/22_ChatGPT_Image_5_mai_2026__12_05_07-1ec2104e-4596-41a2-87da-c584cc5c8119.png",
+      "rows": 4, "cols": 4, "mode": "uniform", "modeAlternates": ["freeform"],
+      "hasLabel": false, "labelRegion": "none"
+    },
+    {
+      "file": "real/23_ChatGPT_Image_6_avr._2026__11_42_57-ef37f9de-89c6-4a6e-9c7a-9941c8dbe065.png",
+      "rows": 2, "cols": 2, "mode": "uniform", "modeAlternates": ["lineform"],
+      "hasLabel": false, "labelRegion": "none", "notes": "vintage cars pixel art 2x2"
+    },
+    {
+      "file": "real/24_ChatGPT_Image_6_avr._2026__11_43_01-53266505-8cba-4a4a-87ac-2d7446a60dc6.png",
+      "rows": 3, "cols": 3, "mode": "uniform", "modeAlternates": ["lineform"],
+      "hasLabel": false, "labelRegion": "none", "notes": "vegetables 3x3 with grid lines"
+    },
+    {
+      "file": "real/25_Collection_de_fruits_et_l_gumes-a9b564e2-a8c8-4239-81dc-1c88a12eb455.png",
+      "rows": 4, "cols": 4, "mode": "uniform", "modeAlternates": ["freeform"],
+      "hasLabel": false, "labelRegion": "none"
+    },
+    {
+      "file": "real/26_e707adc7-f7df-4b7b-9848-a3c68c5b5072-82d092bf-b1a6-44c2-a06d-93a430676808.png",
+      "rows": 4, "cols": 4, "mode": "uniform", "modeAlternates": ["lineform", "freeform"],
+      "hasLabel": false, "labelRegion": "none"
+    },
+    {
+      "file": "real/27_fc75b0bf-c392-41ca-b692-4550bfb995b1-ca4fdd1b-dcde-46f8-85e0-8db55ad0c14d.png",
+      "rows": 4, "cols": 4, "mode": "uniform", "modeAlternates": ["lineform", "freeform"],
+      "hasLabel": false, "labelRegion": "none"
+    },
+    {
+      "file": "real/28_Gemini_Generated_Image_gl6qqygl6qqygl6q-90544369-a1e8-46d6-86cb-040952b017b4.png",
+      "rows": 4, "cols": 4, "mode": "uniform", "modeAlternates": ["lineform"],
+      "hasLabel": true, "labelRegion": "bottom", "labelPercent": 22, "notes": "baby care French labels"
+    },
+    {
+      "file": "real/29_Gemini_Generated_Image_iyg365iyg365iyg3-61657d31-bd51-4828-8870-5055a49ee708.png",
+      "rows": 4, "cols": 4, "mode": "uniform", "modeAlternates": ["lineform"],
+      "hasLabel": true, "labelRegion": "bottom", "labelPercent": 22
+    },
+    {
+      "file": "real/30_Gemini_Generated_Image_zgulrvzgulrvzgul-2f77d876-4bb8-486f-aec3-848ba328f375.png",
+      "rows": 4, "cols": 4, "mode": "uniform", "modeAlternates": ["lineform"],
+      "hasLabel": true, "labelRegion": "bottom", "labelPercent": 22
+    },
+    {
+      "file": "real/31_grid-image-b64c09d2-fa6d-4b09-af36-1f66c5aab4a5.png",
+      "rows": 4, "cols": 6, "mode": "uniform", "modeAlternates": ["lineform"],
+      "hasLabel": false, "labelRegion": "none", "notes": "gardening isometric 4x6 with outer indices"
+    },
+    {
+      "file": "real/32_grid-image__1_-957458c1-1e50-413a-ae20-c7ef34db325e.png",
+      "rows": 4, "cols": 4, "mode": "uniform", "modeAlternates": ["lineform"],
+      "hasLabel": false, "labelRegion": "none"
+    },
+    {
+      "file": "real/33_grid-image__2_-cb5c45f1-712d-4565-8ff5-62ec16df12ec.png",
+      "rows": 2, "cols": 2, "mode": "uniform", "modeAlternates": ["lineform"],
+      "hasLabel": false, "labelRegion": "none"
+    },
+    {
+      "file": "real/34_grid-image__3_-a492d455-ddd3-404f-8808-ba74d8ac1c12.png",
+      "rows": 4, "cols": 4, "mode": "uniform", "modeAlternates": ["freeform"],
+      "hasLabel": false, "labelRegion": "none"
+    },
+    {
+      "file": "real/35_grid-image__4_-86cf0f8c-bea2-4542-8676-05573be57dc0.png",
+      "rows": 4, "cols": 4, "mode": "uniform", "modeAlternates": ["lineform"],
+      "hasLabel": false, "labelRegion": "none"
+    },
+    {
+      "file": "real/36_grid-image__6_-fcc34a34-7ad1-4d1f-90e9-4cd9220a210f.png",
+      "rows": 4, "cols": 4, "mode": "uniform", "modeAlternates": ["lineform"],
+      "hasLabel": false, "labelRegion": "none"
+    },
+    {
+      "file": "real/37_Illustrations_botaniques_estivales_en_grille-9ba633fe-446a-4d3f-b569-1c2b45d98c1.png",
+      "rows": 4, "cols": 4, "mode": "uniform", "modeAlternates": ["freeform"],
+      "hasLabel": false, "labelRegion": "none"
+    },
+    {
+      "file": "real/38_Illustrations_de_l_gumes_et_herbes-b5513c0c-3f6b-4d36-a4e9-b67b687bea77.png",
+      "rows": 4, "cols": 4, "mode": "uniform", "modeAlternates": ["freeform"],
+      "hasLabel": false, "labelRegion": "none"
+    },
+    {
+      "file": "real/39_image-0ccf0703-8ff3-4a2a-aa3a-6815fbe439d7.png",
+      "rows": 4, "cols": 4, "mode": "uniform", "modeAlternates": ["freeform", "lineform"],
+      "hasLabel": false, "labelRegion": "none"
+    },
+    {
+      "file": "real/40_image-0f540a1f-12ac-41e7-b46e-da8c56766df1.png",
+      "rows": 4, "cols": 4, "mode": "uniform", "modeAlternates": ["freeform", "lineform"],
+      "hasLabel": false, "labelRegion": "none"
+    },
+    {
+      "file": "real/41_image-2acc11e8-7fc9-41b2-bfbd-34ff577d14a9.png",
+      "rows": 4, "cols": 4, "mode": "uniform", "modeAlternates": ["freeform"],
+      "hasLabel": false, "labelRegion": "none"
+    },
+    {
+      "file": "real/42_image-459b8839-e6de-4eb4-9325-139c14d0e2ee.png",
+      "rows": 4, "cols": 4, "mode": "uniform", "modeAlternates": ["freeform"],
+      "hasLabel": false, "labelRegion": "none"
+    },
+    {
+      "file": "real/43_image-988c3edc-8cf9-412a-b38e-56e863974df9.png",
+      "rows": 4, "cols": 4, "mode": "uniform", "modeAlternates": ["freeform"],
+      "hasLabel": false, "labelRegion": "none"
+    },
+    {
+      "file": "real/44_image-adea0c5c-2669-4213-892b-0c4922b4e81c.png",
+      "rows": 4, "cols": 4, "mode": "uniform", "modeAlternates": ["freeform", "lineform"],
+      "hasLabel": false, "labelRegion": "none"
+    },
+    {
+      "file": "real/45_image-d20b9312-093b-4a7d-b004-08ea44e2d4d4.png",
+      "rows": 4, "cols": 4, "mode": "uniform", "modeAlternates": ["freeform", "lineform"],
+      "hasLabel": false, "labelRegion": "none"
+    },
+    {
+      "file": "real/46_image-e4199097-aac6-453d-8007-ae26572ffdab.png",
+      "rows": 2, "cols": 2, "mode": "uniform", "modeAlternates": ["freeform"],
+      "hasLabel": false, "labelRegion": "none"
+    },
+    {
+      "file": "real/47_image-f83efebb-3bd8-4561-ba83-72d93c218c07.png",
+      "rows": 4, "cols": 4, "mode": "uniform", "modeAlternates": ["freeform"],
+      "hasLabel": false, "labelRegion": "none"
+    },
+    {
+      "file": "real/48_image-ff39871c-064c-4da5-8e72-8587f92dd8f3.png",
+      "rows": 2, "cols": 2, "mode": "uniform", "modeAlternates": ["freeform"],
+      "hasLabel": false, "labelRegion": "none"
+    },
+    {
+      "file": "real/49_image-removebg-preview__22_-8792256a-b1e2-48f8-a120-41dfbae8d23e.png",
+      "rows": 4, "cols": 4, "mode": "uniform", "modeAlternates": ["freeform"],
+      "hasLabel": false, "labelRegion": "none"
+    },
+    {
+      "file": "real/50_imageplante-c9c52fee-69e2-4cc7-8553-0abed0a64e87.png",
+      "rows": 4, "cols": 4, "mode": "uniform", "modeAlternates": ["freeform"],
+      "hasLabel": false, "labelRegion": "none"
+    },
+    {
+      "file": "real/51_Meaticons-500659d1-23d5-410c-9f83-8558951e44b2.png",
+      "rows": 4, "cols": 4, "mode": "uniform", "modeAlternates": ["freeform"],
+      "hasLabel": false, "labelRegion": "none", "notes": "meat icons grid"
+    }
+  ]
+}

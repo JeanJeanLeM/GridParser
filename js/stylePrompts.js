@@ -91,12 +91,16 @@
       '- One square image that is a perfect ' + grid + ' regular grid of CONTENT tiles only (equal cell sizes).',
       '- CRITICAL — ONE undivided cell per tile: icon + label share ONE continuous open rectangle. Do NOT draw any horizontal (or vertical) black/gray line inside a cell between the icon and the text. No inner frame, no subtitle bar border, no rule under the icon. A line under the icon = WRONG (it looks like two cells and breaks Grid mode).',
       '- Never put labels in separate cells, never add an extra label-only row/column, never put caption text between cells.',
-      '- Inside each cell (top to bottom, same white fill): fruit/icon centered in the upper area, then the label text floating near the bottom — same background, no divider.',
+      '- Inside each cell (top to bottom, same white fill): icon in the upper ~80%; plain label text only in the bottom ~20%.',
       '- ONLY black separator lines allowed: the thin continuous pure-black grid lines BETWEEN cells (1-3 px), full span, no gaps, no dashes. Nothing else is a line.',
       '- Pure white margins outside the grid; no outer frame, watermark, title, or caption outside cells.',
       '- Cell fill: solid plain white behind icon and text; no scenic backdrop, no floor.',
-      '- Label: short black sans-serif text only, OCR-friendly, high contrast, no effects, no box, no underline.',
-      '- Designed so Grid mode detects exactly ' + grid + ' tiles (not 2× that because of fake inner label rows), then Auto-name reads the in-cell label and Remove-label crops the bottom text area.'
+      'LABELS ARE FUNCTIONAL OCR TEXT — NOT ART:',
+      '- Art style applies ONLY to the fruit/icon. Labels must look identical on every tile and every style.',
+      '- Font: Inter (or Helvetica/Arial), regular weight, pure solid black (#000000) only.',
+      '- Placement: horizontally centered in the bottom 20% of the SAME cell.',
+      '- FORBIDDEN on labels: any color, gradient, outline/stroke, drop shadow, drip, graffiti lettering, comic/bubble font, slant/rotation, pill/badge/bubble, rounded rectangle, HUD frame, underline, or matching the fruit color.',
+      '- Designed so Grid mode detects exactly ' + grid + ' tiles, Auto-name OCRs the plain black label, then Remove-label crops the bottom ~20%.'
     ].join('\n');
   }
 
@@ -131,10 +135,10 @@
     return [
       'Generate a single square image for Grid2icons (G2I): a perfect ' + grid + ' fruit icon grid.',
       'Art direction for EVERY cell: "' + styleName + '" (' + tagline + '). Same style on all 16 tiles — do not mix styles.',
-      'Exactly 16 content cells. Each cell = icon + label on ONE continuous white area. FORBIDDEN: any horizontal black line under the icon / above the text (that splits the cell).',
+      'Exactly 16 content cells. Each cell = stylized fruit icon (upper 80%) + plain black Inter label (bottom 20%) on ONE continuous white fill. FORBIDDEN: horizontal line under icon; colored/outlined/framed/pill labels.',
       'Use this exact fruit map (row-major, left-to-right, top-to-bottom):',
       fruitCellMapLines(),
-      'Every cell on solid plain white. Labels are the fruit names only (Apple, Banana, …), text floating at the bottom of the cell with no bar or divider.',
+      'Every cell on solid plain white. Labels are plain fruit names only — never styled like the art.',
       g2iLayoutRules(grid),
       'Output: one high-resolution square image ready for Grid2icons Parser (Grid mode, 4 rows x 4 cols).'
     ].join('\n');

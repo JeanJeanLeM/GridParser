@@ -1,0 +1,416 @@
+{
+  "version": 1,
+  "images": [
+    {
+      "file": "synthetic/syn_000_uniform_5x4.png",
+      "rows": 5,
+      "cols": 4,
+      "mode": "uniform",
+      "modeAlternates": [
+        "lineform"
+      ],
+      "hasLabel": false,
+      "labelRegion": "none"
+    },
+    {
+      "file": "synthetic/syn_001_uniform_2x5_label_top.png",
+      "rows": 2,
+      "cols": 5,
+      "mode": "uniform",
+      "modeAlternates": [
+        "lineform"
+      ],
+      "hasLabel": true,
+      "labelRegion": "top",
+      "labelPercent": 22
+    },
+    {
+      "file": "synthetic/syn_002_lineform_4x3.png",
+      "rows": 4,
+      "cols": 3,
+      "mode": "lineform",
+      "modeAlternates": [
+        "uniform"
+      ],
+      "hasLabel": false,
+      "labelRegion": "none"
+    },
+    {
+      "file": "synthetic/syn_003_uniform_3x4.png",
+      "rows": 3,
+      "cols": 4,
+      "mode": "uniform",
+      "modeAlternates": [
+        "lineform"
+      ],
+      "hasLabel": false,
+      "labelRegion": "none"
+    },
+    {
+      "file": "synthetic/syn_004_blackbg_2x4.png",
+      "rows": 2,
+      "cols": 4,
+      "mode": "blackbg",
+      "modeAlternates": [
+        "uniform",
+        "lineform"
+      ],
+      "hasLabel": false,
+      "labelRegion": "none"
+    },
+    {
+      "file": "synthetic/syn_005_uniform_2x2.png",
+      "rows": 2,
+      "cols": 2,
+      "mode": "uniform",
+      "modeAlternates": [
+        "lineform"
+      ],
+      "hasLabel": false,
+      "labelRegion": "none"
+    },
+    {
+      "file": "synthetic/syn_006_lineform_5x2.png",
+      "rows": 5,
+      "cols": 2,
+      "mode": "lineform",
+      "modeAlternates": [
+        "uniform"
+      ],
+      "hasLabel": false,
+      "labelRegion": "none"
+    },
+    {
+      "file": "synthetic/syn_007_blackbg_3x3.png",
+      "rows": 3,
+      "cols": 3,
+      "mode": "blackbg",
+      "modeAlternates": [
+        "uniform",
+        "lineform"
+      ],
+      "hasLabel": false,
+      "labelRegion": "none"
+    },
+    {
+      "file": "synthetic/syn_008_uniform_3x5_label_top.png",
+      "rows": 3,
+      "cols": 5,
+      "mode": "uniform",
+      "modeAlternates": [
+        "lineform"
+      ],
+      "hasLabel": true,
+      "labelRegion": "top",
+      "labelPercent": 22
+    },
+    {
+      "file": "synthetic/syn_009_blackbg_5x4.png",
+      "rows": 5,
+      "cols": 4,
+      "mode": "blackbg",
+      "modeAlternates": [
+        "uniform",
+        "lineform"
+      ],
+      "hasLabel": false,
+      "labelRegion": "none"
+    },
+    {
+      "file": "synthetic/syn_010_uniform_3x3.png",
+      "rows": 3,
+      "cols": 3,
+      "mode": "uniform",
+      "modeAlternates": [
+        "lineform"
+      ],
+      "hasLabel": false,
+      "labelRegion": "none"
+    },
+    {
+      "file": "synthetic/syn_011_lineform_2x3.png",
+      "rows": 2,
+      "cols": 3,
+      "mode": "lineform",
+      "modeAlternates": [
+        "uniform"
+      ],
+      "hasLabel": false,
+      "labelRegion": "none"
+    },
+    {
+      "file": "synthetic/syn_012_uniform_4x3.png",
+      "rows": 4,
+      "cols": 3,
+      "mode": "uniform",
+      "modeAlternates": [
+        "lineform"
+      ],
+      "hasLabel": false,
+      "labelRegion": "none"
+    },
+    {
+      "file": "synthetic/syn_013_uniform_2x2.png",
+      "rows": 2,
+      "cols": 2,
+      "mode": "uniform",
+      "modeAlternates": [
+        "lineform"
+      ],
+      "hasLabel": false,
+      "labelRegion": "none"
+    },
+    {
+      "file": "synthetic/syn_014_blackbg_3x5.png",
+      "rows": 3,
+      "cols": 5,
+      "mode": "blackbg",
+      "modeAlternates": [
+        "uniform",
+        "lineform"
+      ],
+      "hasLabel": false,
+      "labelRegion": "none"
+    },
+    {
+      "file": "synthetic/syn_015_uniform_5x5.png",
+      "rows": 5,
+      "cols": 5,
+      "mode": "uniform",
+      "modeAlternates": [
+        "lineform"
+      ],
+      "hasLabel": false,
+      "labelRegion": "none"
+    },
+    {
+      "file": "synthetic/syn_016_blackbg_5x3.png",
+      "rows": 5,
+      "cols": 3,
+      "mode": "blackbg",
+      "modeAlternates": [
+        "uniform",
+        "lineform"
+      ],
+      "hasLabel": false,
+      "labelRegion": "none"
+    },
+    {
+      "file": "synthetic/syn_017_blackbg_2x4.png",
+      "rows": 2,
+      "cols": 4,
+      "mode": "blackbg",
+      "modeAlternates": [
+        "uniform",
+        "lineform"
+      ],
+      "hasLabel": false,
+      "labelRegion": "none"
+    },
+    {
+      "file": "synthetic/syn_018_uniform_3x5_label_top.png",
+      "rows": 3,
+      "cols": 5,
+      "mode": "uniform",
+      "modeAlternates": [
+        "lineform"
+      ],
+      "hasLabel": true,
+      "labelRegion": "top",
+      "labelPercent": 22
+    },
+    {
+      "file": "synthetic/syn_019_blackbg_5x2.png",
+      "rows": 5,
+      "cols": 2,
+      "mode": "blackbg",
+      "modeAlternates": [
+        "uniform",
+        "lineform"
+      ],
+      "hasLabel": false,
+      "labelRegion": "none"
+    },
+    {
+      "file": "synthetic/syn_020_uniform_4x5.png",
+      "rows": 4,
+      "cols": 5,
+      "mode": "uniform",
+      "modeAlternates": [
+        "lineform"
+      ],
+      "hasLabel": false,
+      "labelRegion": "none"
+    },
+    {
+      "file": "synthetic/syn_021_blackbg_2x3.png",
+      "rows": 2,
+      "cols": 3,
+      "mode": "blackbg",
+      "modeAlternates": [
+        "uniform",
+        "lineform"
+      ],
+      "hasLabel": false,
+      "labelRegion": "none"
+    },
+    {
+      "file": "synthetic/syn_022_uniform_2x4.png",
+      "rows": 2,
+      "cols": 4,
+      "mode": "uniform",
+      "modeAlternates": [
+        "lineform"
+      ],
+      "hasLabel": false,
+      "labelRegion": "none"
+    },
+    {
+      "file": "synthetic/syn_023_uniform_5x2.png",
+      "rows": 5,
+      "cols": 2,
+      "mode": "uniform",
+      "modeAlternates": [
+        "lineform"
+      ],
+      "hasLabel": false,
+      "labelRegion": "none"
+    },
+    {
+      "file": "synthetic/syn_024_lineform_2x4.png",
+      "rows": 2,
+      "cols": 4,
+      "mode": "lineform",
+      "modeAlternates": [
+        "uniform"
+      ],
+      "hasLabel": false,
+      "labelRegion": "none"
+    },
+    {
+      "file": "synthetic/syn_025_uniform_4x3.png",
+      "rows": 4,
+      "cols": 3,
+      "mode": "uniform",
+      "modeAlternates": [
+        "lineform"
+      ],
+      "hasLabel": false,
+      "labelRegion": "none"
+    },
+    {
+      "file": "synthetic/syn_026_lineform_5x5.png",
+      "rows": 5,
+      "cols": 5,
+      "mode": "lineform",
+      "modeAlternates": [
+        "uniform"
+      ],
+      "hasLabel": false,
+      "labelRegion": "none"
+    },
+    {
+      "file": "synthetic/syn_027_blackbg_3x5.png",
+      "rows": 3,
+      "cols": 5,
+      "mode": "blackbg",
+      "modeAlternates": [
+        "uniform",
+        "lineform"
+      ],
+      "hasLabel": false,
+      "labelRegion": "none"
+    },
+    {
+      "file": "synthetic/syn_028_blackbg_3x5.png",
+      "rows": 3,
+      "cols": 5,
+      "mode": "blackbg",
+      "modeAlternates": [
+        "uniform",
+        "lineform"
+      ],
+      "hasLabel": false,
+      "labelRegion": "none"
+    },
+    {
+      "file": "synthetic/syn_029_blackbg_2x3.png",
+      "rows": 2,
+      "cols": 3,
+      "mode": "blackbg",
+      "modeAlternates": [
+        "uniform",
+        "lineform"
+      ],
+      "hasLabel": false,
+      "labelRegion": "none"
+    },
+    {
+      "file": "synthetic/syn_030_uniform_3x2.png",
+      "rows": 3,
+      "cols": 2,
+      "mode": "uniform",
+      "modeAlternates": [
+        "lineform"
+      ],
+      "hasLabel": false,
+      "labelRegion": "none"
+    },
+    {
+      "file": "synthetic/syn_031_uniform_4x4.png",
+      "rows": 4,
+      "cols": 4,
+      "mode": "uniform",
+      "modeAlternates": [
+        "lineform"
+      ],
+      "hasLabel": false,
+      "labelRegion": "none"
+    },
+    {
+      "file": "synthetic/syn_032_uniform_3x2.png",
+      "rows": 3,
+      "cols": 2,
+      "mode": "uniform",
+      "modeAlternates": [
+        "lineform"
+      ],
+      "hasLabel": false,
+      "labelRegion": "none"
+    },
+    {
+      "file": "synthetic/syn_033_uniform_2x4.png",
+      "rows": 2,
+      "cols": 4,
+      "mode": "uniform",
+      "modeAlternates": [
+        "lineform"
+      ],
+      "hasLabel": false,
+      "labelRegion": "none"
+    },
+    {
+      "file": "synthetic/syn_034_uniform_3x4_label_bottom.png",
+      "rows": 3,
+      "cols": 4,
+      "mode": "uniform",
+      "modeAlternates": [
+        "lineform"
+      ],
+      "hasLabel": true,
+      "labelRegion": "bottom",
+      "labelPercent": 22
+    },
+    {
+      "file": "synthetic/syn_035_uniform_5x3.png",
+      "rows": 5,
+      "cols": 3,
+      "mode": "uniform",
+      "modeAlternates": [
+        "lineform"
+      ],
+      "hasLabel": false,
+      "labelRegion": "none"
+    }
+  ]
+}

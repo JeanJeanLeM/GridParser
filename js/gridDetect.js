@@ -262,14 +262,94 @@
     return result.slice(0, count);
   }
 
+  function resolvePixels(image, options) {
+    var opts = options || {};
+    if (typeof imageBuffer !== 'undefined' && imageBuffer.resolve) {
+      var resolved = imageBuffer.resolve(image, opts);
+      if (resolved) return resolved;
+    }
+    if (opts.imageData && opts.imageData.data) {
+      return { data: opts.imageData.data, width: opts.imageData.width, height: opts.imageData.height };
+    }
+    if (image && image.data && (image.width || image.naturalWidth)) {
+      return {
+        data: image.data,
+        width: image.width || image.naturalWidth,
+        height: image.height || image.naturalHeight
+      };
+    }
+    var w = image && (image.naturalWidth || image.width);
+    var h = image && (image.naturalHeight || image.height);
+    if (!w || !h || typeof document === 'undefined') return null;
+    var canvas = document.createElement('canvas');
+    canvas.width = w;
+    canvas.height = h;
+    var ctx = canvas.getContext('2d');
+    if (!ctx) return null;
+    ctx.drawImage(image, 0, 0);
+    return { data: ctx.getImageData(0, 0, w, h).data, width: w, height: h };
+  }
+
+  function enforceMinGap(bounds, size, gap) {
+    var b = bounds.slice();
+    for (var i = 1; i < b.length - 1; i++) {
+      var prev = b[i - 1];
+      var next = b[i + 1];
+      if (b[i] - prev < gap) b[i] = Math.min(prev + gap, (prev + next) / 2);
+      if (next - b[i] < gap) b[i] = Math.max(next - gap, (prev + next) / 2);
+    }
+    return b;
+  }
+
   /**
-   * Detect grid lines from image pixel data.
-   * Uses continuity (long contiguous dark span) to reject text; only accepts lines with thickness <= maxLinePx.
-   * @param {HTMLImageElement|object} image - image with naturalWidth/naturalHeight
-   * @param {Object} options - { blackThreshold?, darknessThreshold?, minLinePx?, maxLinePx?, minGap?, minSpanFraction?, gridCols?, gridRows? }
-   * @returns {{ xBounds: number[], yBounds: number[], suggestedTrim: number }} - (gridCols+1) x, (gridRows+1) y, and trim in pixels
+   * Infer grid rows/cols from detected line runs (no size brute-force).
+   * Prefer cases where outer + inner lines form a regular lattice.
    */
-  function detectGridLines(image, options) {
+  function inferGridSizeFromRuns(colRuns, rowRuns, w, h) {
+    // Ensure outer edges count as bounds when only inner separators were found.
+    function withEdges(runs, size) {
+      var list = (runs || []).slice().sort(function (a, b) { return a.position - b.position; });
+      var edgeTol = Math.max(3, size * 0.02);
+      if (!list.length || list[0].position > edgeTol) {
+        list.unshift({ position: 0, thickness: 1 });
+      }
+      if (!list.length || size - 1 - list[list.length - 1].position > edgeTol) {
+        list.push({ position: size - 1, thickness: 1 });
+      }
+      return list;
+    }
+    var colsRuns = withEdges(colRuns, w);
+    var rowsRuns = withEdges(rowRuns, h);
+    var cols = Math.max(1, Math.min(10, colsRuns.length - 1));
+    var rows = Math.max(1, Math.min(10, rowsRuns.length - 1));
+    function regularity(runs, size) {
+      if (!runs || runs.length < 2) return 0;
+      var spans = [];
+      for (var i = 1; i < runs.length; i++) spans.push(runs[i].position - runs[i - 1].position);
+      var sum = 0;
+      for (var j = 0; j < spans.length; j++) sum += spans[j];
+      var mean = sum / spans.length;
+      if (mean < size * 0.04) return 0;
+      var v = 0;
+      for (var k = 0; k < spans.length; k++) {
+        var d = spans[k] - mean;
+        v += d * d;
+      }
+      var cv = Math.sqrt(v / spans.length) / mean;
+      return cv < 0.18 ? 1 : (cv < 0.35 ? 0.6 : 0.25);
+    }
+    var reg = (regularity(colsRuns, w) + regularity(rowsRuns, h)) / 2;
+    var confidence = reg;
+    if (cols >= 2 && rows >= 2 && reg >= 0.6) confidence = Math.max(confidence, 0.75);
+    if (cols * rows >= 4 && reg >= 0.85) confidence = Math.max(confidence, 0.9);
+    return { rows: rows, cols: cols, confidence: confidence, colRuns: colsRuns, rowRuns: rowsRuns };
+  }
+
+  /**
+   * Detect line runs once; optionally infer grid size.
+   * @returns {{ colRuns, rowRuns, w, h, inferred }|null}
+   */
+  function detectLineRuns(image, options) {
     var opts = options || {};
     var blackThreshold = Math.min(255, Math.max(0, parseInt(opts.blackThreshold, 10) || 80));
     var darknessThreshold = typeof opts.darknessThreshold === 'number' ? opts.darknessThreshold : 0.15;
@@ -278,36 +358,37 @@
     maxLinePx = Math.max(minLinePx, maxLinePx);
     var minGap = Math.max(2, parseInt(opts.minGap, 10) || 8);
     var minSpanFraction = typeof opts.minSpanFraction === 'number' ? opts.minSpanFraction : 0.35;
-    var gridCols = Math.max(1, Math.min(10, parseInt(opts.gridCols, 10) || 4));
-    var gridRows = Math.max(1, Math.min(10, parseInt(opts.gridRows, 10) || 4));
-    var useActualPositions = opts.useActualLinePositions === true;
     var allowDashed = opts.allowDashed === true;
 
-    var w = image.naturalWidth || image.width;
-    var h = image.naturalHeight || image.height;
-    if (!w || !h) return null;
+    var pix = resolvePixels(image, opts);
+    if (!pix) return null;
+    var data = pix.data;
+    var w = pix.width;
+    var h = pix.height;
 
-    var canvas = typeof document !== 'undefined' && document.createElement('canvas');
-    if (!canvas) return null;
-    canvas.width = w;
-    canvas.height = h;
-    var ctx = canvas.getContext('2d');
-    if (!ctx) return null;
-    ctx.drawImage(image, 0, 0);
-    var data = ctx.getImageData(0, 0, w, h).data;
-
-    /* Use line-aware profiles so rows/columns with only short dark segments (e.g. text) are ignored. */
     var colProfile = lineAwareProfile(data, w, h, 'x', blackThreshold, minSpanFraction, allowDashed);
     var rowProfile = lineAwareProfile(data, w, h, 'y', blackThreshold, minSpanFraction, allowDashed);
-
-    var colRuns = findRuns(colProfile, darknessThreshold, minLinePx, maxLinePx);
-    var rowRuns = findRuns(rowProfile, darknessThreshold, minLinePx, maxLinePx);
-
-    colRuns = mergeCloseLines(colRuns, minGap);
-    rowRuns = mergeCloseLines(rowRuns, minGap);
-
+    var colRuns = mergeCloseLines(findRuns(colProfile, darknessThreshold, minLinePx, maxLinePx), minGap);
+    var rowRuns = mergeCloseLines(findRuns(rowProfile, darknessThreshold, minLinePx, maxLinePx), minGap);
     colRuns.sort(function (a, b) { return a.position - b.position; });
     rowRuns.sort(function (a, b) { return a.position - b.position; });
+
+    return {
+      colRuns: colRuns,
+      rowRuns: rowRuns,
+      w: w,
+      h: h,
+      inferred: inferGridSizeFromRuns(colRuns, rowRuns, w, h)
+    };
+  }
+
+  /**
+   * Build bounds from runs for a given rows/cols.
+   */
+  function boundsFromRuns(colRuns, rowRuns, w, h, gridCols, gridRows, options) {
+    var opts = options || {};
+    var minGap = Math.max(2, parseInt(opts.minGap, 10) || 8);
+    var useActualPositions = opts.useActualLinePositions !== false;
 
     var leftOuter = 0;
     var rightOuter = w;
@@ -322,41 +403,69 @@
       bottomOuter = Math.min(h, rowRuns[rowRuns.length - 1].position);
     }
 
-    var contentW = rightOuter - leftOuter;
-    var contentH = bottomOuter - topOuter;
+    var contentW = Math.max(1, rightOuter - leftOuter);
+    var contentH = Math.max(1, bottomOuter - topOuter);
     var innerColRuns = colRuns.length > 2 ? colRuns.slice(1, -1) : colRuns;
     var innerRowRuns = rowRuns.length > 2 ? rowRuns.slice(1, -1) : rowRuns;
     var relCol = innerColRuns.map(function (r) { return { position: r.position - leftOuter, thickness: r.thickness }; });
     var relRow = innerRowRuns.map(function (r) { return { position: r.position - topOuter, thickness: r.thickness }; });
-    var numInnerCol = gridCols - 1;
-    var numInnerRow = gridRows - 1;
+    var numInnerCol = Math.max(0, gridCols - 1);
+    var numInnerRow = Math.max(0, gridRows - 1);
     var innerX = (useActualPositions ? pickNLinesFromActual(relCol, contentW, numInnerCol) : pickNLines(relCol, contentW, numInnerCol)).map(function (p) { return leftOuter + p; });
     var innerY = (useActualPositions ? pickNLinesFromActual(relRow, contentH, numInnerRow) : pickNLines(relRow, contentH, numInnerRow)).map(function (p) { return topOuter + p; });
     innerX.sort(function (a, b) { return a - b; });
     innerY.sort(function (a, b) { return a - b; });
 
-    function enforceMinGap(bounds, size, gap) {
-      var b = bounds.slice();
-      for (var i = 1; i < b.length - 1; i++) {
-        var prev = b[i - 1];
-        var next = b[i + 1];
-        if (b[i] - prev < gap) b[i] = Math.min(prev + gap, (prev + next) / 2);
-        if (next - b[i] < gap) b[i] = Math.max(next - gap, (prev + next) / 2);
-      }
-      return b;
-    }
     var xBounds = enforceMinGap([leftOuter].concat(innerX).concat([rightOuter]), w, minGap);
     var yBounds = enforceMinGap([topOuter].concat(innerY).concat([bottomOuter]), h, minGap);
 
     var innerThickness = [];
     innerColRuns.forEach(function (r) { innerThickness.push(r.thickness); });
     innerRowRuns.forEach(function (r) { innerThickness.push(r.thickness); });
-    var suggestedTrim = innerThickness.length
-      ? Math.max.apply(null, innerThickness)
-      : 0;
+    var suggestedTrim = innerThickness.length ? Math.max.apply(null, innerThickness) : 0;
 
-    return { xBounds: xBounds, yBounds: yBounds, suggestedTrim: Math.min(20, Math.ceil(suggestedTrim)) };
+    return {
+      xBounds: xBounds,
+      yBounds: yBounds,
+      suggestedTrim: Math.min(20, Math.ceil(suggestedTrim)),
+      rows: gridRows,
+      cols: gridCols
+    };
   }
 
-  return { detectGridLines: detectGridLines };
+  /**
+   * Detect grid lines from image pixel data.
+   * Uses continuity (long contiguous dark span) to reject text; only accepts lines with thickness <= maxLinePx.
+   * Pass options.inferSize=true to derive rows/cols from line runs instead of options.gridRows/gridCols.
+   * @param {HTMLImageElement|object} image - image with naturalWidth/naturalHeight or {data,width,height}
+   * @param {Object} options - { blackThreshold?, darknessThreshold?, minLinePx?, maxLinePx?, minGap?, minSpanFraction?, gridCols?, gridRows?, inferSize?, imageData? }
+   * @returns {{ xBounds: number[], yBounds: number[], suggestedTrim: number, rows?: number, cols?: number }}
+   */
+  function detectGridLines(image, options) {
+    var opts = options || {};
+    var runs = detectLineRuns(image, opts);
+    if (!runs) return null;
+
+    var gridCols = Math.max(1, Math.min(10, parseInt(opts.gridCols, 10) || 4));
+    var gridRows = Math.max(1, Math.min(10, parseInt(opts.gridRows, 10) || 4));
+    var colRuns = runs.colRuns;
+    var rowRuns = runs.rowRuns;
+    if (opts.inferSize && runs.inferred && runs.inferred.cols >= 1 && runs.inferred.rows >= 1) {
+      gridCols = runs.inferred.cols;
+      gridRows = runs.inferred.rows;
+      if (runs.inferred.colRuns) colRuns = runs.inferred.colRuns;
+      if (runs.inferred.rowRuns) rowRuns = runs.inferred.rowRuns;
+    }
+
+    var result = boundsFromRuns(colRuns, rowRuns, runs.w, runs.h, gridCols, gridRows, opts);
+    result.inferred = runs.inferred;
+    return result;
+  }
+
+  return {
+    detectGridLines: detectGridLines,
+    detectLineRuns: detectLineRuns,
+    boundsFromRuns: boundsFromRuns,
+    inferGridSizeFromRuns: inferGridSizeFromRuns
+  };
 });

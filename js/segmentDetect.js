@@ -23,6 +23,34 @@
     return luminance(r, g, b);
   }
 
+  function resolvePixels(image, options) {
+    var opts = options || {};
+    if (typeof imageBuffer !== 'undefined' && imageBuffer.resolve) {
+      var resolved = imageBuffer.resolve(image, opts);
+      if (resolved) return resolved;
+    }
+    if (opts.imageData && opts.imageData.data) {
+      return { data: opts.imageData.data, width: opts.imageData.width, height: opts.imageData.height };
+    }
+    if (image && image.data && (image.width || image.naturalWidth)) {
+      return {
+        data: image.data,
+        width: image.width || image.naturalWidth,
+        height: image.height || image.naturalHeight
+      };
+    }
+    var w = image && (image.naturalWidth || image.width);
+    var h = image && (image.naturalHeight || image.height);
+    if (!w || !h || typeof document === 'undefined') return null;
+    var canvas = document.createElement('canvas');
+    canvas.width = w;
+    canvas.height = h;
+    var ctx = canvas.getContext('2d');
+    if (!ctx) return null;
+    ctx.drawImage(image, 0, 0);
+    return { data: ctx.getImageData(0, 0, w, h).data, width: w, height: h };
+  }
+
   function buildLightMask(data, w, h, whiteThreshold) {
     var out = new Uint8Array(w * h);
     for (var y = 0; y < h; y++) {
@@ -345,17 +373,11 @@
     var mergeGapPx = Math.max(0, parseInt(opts.mergeGap, 10) || 2);
     var maxTrackGapPx = Math.max(1, parseInt(opts.maxTrackGapPx, 10) || 2);
     var minOverlapRatio = typeof opts.minOverlapRatio === 'number' ? opts.minOverlapRatio : 0.45;
-    var w = image.naturalWidth || image.width;
-    var h = image.naturalHeight || image.height;
-    if (!w || !h) return [];
-    var canvas = typeof document !== 'undefined' && document.createElement('canvas');
-    if (!canvas) return [];
-    canvas.width = w;
-    canvas.height = h;
-    var ctx = canvas.getContext('2d');
-    if (!ctx) return [];
-    ctx.drawImage(image, 0, 0);
-    var data = ctx.getImageData(0, 0, w, h).data;
+    var pix = resolvePixels(image, opts);
+    if (!pix) return [];
+    var data = pix.data;
+    var w = pix.width;
+    var h = pix.height;
     var mask = buildDarkMask(data, w, h, darkThreshold);
     var trackOpts = {
       minRunFraction: minRunFraction,
@@ -393,17 +415,11 @@
     var mergeGapPx = Math.max(0, parseInt(opts.mergeGapPx, 10) || 2);
     var minFlankLuminance = opts.minFlankLuminance != null ? Math.min(255, Math.max(0, parseInt(opts.minFlankLuminance, 10) || 0)) : null;
     var flankSamplePx = Math.max(0, parseInt(opts.flankSamplePx, 10) || 0);
-    var w = image.naturalWidth || image.width;
-    var h = image.naturalHeight || image.height;
-    if (!w || !h) return [];
-    var canvas = typeof document !== 'undefined' && document.createElement('canvas');
-    if (!canvas) return [];
-    canvas.width = w;
-    canvas.height = h;
-    var ctx = canvas.getContext('2d');
-    if (!ctx) return [];
-    ctx.drawImage(image, 0, 0);
-    var data = ctx.getImageData(0, 0, w, h).data;
+    var pix = resolvePixels(image, opts);
+    if (!pix) return [];
+    var data = pix.data;
+    var w = pix.width;
+    var h = pix.height;
     var colProfile = darknessProfile(data, w, h, 'x', darkThreshold);
     var rowProfile = darknessProfile(data, w, h, 'y', darkThreshold);
     function filterByContiguous(profile, size, minSpanFrac) {
@@ -492,17 +508,11 @@
     var minHFrac = typeof opts.minHFrac === 'number' ? opts.minHFrac : 0.05;
     var pad = Math.max(0, parseInt(opts.padPx, 10) || 1);
     var mergeGap = Math.max(0, parseInt(opts.mergeGapPx, 10) || 2);
-    var w = image.naturalWidth || image.width;
-    var h = image.naturalHeight || image.height;
-    if (!w || !h) return [];
-    var canvas = typeof document !== 'undefined' && document.createElement('canvas');
-    if (!canvas) return [];
-    canvas.width = w;
-    canvas.height = h;
-    var ctx = canvas.getContext('2d');
-    if (!ctx) return [];
-    ctx.drawImage(image, 0, 0);
-    var data = ctx.getImageData(0, 0, w, h).data;
+    var pix = resolvePixels(image, opts);
+    if (!pix) return [];
+    var data = pix.data;
+    var w = pix.width;
+    var h = pix.height;
     var mask = new Uint8Array(w * h);
     for (var y = 0; y < h; y++) {
       for (var x = 0; x < w; x++) {
@@ -572,17 +582,11 @@
       maxThicknessPx: parseInt(opts.maxThicknessPx, 10) || 12,
       mergeGapPx: parseInt(opts.mergeGapPx, 10) || 2
     };
-    var w = image.naturalWidth || image.width;
-    var h = image.naturalHeight || image.height;
-    if (!w || !h) return [];
-    var canvas = typeof document !== 'undefined' && document.createElement('canvas');
-    if (!canvas) return [];
-    canvas.width = w;
-    canvas.height = h;
-    var ctx = canvas.getContext('2d');
-    if (!ctx) return [];
-    ctx.drawImage(image, 0, 0);
-    var data = ctx.getImageData(0, 0, w, h).data;
+    var pix = resolvePixels(image, opts);
+    if (!pix) return [];
+    var data = pix.data;
+    var w = pix.width;
+    var h = pix.height;
     var separatorMask = buildSeparatorMask(image, sepOpts);
     var contentMask = new Uint8Array(w * h);
     for (var pi = 0; pi < w * h; pi++) {
@@ -705,14 +709,11 @@
     var h = image.naturalHeight || image.height;
     if (!w || !h) return [];
 
-    var canvas = typeof document !== 'undefined' && document.createElement('canvas');
-    if (!canvas) return [];
-    canvas.width = w;
-    canvas.height = h;
-    var ctx = canvas.getContext('2d');
-    if (!ctx) return [];
-    ctx.drawImage(image, 0, 0);
-    var data = ctx.getImageData(0, 0, w, h).data;
+    var pix = resolvePixels(image, opts);
+    if (!pix) return [];
+    var data = pix.data;
+    w = pix.width;
+    h = pix.height;
     var mask = buildNonWhiteMask(data, w, h, nonWhiteThreshold);
     var visited = new Uint8Array(w * h);
 
@@ -799,14 +800,11 @@
     var h = image.naturalHeight || image.height;
     if (!w || !h) return [];
 
-    var canvas = typeof document !== 'undefined' && document.createElement('canvas');
-    if (!canvas) return [];
-    canvas.width = w;
-    canvas.height = h;
-    var ctx = canvas.getContext('2d');
-    if (!ctx) return [];
-    ctx.drawImage(image, 0, 0);
-    var data = ctx.getImageData(0, 0, w, h).data;
+    var pix = resolvePixels(image, opts);
+    if (!pix) return [];
+    var data = pix.data;
+    w = pix.width;
+    h = pix.height;
     var mask = buildLightMask(data, w, h, whiteThreshold);
 
     var trackOpts = {

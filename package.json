@@ -7,7 +7,10 @@
     "dev": "npx serve .",
     "local": "vercel dev",
     "test:grid": "node scripts/test-grid-split.js",
-    "compress:styles": "node scripts/compress-style-thumbs.js"
+    "test:parse": "node scripts/test-parse-auto.js",
+    "generate:grids": "node scripts/generate-random-grids.js",
+    "compress:styles": "node scripts/compress-style-thumbs.js",
+    "normalize:fruit-grids": "node scripts/normalize-fruit-grid-labels.js"
   },
   "dependencies": {
     "jimp": "^0.22.12"

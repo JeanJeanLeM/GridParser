@@ -31,17 +31,18 @@ All modes end in **cells** before export.
 
 ---
 
-## Multi-mode (Auto) flow (programmatic)
+## Multi-mode (Auto) flow
 
-To choose the best parser automatically for an image (e.g. from script or a future Auto UI).
+**Default UI mode is Auto.** On upload (or Auto-detect), `parseAuto.selectBestParse` runs:
 
-### Flow
+1. **Shared buffer**: `imageBuffer.fromImage` downscales once (~640px max) and reuses RGBA for all detectors.
+2. **Shortlist**: `getQuickSignals` → `prioritizeModesFromSignals` (skips `blackbg` on light images; skips `geometrical`).
+3. **Uniform first**: `detectGridLines` with `inferSize: true` (1–2 presets) derives rows/cols from line runs + virtual edges — no 18×5 brute force. Strong uniform candidates early-exit.
+4. **Fallbacks**: freeform / lineform / blackbg only if needed; unified scoring prefers regular lattices.
+5. **Labels**: `labelDetect.detectLabelRegion` votes top/bottom/left/right bands (no OCR) and sets Label side + % in the UI.
+6. **Apply**: `applyCandidateResult` + grid format update; radio stays on Auto while `editorMode` holds the resolved mode.
 
-1. **Shortlist**: `buildCandidateShortlist(w, h)` uses `quickImageAnalysis` → `prioritizeModesFromSignals` (or all modes if no strong signal).
-2. **Candidates**: `buildAllCandidates(w, h)` runs `runCandidateForMode(mode, w, h)` for each shortlisted mode via the registry.
-3. **Unified scoring**: `scoreCandidateUnified(cand, w, h)` uses the registry `minCells`/`maxCells` and applies strip/tiny/dominance penalties.
-4. **Selection**: `scoreAndSelectBest(candidates, w, h)` picks the highest-scoring valid candidate and returns `mode`, `cells`/`xBounds`/`yBounds`, `confidence`, and `source`.
-5. **Apply**: `applyCandidateResult(best)` applies the result; `updateParserStatus(cand)` shows mode and source in the legend.
+Tests: `npm run generate:grids` then `npm run test:parse` (synthetic expected vs result; real fixtures in `Examples/`).
 
 ---
 

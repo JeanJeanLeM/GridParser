@@ -15,11 +15,14 @@
       corePath: 'lib/tesseract-core'
     };
   </script>
+  <script src="js/imageBuffer.js"></script>
   <script src="js/gridSplit.js"></script>
   <script src="js/gridDetect.js"></script>
   <script src="js/segmentArrangement.js"></script>
   <script src="js/segmentDetect.js"></script>
   <script src="js/segmentSplit.js"></script>
+  <script src="js/labelDetect.js"></script>
+  <script src="js/parseAuto.js"></script>
   <style>
     * { box-sizing: border-box; }
     body {
@@ -1145,7 +1148,8 @@
       </select>
       <div class="editor-mode-row">
         <span class="editor-mode-label">Editor:</span>
-        <label class="editor-mode-option"><input type="radio" name="editor-mode" value="uniform" checked>Grid</label>
+        <label class="editor-mode-option"><input type="radio" name="editor-mode" value="auto" checked>Auto</label>
+        <label class="editor-mode-option"><input type="radio" name="editor-mode" value="uniform">Grid</label>
         <label class="editor-mode-option"><input type="radio" name="editor-mode" value="freeform">Freeform</label>
         <label class="editor-mode-option"><input type="radio" name="editor-mode" value="lineform">Lines</label>
         <label class="editor-mode-option"><input type="radio" name="editor-mode" value="blackbg">Black BG</label>
@@ -1220,13 +1224,23 @@
       <span class="step-badge" aria-hidden="true">3</span>
       <h2 id="step3-title" class="section-title">Preview &amp; download tiles</h2>
     </div>
-    <p class="output-hint">Auto-name reads text on each tile to set the <strong>filename</strong>. With <strong>Remove label after auto-name</strong> enabled (default), the bottom label band is cropped after naming so the exported icon is clean.</p>
+    <p class="output-hint">Auto-name reads text on each tile to set the <strong>filename</strong>. With <strong>Remove label after auto-name</strong> enabled (default), the detected label band is cropped after naming so the exported icon is clean. Auto mode sets region % when labels are found.</p>
     <div class="grid-editor-labelisation">
       <span class="trim-inline">
-        <label for="label-region-pct">Label region %:</label>
-        <input type="number" id="label-region-pct" min="10" max="50" value="30" step="5" style="width: 3.5em;" title="Bottom % of each tile used for OCR, and cropped when Remove label is enabled">
+        <label for="label-region-side">Label side:</label>
+        <select id="label-region-side" title="Which edge of each tile holds the label" style="width: auto;">
+          <option value="bottom" selected>Bottom</option>
+          <option value="top">Top</option>
+          <option value="left">Left</option>
+          <option value="right">Right</option>
+          <option value="none">None</option>
+        </select>
       </span>
-      <label class="auto-name-label" for="remove-label-after-name" title="After OCR naming, crop the bottom label band from each tile">
+      <span class="trim-inline">
+        <label for="label-region-pct">Label region %:</label>
+        <input type="number" id="label-region-pct" min="10" max="50" value="30" step="5" style="width: 3.5em;" title="% of each tile used for OCR / crop on the selected side">
+      </span>
+      <label class="auto-name-label" for="remove-label-after-name" title="After OCR naming, crop the label band from each tile">
         <input type="checkbox" id="remove-label-after-name" checked>
         Remove label after auto-name
       </label>
@@ -1509,9 +1523,21 @@
         var info = entry ? (entry.tileCropInfos || [])[tileIndex] : tileCropInfos[index];
         if (!info) return Promise.resolve();
         if (info.labelRemoved) return Promise.resolve();
+        var side = getLabelRegionSide();
+        if (side === 'none') return Promise.resolve();
         var visibleH = Math.max(1, info.sh - info.trimTop - info.trimBottom);
-        var labelPx = Math.max(1, Math.round(visibleH * (labelPct / 100)));
-        info.trimBottom = Math.min(info.sh - info.trimTop - 1, info.trimBottom + labelPx);
+        var visibleW = Math.max(1, info.sw - info.trimLeft - info.trimRight);
+        var labelPxH = Math.max(1, Math.round(visibleH * (labelPct / 100)));
+        var labelPxW = Math.max(1, Math.round(visibleW * (labelPct / 100)));
+        if (side === 'bottom') {
+          info.trimBottom = Math.min(info.sh - info.trimTop - 1, info.trimBottom + labelPxH);
+        } else if (side === 'top') {
+          info.trimTop = Math.min(info.sh - info.trimBottom - 1, info.trimTop + labelPxH);
+        } else if (side === 'left') {
+          info.trimLeft = Math.min(info.sw - info.trimRight - 1, info.trimLeft + labelPxW);
+        } else if (side === 'right') {
+          info.trimRight = Math.min(info.sw - info.trimLeft - 1, info.trimRight + labelPxW);
+        }
         info.labelRemoved = true;
         var srcImg = entry && entry.img ? entry.img : tileSrcImage;
         var bgEff = null;
@@ -2069,8 +2095,10 @@
           gridWrapper.style.height = totalH + 'px';
           applyZoom();
           drawOverlay();
-          var mode = getEditorMode();
-          if (mode === 'uniform') {
+          var mode = getEditorModeRadio();
+          if (mode === 'auto') {
+            runMultiModeAutoDetect();
+          } else if (mode === 'uniform') {
             runAutoDetect();
           } else if (mode === 'geometrical') {
             initGeoCorners(w, h);
@@ -2102,14 +2130,30 @@
         }
       }
 
-      function getEditorMode() {
+      function getEditorModeRadio() {
         var radio = document.querySelector('input[name="editor-mode"]:checked');
-        if (!radio) return 'uniform';
-        if (radio.value === 'geometrical') return 'geometrical';
-        if (['freeform', 'lineform', 'blackbg'].indexOf(radio.value) !== -1) return radio.value;
+        return radio ? radio.value : 'auto';
+      }
+      function getEditorMode() {
+        var radioVal = getEditorModeRadio();
+        if (radioVal === 'auto') {
+          // Resolved mode after Auto detect (stored in editorMode).
+          if (editorMode && editorMode !== 'auto' && ['uniform', 'freeform', 'lineform', 'blackbg', 'geometrical'].indexOf(editorMode) !== -1) {
+            return editorMode;
+          }
+          return 'uniform';
+        }
+        if (radioVal === 'geometrical') return 'geometrical';
+        if (['freeform', 'lineform', 'blackbg'].indexOf(radioVal) !== -1) return radioVal;
         return 'uniform';
       }
       function setEditorModeRadio(mode) {
+        // Prefer keeping Auto selected if user chose Auto; only force radio for manual modes.
+        var currentRadio = getEditorModeRadio();
+        if (currentRadio === 'auto' && mode !== 'auto' && mode !== 'geometrical') {
+          editorMode = mode;
+          return;
+        }
         var selector = 'input[name="editor-mode"][value="' + mode + '"]';
         var radio = document.querySelector(selector);
         if (radio) radio.checked = true;
@@ -2120,11 +2164,82 @@
         return m === 'freeform' || m === 'lineform' || m === 'blackbg';
       }
 
+      function getLabelRegionSide() {
+        var el = document.getElementById('label-region-side');
+        var v = el ? el.value : 'bottom';
+        if (['bottom', 'top', 'left', 'right', 'none'].indexOf(v) === -1) return 'bottom';
+        return v;
+      }
+
+      function applyDetectedLabelToUI(label) {
+        if (!label) return;
+        var sideEl = document.getElementById('label-region-side');
+        var pctEl = document.getElementById('label-region-pct');
+        if (label.hasLabel && label.region && label.region !== 'none') {
+          if (sideEl) sideEl.value = label.region;
+          if (pctEl && typeof label.percent === 'number') {
+            pctEl.value = String(Math.max(10, Math.min(50, Math.round(label.percent))));
+          }
+        } else if (sideEl && label.region === 'none') {
+          sideEl.value = 'none';
+        }
+      }
+
+      function runMultiModeAutoDetect() {
+        if (!currentImage) return false;
+        if (typeof parseAuto === 'undefined' || !parseAuto.selectBestParse) {
+          return runAutoDetect();
+        }
+        var result = parseAuto.selectBestParse(currentImage, { maxSide: 640 });
+        if (!result) return false;
+        var resolvedMode = result.mode || 'uniform';
+        // Keep radio on Auto; store resolved mode for export/status
+        editorMode = resolvedMode;
+        if (resolvedMode === 'uniform' && result.xBounds && result.yBounds) {
+          applyCandidateResult({
+            mode: 'uniform',
+            xBounds: result.xBounds,
+            yBounds: result.yBounds,
+            source: result.source,
+            confidence: result.confidence
+          });
+        } else if (result.cells && result.cells.length) {
+          applyCandidateResult({
+            mode: resolvedMode,
+            cells: result.cells,
+            source: result.source,
+            confidence: result.confidence
+          });
+        } else {
+          return false;
+        }
+        if (result.rows && result.cols) {
+          setGridFormatFromBounds(
+            result.xBounds || [0, currentImage.naturalWidth],
+            result.yBounds || [0, currentImage.naturalHeight]
+          );
+          // For cell modes, set rows/cols from inference
+          var sel = document.getElementById('grid-format');
+          if (sel && (!result.xBounds || !result.yBounds)) {
+            var val = Math.max(1, Math.min(10, result.rows)) + '_' + Math.max(1, Math.min(10, result.cols));
+            sel.value = val;
+            if (typeof syncGridFormatVisual === 'function') syncGridFormatVisual();
+          }
+        }
+        applyDetectedLabelToUI(result.label);
+        updateParserStatus({
+          mode: resolvedMode,
+          source: (result.source || 'auto') + (result.confidence ? ' · ' + result.confidence : ''),
+          confidence: result.confidence
+        });
+        return true;
+      }
+
       function runAutoDetect() {
         if (!currentImage) return false;
         var w = currentImage.naturalWidth;
         var h = currentImage.naturalHeight;
-        // Try all common sizes so 3×3 boards are not stuck on the default 4×4.
+        // Fast path: infer size from line runs (1–2 presets), no 18×5 brute force.
         var cand = getUniformCandidate(w, h, true);
         if (!cand) return false;
         applyCandidateResult(cand);
@@ -2665,9 +2780,7 @@
         var x1 = cand.xBounds[cand.xBounds.length - 1];
         var y0 = cand.yBounds[0];
         var y1 = cand.yBounds[cand.yBounds.length - 1];
-        var spanW = Math.max(1, x1 - x0);
-        var spanH = Math.max(1, y1 - y0);
-        var coverage = (spanW * spanH) / Math.max(1, w * h);
+        var coverage = (Math.max(1, x1 - x0) * Math.max(1, y1 - y0)) / Math.max(1, w * h);
         function spanVariance(bounds) {
           if (bounds.length < 2) return 0;
           var spans = [];
@@ -2685,52 +2798,92 @@
           }
           return Math.sqrt(v / spans.length) / Math.max(1, mean);
         }
-        var equalPenalty = (spanVariance(cand.xBounds) + spanVariance(cand.yBounds)) * 80;
-        var cellCount = rows * cols;
-        // Prefer denser grids that still cover the image and stay evenly spaced.
-        return cellCount * 6 + coverage * 40 - equalPenalty;
+        var cv = spanVariance(cand.xBounds) + spanVariance(cand.yBounds);
+        // Regularity first — denser grids must NOT win by default (5×5 bias).
+        var score = coverage * 50 - cv * 120;
+        if ((rows === 3 && cols === 3) || (rows === 4 && cols === 4)) score += 18;
+        else if ((rows === 2 && cols === 2) || (rows === 3 && cols === 4) || (rows === 4 && cols === 3)) score += 10;
+        else if (rows >= 5 && cols >= 5) score -= 8;
+        if (cand.inferredConfidence) score += cand.inferredConfidence * 40;
+        if (cand.lineEvidence) score += cand.lineEvidence * 30;
+        return score;
       }
 
       function getUniformCandidate(w, h, tryAllSizes) {
         if (typeof gridDetect === 'undefined' || !gridDetect.detectGridLines) return null;
         var presets = [
-          { blackThreshold: 100, darknessThreshold: 0.12, minLinePx: 1, minGap: 6, minSpanFraction: 0.35, useActualLinePositions: true },
-          { blackThreshold: 130, darknessThreshold: 0.10, minLinePx: 1, minGap: 6, minSpanFraction: 0.30, useActualLinePositions: true },
-          { blackThreshold: 160, darknessThreshold: 0.08, minLinePx: 1, minGap: 6, minSpanFraction: 0.25, useActualLinePositions: true },
-          // Dashed / light gray separators (Grokbot: pointillés)
-          { blackThreshold: 185, darknessThreshold: 0.06, minLinePx: 1, minGap: 6, minSpanFraction: 0.12, allowDashed: true, useActualLinePositions: true },
-          { blackThreshold: 200, darknessThreshold: 0.05, minLinePx: 1, minGap: 5, minSpanFraction: 0.08, allowDashed: true, useActualLinePositions: true }
+          { blackThreshold: 110, darknessThreshold: 0.10, minLinePx: 1, minGap: 6, minSpanFraction: 0.30, useActualLinePositions: true },
+          { blackThreshold: 185, darknessThreshold: 0.06, minLinePx: 1, minGap: 6, minSpanFraction: 0.12, allowDashed: true, useActualLinePositions: true }
         ];
-        var sizesToTry = tryAllSizes ? UNIFORM_GRID_SIZES : [[getGridFormat().rows, getGridFormat().cols]];
         var best = null;
         var bestScore = -1e9;
-        for (var si = 0; si < sizesToTry.length; si++) {
-          var rows = sizesToTry[si][0];
-          var cols = sizesToTry[si][1];
+
+        if (tryAllSizes) {
+          for (var p = 0; p < presets.length; p++) {
+            var optsInfer = { inferSize: true };
+            for (var k in presets[p]) optsInfer[k] = presets[p][k];
+            var runs = gridDetect.detectLineRuns ? gridDetect.detectLineRuns(currentImage, optsInfer) : null;
+            var resultInfer = gridDetect.detectGridLines(currentImage, optsInfer);
+            if (resultInfer && resultInfer.xBounds && resultInfer.yBounds) {
+              var rowsI = resultInfer.yBounds.length - 1;
+              var colsI = resultInfer.xBounds.length - 1;
+              if (rowsI >= 2 && colsI >= 2 && rowsI * colsI >= 4) {
+                var conf = resultInfer.inferred ? resultInfer.inferred.confidence : 0;
+                var lineEvidence = 0;
+                if (runs && resultInfer.inferred) {
+                  var cRuns = (resultInfer.inferred.colRuns || runs.colRuns || []).length;
+                  var rRuns = (resultInfer.inferred.rowRuns || runs.rowRuns || []).length;
+                  var colOk = Math.abs(cRuns - (colsI + 1)) <= 1;
+                  var rowOk = Math.abs(rRuns - (rowsI + 1)) <= 1;
+                  if (colOk && rowOk) lineEvidence = 1;
+                  else if (colOk || rowOk) lineEvidence = 0.35;
+                }
+                if (presets[p].allowDashed && conf < 0.7) continue;
+                if (conf < 0.45 && lineEvidence < 0.9) continue;
+                if (lineEvidence < 0.35 && conf < 0.75) continue;
+                var candI = {
+                  mode: 'uniform',
+                  xBounds: resultInfer.xBounds.slice(),
+                  yBounds: resultInfer.yBounds.slice(),
+                  rows: rowsI,
+                  cols: colsI,
+                  source: presets[p].allowDashed ? 'gridLinesDashed' : 'gridLines',
+                  inferredConfidence: conf,
+                  lineEvidence: lineEvidence
+                };
+                var scoreI = scoreUniformLayout(candI, w, h);
+                if (scoreI > bestScore) {
+                  bestScore = scoreI;
+                  best = candI;
+                }
+                if (!presets[p].allowDashed && conf >= 0.8 && lineEvidence >= 0.9 && scoreI > 30) return best;
+              }
+            }
+          }
+          if (best) return best;
+          // No forced size fallback — inventing 5×5 lines caused the Grokbot failures.
+          return null;
+        }
+
+        var locked = [[getGridFormat().rows, getGridFormat().cols]];
+        for (var si = 0; si < locked.length; si++) {
+          var rows = locked[si][0];
+          var cols = locked[si][1];
           var wantX = cols + 1;
           var wantY = rows + 1;
-          for (var p = 0; p < presets.length; p++) {
+          for (var p2 = 0; p2 < presets.length; p2++) {
             var opts = { gridCols: cols, gridRows: rows };
-            for (var k in presets[p]) opts[k] = presets[p][k];
+            for (var k2 in presets[p2]) opts[k2] = presets[p2][k2];
             var result = gridDetect.detectGridLines(currentImage, opts);
             if (result && result.xBounds && result.xBounds.length === wantX && result.yBounds && result.yBounds.length === wantY) {
-              var cand = {
+              return {
                 mode: 'uniform',
                 xBounds: result.xBounds.slice(),
                 yBounds: result.yBounds.slice(),
-                xTrim: result.xTrim ? result.xTrim.slice() : [],
-                yTrim: result.yTrim ? result.yTrim.slice() : [],
                 rows: rows,
                 cols: cols,
-                source: presets[p].allowDashed ? 'gridLinesDashed' : 'gridLines'
+                source: presets[p2].allowDashed ? 'gridLinesDashed' : 'gridLines'
               };
-              var score = scoreUniformLayout(cand, w, h);
-              if (score > bestScore) {
-                bestScore = score;
-                best = cand;
-              }
-              // Locked size: first solid hit is enough.
-              if (!tryAllSizes) return cand;
             }
           }
         }
@@ -3124,14 +3277,15 @@
               }
               currentImage = img;
               initBounds(w, h);
-              runAutoDetect();
+              if (getEditorModeRadio() === 'auto') runMultiModeAutoDetect();
+              else runAutoDetect();
               entry.img = img;
               entry.xBounds = xBounds.slice();
               entry.yBounds = yBounds.slice();
               entry.xTrim = (xTrim || []).slice();
               entry.yTrim = (yTrim || []).slice();
               entry.freeformCells = freeformCells.map(function (c) { return { x: c.x, y: c.y, w: c.w, h: c.h }; });
-              entry.mode = 'uniform';
+              entry.mode = editorMode || getEditorMode();
               onOneLoaded();
             };
             img.onerror = function () {
@@ -3208,14 +3362,15 @@
               }
               currentImage = img;
               initBounds(w, h);
-              runAutoDetect();
+              if (getEditorModeRadio() === 'auto') runMultiModeAutoDetect();
+              else runAutoDetect();
               entry.img = img;
               entry.xBounds = xBounds.slice();
               entry.yBounds = yBounds.slice();
               entry.xTrim = (xTrim || []).slice();
               entry.yTrim = (yTrim || []).slice();
               entry.freeformCells = freeformCells.map(function (c) { return { x: c.x, y: c.y, w: c.w, h: c.h }; });
-              entry.mode = 'uniform';
+              entry.mode = editorMode || getEditorMode();
               loadImageState(currentBatchIndex);
               onOneLoaded();
             };
@@ -4254,7 +4409,10 @@
         var suppressAutoDetect = !!options.suppressAutoDetect;
         var suppressAutoCut = !!options.suppressAutoCut;
         var previousMode = editorMode;
-        editorMode = mode;
+        var isAuto = (mode === 'auto');
+        // Radio stays on Auto; editorMode holds the resolved/working mode after detect.
+        if (!isAuto) editorMode = mode;
+        var workingMode = isAuto ? (editorMode === 'auto' ? 'uniform' : editorMode) : mode;
         var uniformToolbar = document.getElementById('uniform-grid-toolbar');
         var freeformToolbar = document.getElementById('freeform-toolbar');
         var autoDetectBtn = document.getElementById('auto-detect-btn');
@@ -4268,29 +4426,34 @@
         var introLineform = document.getElementById('grid-editor-intro-lineform');
         var introBlackbg = document.getElementById('grid-editor-intro-blackbg');
         var introGeometrical = document.getElementById('grid-editor-intro-geometrical');
-        var isFormMode = isFormsMode(mode);
-        var isGeometrical = (mode === 'geometrical');
-        var isFreeform = (mode === 'freeform');
-        var isLineform = (mode === 'lineform');
-        var isBlackbg = (mode === 'blackbg');
+        var isFormMode = isFormsMode(workingMode);
+        var isGeometrical = (workingMode === 'geometrical');
+        var isFreeform = (workingMode === 'freeform');
+        var isLineform = (workingMode === 'lineform');
+        var isBlackbg = (workingMode === 'blackbg');
         if (uniformToolbar) uniformToolbar.style.display = isFormMode ? 'none' : '';
         if (freeformToolbar) freeformToolbar.style.display = isFormMode ? '' : 'none';
-        if (autoDetectBtn) { autoDetectBtn.style.display = (isFormMode || isGeometrical) ? 'none' : ''; autoDetectBtn.textContent = 'Auto-detect grid'; }
+        if (autoDetectBtn) {
+          autoDetectBtn.style.display = (isFormMode || isGeometrical) && !isAuto ? 'none' : '';
+          autoDetectBtn.textContent = isAuto ? 'Auto-detect (all modes)' : 'Auto-detect grid';
+        }
         if (resetLinesBtn) resetLinesBtn.style.display = (isFormMode || isGeometrical) ? 'none' : '';
         if (resetCornersBtn) resetCornersBtn.style.display = isGeometrical ? '' : 'none';
         if (geoInsetControls) geoInsetControls.style.display = isGeometrical ? 'inline-flex' : 'none';
-        if (freeformAutodetectBtn) freeformAutodetectBtn.style.display = isFormMode ? '' : 'none';
+        if (freeformAutodetectBtn) freeformAutodetectBtn.style.display = isFormMode && !isAuto ? '' : 'none';
         if (freeformResetBtn) freeformResetBtn.style.display = isFormMode ? '' : 'none';
-        if (introEl) introEl.style.display = (!isFormMode && !isGeometrical) ? 'block' : 'none';
-        if (introFreeform) introFreeform.style.display = isFreeform ? 'block' : 'none';
-        if (introLineform) introLineform.style.display = isLineform ? 'block' : 'none';
-        if (introBlackbg) introBlackbg.style.display = isBlackbg ? 'block' : 'none';
+        if (introEl) introEl.style.display = (!isFormMode && !isGeometrical) || isAuto ? 'block' : 'none';
+        if (introFreeform) introFreeform.style.display = isFreeform && !isAuto ? 'block' : 'none';
+        if (introLineform) introLineform.style.display = isLineform && !isAuto ? 'block' : 'none';
+        if (introBlackbg) introBlackbg.style.display = isBlackbg && !isAuto ? 'block' : 'none';
         if (introGeometrical) introGeometrical.style.display = isGeometrical ? 'block' : 'none';
         updateFreeformButtons();
         updateCutButtonLabel();
         if (isFormMode) updateFreeformCellsVisual();
         if (!suppressAutoDetect) {
-          if (currentImage && isFormMode) {
+          if (isAuto && currentImage) {
+            runMultiModeAutoDetect();
+          } else if (currentImage && isFormMode) {
             if (isLineform) runLineFormAutoDetect();
             else if (isBlackbg) runBlackBgAutoDetect();
             else runFreeformAutoDetect();
@@ -4324,13 +4487,14 @@
       var editorModeRadios = document.querySelectorAll('input[name="editor-mode"]');
       for (var r = 0; r < editorModeRadios.length; r++) {
         editorModeRadios[r].addEventListener('change', function () {
-          setEditorMode(getEditorMode());
+          var radioMode = getEditorModeRadio();
+          setEditorMode(radioMode);
           if (batchImages.length && currentBatchIndex >= 0 && currentBatchIndex < batchImages.length) {
             batchImages[currentBatchIndex].mode = getEditorMode();
           }
         });
       }
-      setEditorMode(getEditorMode());
+      setEditorMode(getEditorModeRadio());
       document.getElementById('grid-format').addEventListener('change', function () {
         syncGridFormatVisual();
         updateCutButtonLabel();
@@ -4361,7 +4525,9 @@
           showError('Load an image first.');
           return;
         }
-        if (!runAutoDetect()) showError('Could not detect grid. Try adjusting lines manually.');
+        var ok = (getEditorModeRadio() === 'auto') ? runMultiModeAutoDetect() : runAutoDetect();
+        if (!ok) showError('Could not detect grid. Try adjusting lines manually.');
+        else scheduleAutoCut();
       });
       document.getElementById('reset-lines').addEventListener('click', function () {
         if (currentImage) {
@@ -4603,25 +4769,41 @@
         return ocrTextToBaseName(words[0]);
       }
 
-      function getLabelRegionCanvas(imageUrl, bottomPercent, enhance) {
+      function getLabelRegionCanvas(imageUrl, regionPercent, enhance, side) {
         return new Promise(function (resolve, reject) {
           var img = new Image();
           if (imageUrl.indexOf('blob:') !== 0) img.crossOrigin = 'anonymous';
           img.onload = function () {
             var w = img.naturalWidth;
             var h = img.naturalHeight;
-            var pct = Math.max(10, Math.min(60, parseInt(bottomPercent, 10) || 30));
-            var sliceH = Math.max(1, Math.floor((pct / 100) * h));
+            var pct = Math.max(10, Math.min(60, parseInt(regionPercent, 10) || 30));
+            var region = side || getLabelRegionSide();
+            if (region === 'none') region = 'bottom';
+            var sx = 0;
+            var sy = 0;
+            var sw = w;
+            var sh = h;
+            if (region === 'bottom') {
+              sh = Math.max(1, Math.floor((pct / 100) * h));
+              sy = h - sh;
+            } else if (region === 'top') {
+              sh = Math.max(1, Math.floor((pct / 100) * h));
+            } else if (region === 'left') {
+              sw = Math.max(1, Math.floor((pct / 100) * w));
+            } else if (region === 'right') {
+              sw = Math.max(1, Math.floor((pct / 100) * w));
+              sx = w - sw;
+            }
             var scale = 2;
-            var outW = Math.max(1, Math.floor(w * scale));
-            var outH = Math.max(1, Math.floor(sliceH * scale));
+            var outW = Math.max(1, Math.floor(sw * scale));
+            var outH = Math.max(1, Math.floor(sh * scale));
             var canvas = document.createElement('canvas');
             canvas.width = outW;
             canvas.height = outH;
             var ctx = canvas.getContext('2d');
             if (!ctx) { reject(new Error('No 2d context')); return; }
             ctx.imageSmoothingEnabled = true;
-            ctx.drawImage(img, 0, h - sliceH, w, sliceH, 0, 0, outW, outH);
+            ctx.drawImage(img, sx, sy, sw, sh, 0, 0, outW, outH);
             if (enhance) {
               var imgData = ctx.getImageData(0, 0, outW, outH);
               var d = imgData.data;
