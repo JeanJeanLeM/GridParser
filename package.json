@@ -10,6 +10,7 @@
     "test:parse": "node scripts/test-parse-auto.js",
     "generate:grids": "node scripts/generate-random-grids.js",
     "compress:styles": "node scripts/compress-style-thumbs.js",
+    "compress:fruit-grids": "node scripts/compress-fruit-grids.js",
     "normalize:fruit-grids": "node scripts/normalize-fruit-grid-labels.js"
   },
   "dependencies": {
