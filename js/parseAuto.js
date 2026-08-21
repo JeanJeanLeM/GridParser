@@ -52,10 +52,10 @@
     var l = signals.lightRatio;
     // Dark canvases: try blackbg first.
     if (d > 0.45) return ['blackbg', 'uniform', 'lineform', 'freeform'];
-    // Mostly white: skip blackbg entirely (cutLines false-positives on grid lines).
-    if (l > 0.45) return ['uniform', 'lineform', 'freeform'];
+    // Mostly white: try freeform (icon packs) before inventing grid lines.
+    if (l > 0.45) return ['freeform', 'uniform', 'lineform'];
     if (d >= 0.15 && d <= 0.35) return ['uniform', 'lineform', 'freeform', 'blackbg'];
-    return ['uniform', 'lineform', 'blackbg', 'freeform'];
+    return ['uniform', 'freeform', 'lineform', 'blackbg'];
   }
 
   function scoreUniformLayout(cand, w, h) {

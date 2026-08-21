@@ -2193,7 +2193,6 @@
         var result = parseAuto.selectBestParse(currentImage, { maxSide: 640 });
         if (!result) return false;
         var resolvedMode = result.mode || 'uniform';
-        // Keep radio on Auto; store resolved mode for export/status
         editorMode = resolvedMode;
         if (resolvedMode === 'uniform' && result.xBounds && result.yBounds) {
           applyCandidateResult({
@@ -2207,6 +2206,8 @@
           applyCandidateResult({
             mode: resolvedMode,
             cells: result.cells,
+            rows: result.rows,
+            cols: result.cols,
             source: result.source,
             confidence: result.confidence
           });
@@ -2214,17 +2215,7 @@
           return false;
         }
         if (result.rows && result.cols) {
-          setGridFormatFromBounds(
-            result.xBounds || [0, currentImage.naturalWidth],
-            result.yBounds || [0, currentImage.naturalHeight]
-          );
-          // For cell modes, set rows/cols from inference
-          var sel = document.getElementById('grid-format');
-          if (sel && (!result.xBounds || !result.yBounds)) {
-            var val = Math.max(1, Math.min(10, result.rows)) + '_' + Math.max(1, Math.min(10, result.cols));
-            sel.value = val;
-            if (typeof syncGridFormatVisual === 'function') syncGridFormatVisual();
-          }
+          setGridFormatDimensions(result.rows, result.cols);
         }
         applyDetectedLabelToUI(result.label);
         updateParserStatus({
@@ -2237,9 +2228,12 @@
 
       function runAutoDetect() {
         if (!currentImage) return false;
+        // Prefer full multi-mode auto (correct size + mode). Uniform-only is a fallback.
+        if (typeof parseAuto !== 'undefined' && parseAuto.selectBestParse) {
+          return runMultiModeAutoDetect();
+        }
         var w = currentImage.naturalWidth;
         var h = currentImage.naturalHeight;
-        // Fast path: infer size from line runs (1–2 presets), no 18×5 brute force.
         var cand = getUniformCandidate(w, h, true);
         if (!cand) return false;
         applyCandidateResult(cand);
@@ -3129,18 +3123,59 @@
         return scoreAndSelectBest(candidates, w, h);
       }
 
-      function setGridFormatFromBounds(xBounds, yBounds) {
+      function setGridFormatDimensions(rows, cols) {
         var sel = document.getElementById('grid-format');
         if (!sel) return;
+        rows = Math.max(1, Math.min(12, parseInt(rows, 10) || 1));
+        cols = Math.max(1, Math.min(12, parseInt(cols, 10) || 1));
+        // Ensure option exists (picker may only go to 10)
+        var val = rows + '_' + cols;
+        if (!sel.querySelector('option[value="' + val + '"]')) {
+          var opt = document.createElement('option');
+          opt.value = val;
+          opt.textContent = rows + '×' + cols;
+          sel.appendChild(opt);
+        }
+        sel.value = val;
+        var rowsEl = document.getElementById('grid-format-rows');
+        var colsEl = document.getElementById('grid-format-cols');
+        if (rowsEl) rowsEl.value = String(rows);
+        if (colsEl) colsEl.value = String(cols);
+        if (typeof syncGridFormatVisual === 'function') syncGridFormatVisual();
+        updateCutButtonLabel();
+      }
+
+      function setGridFormatFromBounds(xBounds, yBounds) {
         var rows = yBounds && yBounds.length > 1 ? yBounds.length - 1 : 4;
         var cols = xBounds && xBounds.length > 1 ? xBounds.length - 1 : 4;
-        rows = Math.max(1, Math.min(10, rows));
-        cols = Math.max(1, Math.min(10, cols));
-        var val = rows + '_' + cols;
-        if (sel.value !== val) {
-          sel.value = val;
-          if (typeof syncGridFormatVisual === 'function') syncGridFormatVisual();
+        setGridFormatDimensions(rows, cols);
+      }
+
+      function inferRowsColsFromCellsLocal(cells, w, h) {
+        if (!cells || !cells.length) return { rows: 0, cols: 0 };
+        if (typeof parseAuto !== 'undefined' && parseAuto.boundsToCells) {
+          // reuse clustering from parseAuto via a tiny local copy
         }
+        var ys = cells.map(function (c) { return Math.round(c.y + c.h / 2); }).sort(function (a, b) { return a - b; });
+        var xs = cells.map(function (c) { return Math.round(c.x + c.w / 2); }).sort(function (a, b) { return a - b; });
+        function cluster1D(vals, tol) {
+          if (!vals.length) return 0;
+          var groups = 1;
+          var last = vals[0];
+          for (var i = 1; i < vals.length; i++) {
+            if (vals[i] - last > tol) {
+              groups++;
+              last = vals[i];
+            } else {
+              last = (last + vals[i]) / 2;
+            }
+          }
+          return groups;
+        }
+        return {
+          rows: cluster1D(ys, Math.max(8, h * 0.06)),
+          cols: cluster1D(xs, Math.max(8, w * 0.06))
+        };
       }
 
       function applyCandidateResult(cand) {
@@ -3173,6 +3208,14 @@
           yBounds = [];
           xTrim = [];
           yTrim = [];
+          var iw = currentImage ? currentImage.naturalWidth : 0;
+          var ih = currentImage ? currentImage.naturalHeight : 0;
+          var dims = inferRowsColsFromCellsLocal(cand.cells, iw, ih);
+          if (dims.rows >= 1 && dims.cols >= 1) {
+            setGridFormatDimensions(dims.rows, dims.cols);
+          } else if (cand.rows && cand.cols) {
+            setGridFormatDimensions(cand.rows, cand.cols);
+          }
         }
         excludedCellIds = {};
         selectedCellIndex = null;
