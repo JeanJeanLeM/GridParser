@@ -76,7 +76,7 @@
       justify-content: center;
       border: 2px dashed var(--accent);
       border-radius: 12px;
-      padding: 2.75rem 2rem;
+      padding: clamp(2rem, 4vw, 3.5rem) clamp(1.25rem, 3vw, 2.5rem);
       text-align: center;
       cursor: pointer;
       background: var(--input-bg);
@@ -86,17 +86,33 @@
       max-width: 100%;
       margin-left: auto;
       margin-right: auto;
-      min-height: 200px;
-      aspect-ratio: 1;
+      min-height: clamp(220px, 36vh, 420px);
+      aspect-ratio: auto;
       box-sizing: border-box;
       box-shadow: inset 0 0 0 1px rgba(29, 78, 216, 0.06);
     }
+    body:not(.has-image) .drop-section {
+      max-width: none;
+    }
     body:not(.has-image) .drop-zone {
-      max-width: min(360px, 100%);
+      max-width: min(720px, 100%);
+      min-height: clamp(260px, 42vh, 480px);
     }
     body.has-image .drop-zone {
-      max-width: 280px;
-      min-height: 0;
+      max-width: 320px;
+      min-height: 180px;
+    }
+    @media (min-width: 900px) {
+      body:not(.has-image) .drop-zone {
+        max-width: min(880px, 100%);
+        min-height: clamp(300px, 44vh, 520px);
+      }
+    }
+    @media (min-width: 1280px) {
+      body:not(.has-image) .drop-zone {
+        max-width: min(960px, 100%);
+        min-height: clamp(320px, 46vh, 560px);
+      }
     }
     .drop-zone:hover, .drop-zone.dragover {
       background: #eff6ff;
@@ -108,7 +124,11 @@
       background: #dbeafe;
     }
     .drop-zone p { margin: 0; color: var(--text-muted); }
-    .drop-zone .drop-title { font-weight: 600; color: var(--text-secondary); }
+    .drop-zone .drop-title {
+      font-weight: 600;
+      color: var(--text-secondary);
+      font-size: clamp(1.05rem, 2.2vw, 1.35rem);
+    }
     .drop-zone-info {
       position: absolute;
       top: 0.6rem;
@@ -1108,32 +1128,6 @@
   </header>
 
   <main class="main-content">
-  <div class="landing-shell">
-    <ul class="logo-mosaic logo-mosaic--side" aria-hidden="true">
-      <li class="logo-mosaic__cell"><img class="logo-mosaic__img" src="assets/styles/fruit-grid-flat-vector.webp" alt="" loading="lazy" width="200" height="200"></li>
-      <li class="logo-mosaic__cell"><img class="logo-mosaic__img" src="assets/styles/fruit-grid-watercolor.webp" alt="" loading="lazy" width="200" height="200"></li>
-      <li class="logo-mosaic__cell"><img class="logo-mosaic__img" src="assets/styles/fruit-grid-pixel.webp" alt="" loading="lazy" width="200" height="200"></li>
-      <li class="logo-mosaic__cell"><img class="logo-mosaic__img" src="assets/styles/fruit-grid-isometric.webp" alt="" loading="lazy" width="200" height="200"></li>
-      <li class="logo-mosaic__cell"><img class="logo-mosaic__img" src="assets/styles/fruit-grid-popart.webp" alt="" loading="lazy" width="200" height="200"></li>
-      <li class="logo-mosaic__cell"><img class="logo-mosaic__img" src="assets/styles/fruit-grid-origami.webp" alt="" loading="lazy" width="200" height="200"></li>
-      <li class="logo-mosaic__cell"><img class="logo-mosaic__img" src="assets/styles/fruit-grid-neon.webp" alt="" loading="lazy" width="200" height="200"></li>
-      <li class="logo-mosaic__cell"><img class="logo-mosaic__img" src="assets/styles/fruit-grid-bauhaus.webp" alt="" loading="lazy" width="200" height="200"></li>
-      <li class="logo-mosaic__cell"><img class="logo-mosaic__img" src="assets/styles/fruit-grid-chalk.webp" alt="" loading="lazy" width="200" height="200"></li>
-      <li class="logo-mosaic__cell"><img class="logo-mosaic__img" src="assets/styles/fruit-grid-sticker.webp" alt="" loading="lazy" width="200" height="200"></li>
-      <li class="logo-mosaic__cell"><img class="logo-mosaic__img" src="assets/styles/fruit-grid-wood.webp" alt="" loading="lazy" width="200" height="200"></li>
-      <li class="logo-mosaic__cell"><img class="logo-mosaic__img" src="assets/styles/fruit-grid-manga.webp" alt="" loading="lazy" width="200" height="200"></li>
-    </ul>
-    <div class="landing-shell__center">
-    <ul class="logo-mosaic logo-mosaic--mobile" aria-hidden="true">
-      <li class="logo-mosaic__cell"><img class="logo-mosaic__img" src="assets/styles/fruit-grid-flat-vector.webp" alt="" loading="lazy" width="120" height="120"></li>
-      <li class="logo-mosaic__cell"><img class="logo-mosaic__img" src="assets/styles/fruit-grid-watercolor.webp" alt="" loading="lazy" width="120" height="120"></li>
-      <li class="logo-mosaic__cell"><img class="logo-mosaic__img" src="assets/styles/fruit-grid-pixel.webp" alt="" loading="lazy" width="120" height="120"></li>
-      <li class="logo-mosaic__cell"><img class="logo-mosaic__img" src="assets/styles/fruit-grid-isometric.webp" alt="" loading="lazy" width="120" height="120"></li>
-      <li class="logo-mosaic__cell"><img class="logo-mosaic__img" src="assets/styles/fruit-grid-popart.webp" alt="" loading="lazy" width="120" height="120"></li>
-      <li class="logo-mosaic__cell"><img class="logo-mosaic__img" src="assets/styles/fruit-grid-neon.webp" alt="" loading="lazy" width="120" height="120"></li>
-      <li class="logo-mosaic__cell"><img class="logo-mosaic__img" src="assets/styles/fruit-grid-bauhaus.webp" alt="" loading="lazy" width="120" height="120"></li>
-      <li class="logo-mosaic__cell"><img class="logo-mosaic__img" src="assets/styles/fruit-grid-sticker.webp" alt="" loading="lazy" width="120" height="120"></li>
-    </ul>
   <section class="drop-section" aria-labelledby="step1-title">
     <div class="section-title-row">
       <span class="step-badge" aria-hidden="true">1</span>
@@ -1362,23 +1356,6 @@
       </div>
     </div>
   </div>
-
-  </div><!-- /.landing-shell__center -->
-    <ul class="logo-mosaic logo-mosaic--side" aria-hidden="true">
-      <li class="logo-mosaic__cell"><img class="logo-mosaic__img" src="assets/styles/fruit-grid-clay-3d.webp" alt="" loading="lazy" width="200" height="200"></li>
-      <li class="logo-mosaic__cell"><img class="logo-mosaic__img" src="assets/styles/fruit-grid-embroidered.webp" alt="" loading="lazy" width="200" height="200"></li>
-      <li class="logo-mosaic__cell"><img class="logo-mosaic__img" src="assets/styles/fruit-grid-papercut.webp" alt="" loading="lazy" width="200" height="200"></li>
-      <li class="logo-mosaic__cell"><img class="logo-mosaic__img" src="assets/styles/fruit-grid-chrome.webp" alt="" loading="lazy" width="200" height="200"></li>
-      <li class="logo-mosaic__cell"><img class="logo-mosaic__img" src="assets/styles/fruit-grid-lowpoly.webp" alt="" loading="lazy" width="200" height="200"></li>
-      <li class="logo-mosaic__cell"><img class="logo-mosaic__img" src="assets/styles/fruit-grid-halftone.webp" alt="" loading="lazy" width="200" height="200"></li>
-      <li class="logo-mosaic__cell"><img class="logo-mosaic__img" src="assets/styles/fruit-grid-blueprint.webp" alt="" loading="lazy" width="200" height="200"></li>
-      <li class="logo-mosaic__cell"><img class="logo-mosaic__img" src="assets/styles/fruit-grid-kawaii.webp" alt="" loading="lazy" width="200" height="200"></li>
-      <li class="logo-mosaic__cell"><img class="logo-mosaic__img" src="assets/styles/fruit-grid-art-deco.webp" alt="" loading="lazy" width="200" height="200"></li>
-      <li class="logo-mosaic__cell"><img class="logo-mosaic__img" src="assets/styles/fruit-grid-porcelain.webp" alt="" loading="lazy" width="200" height="200"></li>
-      <li class="logo-mosaic__cell"><img class="logo-mosaic__img" src="assets/styles/fruit-grid-graffiti.webp" alt="" loading="lazy" width="200" height="200"></li>
-      <li class="logo-mosaic__cell"><img class="logo-mosaic__img" src="assets/styles/fruit-grid-sumi-e.webp" alt="" loading="lazy" width="200" height="200"></li>
-    </ul>
-  </div><!-- /.landing-shell -->
 
   </main>
 
